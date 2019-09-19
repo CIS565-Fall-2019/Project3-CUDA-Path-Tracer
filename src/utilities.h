@@ -29,6 +29,16 @@ typedef std::vector<ivec3> ivec3_v;
 typedef std::vector<ivec4> ivec4_v;
 typedef std::vector<std::string> string_v;
 
+//some stupid bits of math
+/** Returns a normalized version of the vector **/
+inline gvec3 normalized(const gvec3 input);
+/** Normalizes the vector in place **/
+inline void normalize(gvec3* input);
+/** Calculates the magnitude of the vector **/
+inline float magnitude(const gvec3 input);
+/** Calculates the magnitude of the vector **/
+inline float magnitude(const gvec4 input);
+
 namespace utilityCore {
     extern float clamp(float f, float min, float max);
     extern bool replaceString(std::string& str, const std::string& from, const std::string& to);

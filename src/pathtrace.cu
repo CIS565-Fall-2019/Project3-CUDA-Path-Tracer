@@ -30,7 +30,7 @@ void checkCUDAErrorFn(const char *msg, const char *file, int line) {
     if (file) {
         fprintf(stderr, " (%s:%d)", file, line);
     }
-    fprintf(stderr, ": %s: %s\n", msg, cudaGetErrorString(err));
+    fprintf(stderr, ": %d: %s: %s\n", line, msg, cudaGetErrorString(err));
 #  ifdef _WIN32
     getchar();
 #  endif
@@ -331,7 +331,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	int depth = 0;
 	PathSegment* dev_path_end = dev_paths + pixelcount;
-	int num_paths = dev_path_end - dev_paths;
+	int num_paths = dev_path_end - dev_paths;//ok, clever use of pointer math...
 
 	// --- PathSegment Tracing Stage ---
 	// Shoot ray into scene, bounce between objects, push shading chunks
