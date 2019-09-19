@@ -16,4 +16,4 @@ This is where I would write about my path tracer... IF I HAD ONE
 
 ### OBJ Files
 * Models downloaded from Morgan McGuire's [Computer Graphics Archive](https://casual-effects.com/data)
-   * Bunny, Dragon, Teapot, Tree, Indonesian Statue
+   * Bunny, Dragon, Teapot, Tree
