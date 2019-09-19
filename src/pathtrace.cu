@@ -335,13 +335,43 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	// --- PathSegment Tracing Stage ---
 	// Shoot ray into scene, bounce between objects, push shading chunks
-
+  int depth = 0;
   bool iterationComplete = false;
 	while (!iterationComplete) {
 
 	// clean shading chunks
 	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
+	
+			//------------------------------------------------
+		//Compute Intersections with an option for Intersection Caching for the first bounce
+		//------------------------------------------------
+#ifdef CACHE
+		//Checking if intersection cached results should be used
+		if(iter == 1 && depth == 0)
+		{
+			computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (activeRays, dev_paths, dev_geoms,
+																				 hst_scene->geoms.size(), dev_intersections);
+			checkCUDAError("compute Intersections Failed");
+			cudaDeviceSynchronize();
 
+			//Copy cached intersections
+			cudaMemcpy(dev_intersectionsCached, dev_intersections, activeRays * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+		}
+		else if (iter != 1 && depth == 0)
+		{
+			//Cache the first Bounce
+			cudaMemcpy(dev_intersections, dev_intersectionsCached, activeRays * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+		}
+
+		if (depth > 0)
+		{
+			computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (activeRays, dev_paths, dev_geoms,
+																				hst_scene->geoms.size(), dev_intersections);
+			checkCUDAError("compute Intersections Failed");
+			cudaDeviceSynchronize();
+		}
+#else
+	
 	// tracing
 	dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
 	computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (
@@ -353,6 +383,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		, dev_intersections
 		);
 	checkCUDAError("trace one bounce");
+#endif
 	cudaDeviceSynchronize();
 	depth++;
 
