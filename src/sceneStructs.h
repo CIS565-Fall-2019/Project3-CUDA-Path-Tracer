@@ -74,3 +74,13 @@ struct ShadeableIntersection {
   glm::vec3 surfaceNormal;
   int materialId;
 };
+
+vector typedefs
+typedef std::vector<Ray>            Ray_v;
+typedef std::vector<Geom>           Geom_v;
+typedef std::vector<Material>       Material_v;
+typedef std::vector<Camera>         Camera_v;
+typedef std::vector<PathSegment>    PathSegment_v;
+
+
+

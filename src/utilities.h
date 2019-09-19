@@ -14,6 +14,21 @@
 #define SQRT_OF_ONE_THIRD 0.5773502691896257645091487805019574556476f
 #define EPSILON           0.00001f
 
+//soft culling of glm namespace
+typedef glm::vec3 gvec3;
+typedef glm::vec4 gvec4;
+typedef glm::ivec3 ivec3;//likely unused
+typedef glm::ivec4 ivec4;//likely unused
+
+//vector typedefs
+typedef std::vector<int> int_v;
+typedef std::vector<float> float_v;
+typedef std::vector<gvec3> gvec3_v;
+typedef std::vector<gvec4> gvec4_v;
+typedef std::vector<ivec3> ivec3_v;
+typedef std::vector<ivec4> ivec4_v;
+typedef std::vector<std::string> string_v;
+
 namespace utilityCore {
     extern float clamp(float f, float min, float max);
     extern bool replaceString(std::string& str, const std::string& from, const std::string& to);
