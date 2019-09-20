@@ -13,17 +13,17 @@
 #include "utilities.h"
 
 gvec3 normalized(const gvec3 input){
-    float magnitude = magnitude(input);
-    if (!magnitude) return gvec3(1.0f, 0.0f, 0.0f);//avoid div-by-0
-    return gvec3(input.x / magnitude, input.y / magnitude, input.z / magnitude);
+    float mag = magnitude(input);
+    if (!mag) return gvec3(1.0f, 0.0f, 0.0f);//avoid div-by-0
+    return gvec3(input.x / mag, input.y / mag, input.z / mag);
 }//normalize
 
 inline void normalize(gvec3* input){
-    float magnitude = magnitude(*input);
-    if (!magnitude) return;//maybe do nothing if passed 0 vector??
-    input-> x /= magnitude;
-    input-> y /= magnitude;
-    input-> z /= magnitude;
+    float mag = magnitude(*input);
+    if (!mag) return;//maybe do nothing if passed 0 vector??
+    input-> x /= mag;
+    input-> y /= mag;
+    input-> z /= mag;
 }//normalize
 
 inline float magnitude(const gvec3 input){

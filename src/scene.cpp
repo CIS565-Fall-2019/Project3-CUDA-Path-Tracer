@@ -51,7 +51,15 @@ int Scene::loadGeom(string objectid) {
             } else if (strcmp(line.c_str(), "cube") == 0) {
                 cout << "Creating new cube..." << endl;
                 newGeom.type = CUBE;
-            }
+			}
+			else if (strcmp(line.c_str(), "triangle") == 0) {
+				cout << "Creating new triangle..." << endl;
+				newGeom.type = TRIANGLE;
+			}
+			else if (strcmp(line.c_str(), "mesh") == 0) {
+				cout << "WHY ARE YOU TRYING TO IMPORT A MESH? YOU KNOW WE HAVEN'T GOT THE POWER, CAPTAIN!" << endl;
+				//TODO: any mesh-loading capabilities go here, likely just directly adding a fuckload of triangles
+			}
         }
 
         //link material
@@ -62,27 +70,51 @@ int Scene::loadGeom(string objectid) {
             cout << "Connecting Geom " << objectid << " to Material " << newGeom.materialid << "..." << endl;
         }
 
-        //load transformations
-        utilityCore::safeGetline(fp_in, line);
-        while (!line.empty() && fp_in.good()) {
-            vector<string> tokens = utilityCore::tokenizeString(line);
+		if (newGeom.type != TRIANGLE) {
+			//load transformations
+			utilityCore::safeGetline(fp_in, line);
+			while (!line.empty() && fp_in.good()) {
+				vector<string> tokens = utilityCore::tokenizeString(line);
 
-            //load tranformations
-            if (strcmp(tokens[0].c_str(), "TRANS") == 0) {
-                newGeom.translation = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
-            } else if (strcmp(tokens[0].c_str(), "ROTAT") == 0) {
-                newGeom.rotation = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
-            } else if (strcmp(tokens[0].c_str(), "SCALE") == 0) {
-                newGeom.scale = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
-            }
+				//load tranformations
+				if (strcmp(tokens[0].c_str(), "TRANS") == 0) {
+					newGeom.translation = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+				}
+				else if (strcmp(tokens[0].c_str(), "ROTAT") == 0) {
+					newGeom.rotation = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+				}
+				else if (strcmp(tokens[0].c_str(), "SCALE") == 0) {
+					newGeom.scale = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+				}
 
-            utilityCore::safeGetline(fp_in, line);
-        }
+				utilityCore::safeGetline(fp_in, line);
+			}
+			newGeom.transform = utilityCore::buildTransformationMatrix(
+				newGeom.translation, newGeom.rotation, newGeom.scale);
+			newGeom.inverseTransform = glm::inverse(newGeom.transform);
+			newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
+		}//not a triangle
+		else {
+			utilityCore::safeGetline(fp_in, line);
+			while (!line.empty() && fp_in.good()) {
+				string_v tokens = utilityCore::tokenizeString(line);
 
-        newGeom.transform = utilityCore::buildTransformationMatrix(
-                newGeom.translation, newGeom.rotation, newGeom.scale);
-        newGeom.inverseTransform = glm::inverse(newGeom.transform);
-        newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
+				//load tranformations
+				if (strcmp(tokens[0].c_str(), "VERTS") == 0) {
+					newGeom.vert0 = gvec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+					newGeom.vert1 = gvec3(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str()));
+					newGeom.vert2 = gvec3(atof(tokens[7].c_str()), atof(tokens[8].c_str()), atof(tokens[9].c_str()));
+
+					//compute the normal; assuming clockwise construction
+					gvec3 edge0 = newGeom.vert1 - newGeom.vert0;
+					gvec3 edge1 = newGeom.vert2 - newGeom.vert0;
+					newGeom.normal = normalized(CROSSP(edge1, edge0));
+				}
+				
+				utilityCore::safeGetline(fp_in, line);
+			}
+		}//triangle
+
 
         geoms.push_back(newGeom);
         return 1;
