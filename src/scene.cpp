@@ -1,5 +1,6 @@
 #include <iostream>
 #include "scene.h"
+#include "tiny_obj_loader.h"
 #include <cstring>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
@@ -30,6 +31,24 @@ Scene::Scene(string filename) {
             }
         }
     }
+	
+	//this is to test if we can actually load an object
+	//bool LoadObj(attrib_t * attrib, std::vector<shape_t> * shapes,
+	//	std::vector<material_t> * materials, std::string * warn,
+	//	std::string * err, const char* filename, const char* mtl_basedir,
+	//	bool trianglulate, bool default_vcols_fallback);
+	std::string warn;
+	std::string err;
+	const char* meshfile = "../objects/teapot.obj";
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, meshfile);
+
+	printf("Return result: %d\n", ret);
+	printf("Warning: %s\n", warn.c_str());
+	printf("Error: %s\n", err.c_str());
+
 }
 
 int Scene::loadGeom(string objectid) {
