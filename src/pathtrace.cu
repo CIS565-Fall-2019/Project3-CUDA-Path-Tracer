@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cuda.h>
 #include <cmath>
+#include <thrust/partition.h> // for partition
 #include <thrust/execution_policy.h>
 #include <thrust/random.h>
 #include <thrust/remove.h>
@@ -15,6 +16,8 @@
 #include "interactions.h"
 
 #define ERRORCHECK 1
+#define CACHE_ME_OUTSIDE
+//#define STREAM_COMPACTION
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -42,6 +45,18 @@ __host__ __device__
 thrust::default_random_engine makeSeededRandomEngine(int iter, int index, int depth) {
     int h = utilhash((1 << 31) | (depth << 22) | iter) ^ utilhash(index);
     return thrust::default_random_engine(h);
+}
+
+void memory_debug(int elements, PathSegment* cuda_mem, PathSegment* cpu_mem)
+{
+	cudaMemcpy(cpu_mem, cuda_mem, elements * sizeof(PathSegment), cudaMemcpyDeviceToHost);
+	checkCUDAError("copy out failed!");
+	printf("=============================\n");
+	for (int i = 0; i < elements; i++)
+	{
+		printf("out[%d] %d ", i, cpu_mem[i]);
+	}
+	printf("=============================\n");
 }
 
 //Kernel that writes the image to the OpenGL PBO directly.
@@ -73,6 +88,7 @@ static Geom * dev_geoms = NULL;
 static Material * dev_materials = NULL;
 static PathSegment * dev_paths = NULL;
 static ShadeableIntersection * dev_intersections = NULL;
+static int* dev_intersectionsCached = NULL;
 // TODO: static variables for device memory, any extra info you need, etc
 // ...
 
@@ -96,6 +112,8 @@ void pathtraceInit(Scene *scene) {
   	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
     // TODO: initialize any extra device memeory you need
+	cudaMalloc(&dev_intersectionsCached, pixelcount * sizeof(ShadeableIntersection));
+	cudaMemset(dev_intersectionsCached, 0, pixelcount * sizeof(ShadeableIntersection));
 
     checkCUDAError("pathtraceInit");
 }
@@ -106,6 +124,7 @@ void pathtraceFree() {
   	cudaFree(dev_geoms);
   	cudaFree(dev_materials);
   	cudaFree(dev_intersections);
+	cudaFree(dev_intersectionsCached);
     // TODO: clean up any extra device memory you created
 
     checkCUDAError("pathtraceFree");
@@ -277,6 +296,15 @@ __global__ void finalGather(int nPaths, glm::vec3 * image, PathSegment * iterati
 	}
 }
 
+struct RemainingBounces
+{
+	__host__ __device__
+		bool operator()(const PathSegment &x)
+	{
+		return (x.remainingBounces > 0);
+	}
+};
+
 /**
  * Wrapper for the __global__ call that sets up the kernel calls and does a ton
  * of memory management
@@ -335,37 +363,41 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	// --- PathSegment Tracing Stage ---
 	// Shoot ray into scene, bounce between objects, push shading chunks
-  int depth = 0;
-  bool iterationComplete = false;
+	bool iterationComplete = false;
 	while (!iterationComplete) {
 
 	// clean shading chunks
 	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
-	
-			//------------------------------------------------
-		//Compute Intersections with an option for Intersection Caching for the first bounce
-		//------------------------------------------------
-#ifdef CACHE
+	dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
+
+
+
+// enable disable first bounce cachine. 
+#ifdef CACHE_ME_OUTSIDE
+	printf(" depth %d : iter %d\n", depth, iter);
+
 		//Checking if intersection cached results should be used
 		if(iter == 1 && depth == 0)
 		{
-			computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (activeRays, dev_paths, dev_geoms,
+			//dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
+			computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (depth,num_paths, dev_paths, dev_geoms,
 																				 hst_scene->geoms.size(), dev_intersections);
 			checkCUDAError("compute Intersections Failed");
 			cudaDeviceSynchronize();
 
 			//Copy cached intersections
-			cudaMemcpy(dev_intersectionsCached, dev_intersections, activeRays * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+			cudaMemcpy(dev_intersectionsCached, dev_intersections, num_paths * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
 		}
-		else if (iter != 1 && depth == 0)
+		else if (iter > 1 && depth == 0)
 		{
 			//Cache the first Bounce
-			cudaMemcpy(dev_intersections, dev_intersectionsCached, activeRays * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+			cudaMemcpy(dev_intersections, dev_intersectionsCached, num_paths * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
 		}
 
 		if (depth > 0)
 		{
-			computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (activeRays, dev_paths, dev_geoms,
+			//dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
+			computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (depth,num_paths, dev_paths, dev_geoms,
 																				hst_scene->geoms.size(), dev_intersections);
 			checkCUDAError("compute Intersections Failed");
 			cudaDeviceSynchronize();
@@ -373,7 +405,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 #else
 	
 	// tracing
-	dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
+	//dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
 	computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (
 		depth
 		, num_paths
@@ -404,7 +436,21 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
     dev_paths,
     dev_materials
   );
-  iterationComplete = true; // TODO: should be based off stream compaction results.
+
+#ifdef STREAM_COMPACTION
+  //thrust::partition returns a pointer to the element in the array where the partition occurs
+  // reference https://thrust.github.io/doc/group__partitioning_gac5cdbb402c5473ca92e95bc73ecaf13c.html#gac5cdbb402c5473ca92e95bc73ecaf13c
+  // we have an array of pixel count so... dev_paths[pixel_count] we want the pointer that is the last element then we know everything is done
+  PathSegment* partition_point = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, RemainingBounces());
+  printf("part pt: %d : %d \n", partition_point, dev_path_end);
+  if (partition_point == dev_path_end)// if we have reached the end of our pointers
+  {
+	  iterationComplete = true;
+  }
+#else
+  iterationComplete = true;
+#endif
+  //delete host_path;
 	}
 
   // Assemble this iteration and apply it to the image
