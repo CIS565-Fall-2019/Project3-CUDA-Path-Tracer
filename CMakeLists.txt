@@ -62,6 +62,8 @@ set(GLM_ROOT_DIR "external")
 find_package(GLM REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
 
+include_directories(external/tinyobjloader)
+
 set(headers
     src/main.h
     src/image.h
@@ -73,6 +75,7 @@ set(headers
     src/sceneStructs.h
     src/preview.h
     src/utilities.h
+    external/tinyobjloader/tiny_obj_loader.h
     )
 
 set(sources
@@ -84,6 +87,7 @@ set(sources
     src/scene.cpp
     src/preview.cpp
     src/utilities.cpp
+    external/tinyobjloader/tiny_obj_loader.cc
     )
 
 list(SORT headers)
@@ -98,4 +102,5 @@ cuda_add_executable(${CMAKE_PROJECT_NAME} ${sources} ${headers})
 target_link_libraries(${CMAKE_PROJECT_NAME}
     ${LIBRARIES}
     #stream_compaction  # TODO: uncomment if using your stream compaction
+    #TinyObjLoader
     )
