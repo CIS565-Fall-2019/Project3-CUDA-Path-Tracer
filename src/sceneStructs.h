@@ -4,35 +4,41 @@
 #include <vector>
 #include <cuda_runtime.h>
 #include "glm/glm.hpp"
+#include "utilities.h"
 
 #define BACKGROUND_COLOR (glm::vec3(0.0f))
 
 enum GeomType {
     SPHERE,
     CUBE,
+	TRIANGLE,
 };
 
 struct Ray {
-    glm::vec3 origin;
-    glm::vec3 direction;
+    gvec3 origin;
+    gvec3 direction;
 };
 
 struct Geom {
     enum GeomType type;
     int materialid;
-    glm::vec3 translation;
-    glm::vec3 rotation;
-    glm::vec3 scale;
-    glm::mat4 transform;
-    glm::mat4 inverseTransform;
-    glm::mat4 invTranspose;
+    gvec3 translation;
+    gvec3 rotation;
+    gvec3 scale;
+    gmat4 transform;
+    gmat4 inverseTransform;
+    gmat4 invTranspose;
+	gvec3 vert0;
+	gvec3 vert1;
+	gvec3 vert2;
+	gvec3 normal;
 };
 
 struct Material {
-    glm::vec3 color;
+    gvec3 color;
     struct {
         float exponent;
-        glm::vec3 color;
+        gvec3 color;
     } specular;
     float hasReflective;
     float hasRefractive;
@@ -41,27 +47,27 @@ struct Material {
 };
 
 struct Camera {
-    glm::ivec2 resolution;
-    glm::vec3 position;
-    glm::vec3 lookAt;
-    glm::vec3 view;
-    glm::vec3 up;
-    glm::vec3 right;
-    glm::vec2 fov;
-    glm::vec2 pixelLength;
+    ivec2 resolution;
+    gvec3 position;
+    gvec3 lookAt;
+    gvec3 view;
+    gvec3 up;
+    gvec3 right;
+    gvec2 fov;
+    gvec2 pixelLength;
 };
 
 struct RenderState {
     Camera camera;
     unsigned int iterations;
     int traceDepth;
-    std::vector<glm::vec3> image;
+    gvec3_v image;
     std::string imageName;
 };
 
 struct PathSegment {
 	Ray ray;
-	glm::vec3 color;
+	gvec3 color;
 	int pixelIndex;
 	int remainingBounces;
 };
@@ -71,11 +77,11 @@ struct PathSegment {
 // 2) BSDF evaluation: generate a new ray
 struct ShadeableIntersection {
   float t;
-  glm::vec3 surfaceNormal;
+  gvec3 surfaceNormal;
   int materialId;
 };
 
-vector typedefs
+//vector typedefs
 typedef std::vector<Ray>            Ray_v;
 typedef std::vector<Geom>           Geom_v;
 typedef std::vector<Material>       Material_v;

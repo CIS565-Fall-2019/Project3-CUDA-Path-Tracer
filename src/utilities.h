@@ -15,10 +15,14 @@
 #define EPSILON           0.00001f
 
 //soft culling of glm namespace
+typedef glm::vec2 gvec2;
 typedef glm::vec3 gvec3;
 typedef glm::vec4 gvec4;
-typedef glm::ivec3 ivec3;//likely unused
-typedef glm::ivec4 ivec4;//likely unused
+typedef glm::ivec2 ivec2;
+typedef glm::ivec3 ivec3;
+typedef glm::ivec4 ivec4;
+typedef glm::mat3 gmat3;
+typedef glm::mat4 gmat4;
 
 //vector typedefs
 typedef std::vector<int> int_v;
@@ -29,15 +33,23 @@ typedef std::vector<ivec3> ivec3_v;
 typedef std::vector<ivec4> ivec4_v;
 typedef std::vector<std::string> string_v;
 
+//Preprocessor functions that you really shouldn't trust, but they might do what we want
+//note: only work for gvec3 types
+
+//Preprocessor macro for dot product
+#define DOTP(a, b) (a.x * b.x + a.y * b.y + a.z * b.z)
+//Preprocessor macro for cross product
+#define CROSSP(a, b) (gvec3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x))
+
 //some stupid bits of math
 /** Returns a normalized version of the vector **/
-inline gvec3 normalized(const gvec3 input);
+extern inline gvec3 normalized(const gvec3 input);
 /** Normalizes the vector in place **/
-inline void normalize(gvec3* input);
+extern inline void normalize(gvec3* input);
 /** Calculates the magnitude of the vector **/
-inline float magnitude(const gvec3 input);
+extern inline float magnitude(const gvec3 input);
 /** Calculates the magnitude of the vector **/
-inline float magnitude(const gvec4 input);
+extern inline float magnitude(const gvec4 input);
 
 namespace utilityCore {
     extern float clamp(float f, float min, float max);
