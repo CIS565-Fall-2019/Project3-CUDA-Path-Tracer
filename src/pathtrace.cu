@@ -205,7 +205,9 @@ __global__ void computeIntersections(
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
 			// TODO: add more intersection tests here... triangle? metaball? CSG?
-
+			
+			// go through everything and then figure out what the closest ray we hit was.
+			// this is where you would change to like implementing a KD tree or what not
 			// Compute the minimum t from the intersection tests to determine what
 			// scene geometry object was hit first.
 			if (t > 0.0f && t_min > t)
@@ -271,6 +273,7 @@ __global__ void shadeFakeMaterial (
       // like what you would expect from shading in a rasterizer like OpenGL.
       // TODO: replace this! you should be able to start with basically a one-liner
       else {
+      // call scatter ray, this code given is lamberts law
         float lightTerm = glm::dot(intersection.surfaceNormal, glm::vec3(0.0f, 1.0f, 0.0f));
 		pathSegments[idx].color *= (materialColor * lightTerm) * 0.3f + ((1.0f - intersection.t * 0.02f) * materialColor) * 0.7f;
         pathSegments[idx].color *= u01(rng); // apply some noise because why not
@@ -453,7 +456,10 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	  iterationComplete = true;
   }
 #else
+if( depth >= traceDepth )
+{
   iterationComplete = true;
+}
 #endif
   delete path;
 	}

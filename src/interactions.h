@@ -76,4 +76,6 @@ void scatterRay(
     // TODO: implement this.
     // A basic implementation of pure-diffuse shading will just call the
     // calculateRandomDirectionInHemisphere defined above.
+	// calculateRandomDirection or depending on what we want to call
+	// is diffuse is reflective is refractive. is opaque? etc etc
 }
