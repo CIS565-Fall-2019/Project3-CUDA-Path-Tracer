@@ -78,8 +78,40 @@ void scatterRay(
     // calculateRandomDirectionInHemisphere defined above.
 	thrust::uniform_real_distribution<float> u01(0, 1);
 
+	// No matter what, new origin is intersect point.
 	pathSegment.ray.origin = intersect;
-	pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
-	pathSegment.color *= m.color;// *u01(rng);
-	pathSegment.remainingBounces--;
+
+	// Imperfect Specular
+	if (m.hasReflective > 0.0f) {
+		float shininess = 5000 * m.hasReflective; // NICE: Make shininess an effect of the material
+
+		// Use Importance sampling to find the reflected vector
+		// Get random vector based on the reflective value
+		float st = acos(powf(u01(rng), 1.0f / (shininess + 1.0f))); // Spectral Theta
+		float sp = 2.0f * PI * u01(rng); // Spectral Psi
+		float cosPsi = cos(sp);
+		float sinPsi = sin(sp);
+		float cosTheta = cos(st);
+		float sinTheta = sin(st);
+		glm::vec3 sample(cosPsi*sinTheta, sinPsi*sinTheta, cosTheta);
+
+		// We now have a sample, orient it to the reflected vector.
+		// https://stackoverflow.com/questions/20923232/how-to-rotate-a-vector-by-a-given-direction
+		glm::vec3 reflected = glm::reflect(pathSegment.ray.direction, normal);
+		glm::vec3 transform_z = glm::normalize(reflected);
+		glm::vec3 transform_x = glm::normalize(glm::cross(transform_z, glm::vec3(0.0f, 0.0f, 1.0f)));
+		glm::vec3 transform_y = glm::normalize(glm::cross(transform_z, transform_x));
+		glm::mat3 transform = glm::mat3(transform_x, transform_y, transform_z);
+
+		// Transform the vector so that it aligns with the reflected vector as Z axis
+		pathSegment.ray.direction = transform * sample;
+		pathSegment.color *= m.specular.color;
+		pathSegment.remainingBounces--;
+	}
+	// Ideal Diffuse
+	else {
+		pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
+		pathSegment.color *= m.color;
+		pathSegment.remainingBounces--;
+	}
 }
