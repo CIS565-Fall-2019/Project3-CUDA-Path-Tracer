@@ -23,9 +23,9 @@ struct Ray {
 struct Geom {
     enum GeomType type;
     int materialid;
-    gvec3 translation;
-    gvec3 rotation;
-    gvec3 scale;
+    gvec3 translation;//TODO: also make this vert0
+    gvec3 rotation;//TODO: also make this vert1
+    gvec3 scale;//TODO: also make this vert2
     gmat4 transform;
     gmat4 inverseTransform;
     gmat4 invTranspose;
