@@ -4,6 +4,8 @@
 #include <thrust/execution_policy.h>
 #include <thrust/random.h>
 #include <thrust/remove.h>
+#include <thrust/device_vector.h>
+#include <thrust/partition.h>
 
 #include "sceneStructs.h"
 #include "scene.h"
@@ -221,7 +223,7 @@ __global__ void computeIntersections(
 // Note that this shader does NOT do a BSDF evaluation!
 // Your shaders should handle that - this can allow techniques such as
 // bump mapping.
-__global__ void shadeFakeMaterial (
+__global__ void shadeMaterial (
   int iter
   , int num_paths
 	, ShadeableIntersection * shadeableIntersections
@@ -246,17 +248,24 @@ __global__ void shadeFakeMaterial (
       // If the material indicates that the object was a light, "light" the ray
       if (material.emittance > 0.0f) {
         pathSegments[idx].color *= (materialColor * material.emittance);
+		pathSegments[idx].remainingBounces = 0;
       }
       // Otherwise, do some pseudo-lighting computation. This is actually more
       // like what you would expect from shading in a rasterizer like OpenGL.
       // TODO: replace this! you should be able to start with basically a one-liner
       else {
-		 /* glm::vec3 currIntersectionPos = getPointOnRay(pathSegments[idx].ray, intersection.t);
-		  scatterRay(pathSegments[idx], currIntersectionPos, intersection.surfaceNormal, material, rng);*/
+		  glm::vec3 originalDirection = pathSegments[idx].ray.direction;
+		  glm::vec3 currIntersectionPos = getPointOnRay(pathSegments[idx].ray, intersection.t);
+		  scatterRay(pathSegments[idx], currIntersectionPos, intersection.surfaceNormal, material, rng);
 
-        float lightTerm = glm::dot(intersection.surfaceNormal, glm::vec3(0.0f, 1.0f, 0.0f));
-        pathSegments[idx].color *= (materialColor * lightTerm) * 0.3f + ((1.0f - intersection.t * 0.02f) * materialColor) * 0.7f;
-        pathSegments[idx].color *= u01(rng); // apply some noise because why not
+		  float lambertianTerm = glm::abs(glm::dot(intersection.surfaceNormal, originalDirection));
+		  pathSegments[idx].color *= lambertianTerm;
+		  pathSegments[idx].remainingBounces--; // TODO: maybe move to scatter?
+
+
+        //float lightTerm = glm::dot(intersection.surfaceNormal, glm::vec3(0.0f, 1.0f, 0.0f));
+        //pathSegments[idx].color *= (materialColor * lightTerm) * 0.3f + ((1.0f - intersection.t * 0.02f) * materialColor) * 0.7f;
+        //pathSegments[idx].color *= u01(rng); // apply some noise because why not
       }
     // If there was no intersection, color the ray black.
     // Lots of renderers use 4 channel color, RGBA, where A = alpha, often
@@ -264,6 +273,7 @@ __global__ void shadeFakeMaterial (
     // This can be useful for post-processing and image compositing.
     } else {
       pathSegments[idx].color = glm::vec3(0.0f);
+	  pathSegments[idx].remainingBounces = 0;
     }
   }
 }
@@ -279,6 +289,17 @@ __global__ void finalGather(int nPaths, glm::vec3 * image, PathSegment * iterati
 		image[iterationPath.pixelIndex] += iterationPath.color;
 	}
 }
+
+
+
+
+struct is_terminated {
+	__host__ __device__ bool operator()(const PathSegment p) {
+		return p.remainingBounces > 0;
+	}
+};
+
+
 
 /**
  * Wrapper for the __global__ call that sets up the kernel calls and does a ton
@@ -342,42 +363,64 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
   bool iterationComplete = false;
 	while (!iterationComplete) {
 
-	// clean shading chunks
-	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
+		// clean shading chunks
+		cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
-	// tracing
-	dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
-	computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (
-		depth
-		, num_paths
-		, dev_paths
-		, dev_geoms
-		, hst_scene->geoms.size()
-		, dev_intersections
+		// tracing
+		dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
+		computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (
+			depth
+			, num_paths
+			, dev_paths
+			, dev_geoms
+			, hst_scene->geoms.size()
+			, dev_intersections
+			);
+		checkCUDAError("trace one bounce");
+		cudaDeviceSynchronize();
+		depth++;
+
+
+		// TODO:
+		// --- Shading Stage ---
+		// Shade path segments based on intersections and generate new rays by
+		// evaluating the BSDF.
+		// Start off with just a big kernel that handles all the different
+		// materials you have in the scenefile.
+		// TODO: compare between directly shading the path segments and shading
+		// path segments that have been reshuffled to be contiguous in memory.
+
+		shadeMaterial<<<numblocksPathSegmentTracing, blockSize1d>>> (
+			iter,
+			num_paths,
+			dev_intersections,
+			dev_paths,
+			dev_materials
 		);
-	checkCUDAError("trace one bounce");
-	cudaDeviceSynchronize();
-	depth++;
+
+		//thrust::device_ptr<PathSegment> dev_thrust_paths = thrust::device_pointer_cast<PathSegment>(dev_paths);
+
+		PathSegment *new_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, is_terminated());
+		num_paths = new_end - dev_paths;
 
 
-	// TODO:
-	// --- Shading Stage ---
-	// Shade path segments based on intersections and generate new rays by
-  // evaluating the BSDF.
-  // Start off with just a big kernel that handles all the different
-  // materials you have in the scenefile.
-  // TODO: compare between directly shading the path segments and shading
-  // path segments that have been reshuffled to be contiguous in memory.
 
-  shadeFakeMaterial<<<numblocksPathSegmentTracing, blockSize1d>>> (
-    iter,
-    num_paths,
-    dev_intersections,
-    dev_paths,
-    dev_materials
-  );
-  iterationComplete = true; // TODO: should be based off stream compaction results.
+		if (num_paths < 1) {
+			depth = traceDepth + 10;
+		}
+
+		if (depth > traceDepth) {
+			iterationComplete = true;
+		}
+
+		depth++;
+
+
+		//iterationComplete = true; // TODO: should be based off stream compaction results.
+
 	}
+
+	num_paths = dev_path_end - dev_paths;
 
   // Assemble this iteration and apply it to the image
   dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
