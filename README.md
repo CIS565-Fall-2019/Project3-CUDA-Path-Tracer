@@ -17,5 +17,8 @@ This is where I would write about my path tracer... IF I HAD ONE
 ### OBJ Files
 * Models downloaded from Morgan McGuire's [Computer Graphics Archive](https://casual-effects.com/data)
     * Bunny, Dragon, Teapot, Tree, Breakfast Room, Fireplace Room
+
+### Other Code
 * Ray-triangle intersection algorithm stolen from the Wikipedia article for the [Moller-Trumbore Intersection Algorithm](https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm)
+* Used [TinyObjLoader](https://github.com/syoyo/tinyobjloader) library for loading `*.obj` files
    
