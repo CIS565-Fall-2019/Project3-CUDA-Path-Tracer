@@ -51,11 +51,11 @@ void memory_debug(int elements, PathSegment* cuda_mem, PathSegment* cpu_mem)
 {
 	cudaMemcpy(cpu_mem, cuda_mem, elements * sizeof(PathSegment), cudaMemcpyDeviceToHost);
 	checkCUDAError("copy out failed!");
-	printf("=============================\n");
-	for (int i = 0; i < elements; i++)
-	{
-		printf("out[%d] %d ", i, cpu_mem[i]);
-	}
+	//printf("=============================\n");
+	//for (int i = 0; i < elements; i++)
+	//{
+	//	printf("out[%d] %d\n ", i, cpu_mem[i].remainingBounces);
+	//}
 	printf("=============================\n");
 }
 
@@ -251,7 +251,8 @@ __global__ void shadeFakeMaterial (
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < num_paths)
   {
-    ShadeableIntersection intersection = shadeableIntersections[idx];
+	  //pathSegments[idx].remainingBounces=0;
+	  ShadeableIntersection intersection = shadeableIntersections[idx];
     if (intersection.t > 0.0f) { // if the intersection exists...
       // Set up the RNG
       // LOOK: this is how you use thrust's RNG! Please look at
@@ -271,8 +272,9 @@ __global__ void shadeFakeMaterial (
       // TODO: replace this! you should be able to start with basically a one-liner
       else {
         float lightTerm = glm::dot(intersection.surfaceNormal, glm::vec3(0.0f, 1.0f, 0.0f));
-        pathSegments[idx].color *= (materialColor * lightTerm) * 0.3f + ((1.0f - intersection.t * 0.02f) * materialColor) * 0.7f;
+		pathSegments[idx].color *= (materialColor * lightTerm) * 0.3f + ((1.0f - intersection.t * 0.02f) * materialColor) * 0.7f;
         pathSegments[idx].color *= u01(rng); // apply some noise because why not
+		  //pathSegments[idx].color = glm::vec3(0.0f);
       }
     // If there was no intersection, color the ray black.
     // Lots of renderers use 4 channel color, RGBA, where A = alpha, often
@@ -301,7 +303,7 @@ struct RemainingBounces
 	__host__ __device__
 		bool operator()(const PathSegment &x)
 	{
-		return (x.remainingBounces > 0);
+		return (x.remainingBounces <= 0);
 	}
 };
 
@@ -437,11 +439,14 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
     dev_materials
   );
 
+  PathSegment* path = new PathSegment[num_paths];
+ // memory_debug(num_paths, dev_paths, path);
 #ifdef STREAM_COMPACTION
   //thrust::partition returns a pointer to the element in the array where the partition occurs
   // reference https://thrust.github.io/doc/group__partitioning_gac5cdbb402c5473ca92e95bc73ecaf13c.html#gac5cdbb402c5473ca92e95bc73ecaf13c
   // we have an array of pixel count so... dev_paths[pixel_count] we want the pointer that is the last element then we know everything is done
   PathSegment* partition_point = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, RemainingBounces());
+  memory_debug(dev_path_end-partition_point, partition_point, path);
   printf("part pt: %d : %d \n", partition_point, dev_path_end);
   if (partition_point == dev_path_end)// if we have reached the end of our pointers
   {
@@ -450,7 +455,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 #else
   iterationComplete = true;
 #endif
-  //delete host_path;
+  delete path;
 	}
 
   // Assemble this iteration and apply it to the image
