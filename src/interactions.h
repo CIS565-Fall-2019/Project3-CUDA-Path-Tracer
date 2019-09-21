@@ -83,7 +83,7 @@ void scatterRay(
 
 	// Imperfect Specular
 	if (m.hasReflective > 0.0f) {
-		float shininess = 5000 * m.hasReflective; // NICE: Make shininess an effect of the material
+		float shininess = 500 * m.hasReflective; // NICE: Make shininess an effect of the material
 
 		// Use Importance sampling to find the reflected vector
 		// Get random vector based on the reflective value
