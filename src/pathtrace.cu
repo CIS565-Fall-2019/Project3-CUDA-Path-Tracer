@@ -11,6 +11,8 @@
 #include "scene.h"
 #include "glm/glm.hpp"
 #include "glm/gtx/norm.hpp"
+#include <glm/gtc/matrix_inverse.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include "utilities.h"
 #include "pathtrace.h"
 #include "intersections.h"
@@ -131,12 +133,20 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		PathSegment & segment = pathSegments[index];
 
 		segment.ray.origin = cam.position;
-    segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
+		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
+
+		/*thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, 0);
+		thrust::uniform_real_distribution<float> u0x(0, 0.05);
+		thrust::uniform_real_distribution<float> u0y(0, 0.05);
+
+		float randx =  0.975 + u0x(rng);
+		float randy =  0.975 + u0y(rng);*/
+
 
 		// TODO: implement antialiasing by jittering the ray
 		segment.ray.direction = glm::normalize(cam.view
-			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f)
-			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f)
+			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f) /** randx*/
+			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f) /** randy*/
 			);
 
 		segment.pixelIndex = index;
@@ -185,6 +195,12 @@ __global__ void computeIntersections(
 			}
 			else if (geom.type == SPHERE)
 			{
+				// MOTION BLUR: Figure out what to transform by
+				/*geom.transform = glm::translate(geom.transform, glm::vec3(0.0, 0.00001, 0.0));
+				geom.inverseTransform = glm::inverse(geom.transform);
+				geom.invTranspose = glm::inverseTranspose(geom.transform);
+*/
+
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
 			// TODO: add more intersection tests here... triangle? metaball? CSG?
@@ -299,6 +315,12 @@ struct is_terminated {
 	}
 };
 
+struct materialOrdering {
+	__host__ __device__ bool operator()(const ShadeableIntersection &s1, const ShadeableIntersection &s2) {
+		return s1.materialId < s2.materialId;
+	}
+};
+
 
 
 /**
@@ -390,6 +412,14 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		// TODO: compare between directly shading the path segments and shading
 		// path segments that have been reshuffled to be contiguous in memory.
 
+		thrust::device_ptr<PathSegment> dev_thrust_paths = thrust::device_pointer_cast<PathSegment>(dev_paths);
+		thrust::device_ptr<ShadeableIntersection> dev_thrust_intersections = thrust::device_pointer_cast<ShadeableIntersection>(dev_intersections);
+
+
+
+		thrust::sort_by_key(dev_thrust_intersections, dev_thrust_intersections + num_paths, dev_thrust_paths, materialOrdering());
+
+
 		shadeMaterial<<<numblocksPathSegmentTracing, blockSize1d>>> (
 			iter,
 			num_paths,
@@ -398,7 +428,6 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			dev_materials
 		);
 
-		//thrust::device_ptr<PathSegment> dev_thrust_paths = thrust::device_pointer_cast<PathSegment>(dev_paths);
 
 		PathSegment *new_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, is_terminated());
 		num_paths = new_end - dev_paths;

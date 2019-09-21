@@ -2,6 +2,7 @@
 #include "preview.h"
 #include <cstring>
 
+
 static std::string startTimeString;
 
 // For camera controls
@@ -135,6 +136,13 @@ void runCuda() {
         // execute the kernel
         int frame = 0;
         pathtrace(pbo_dptr, frame, iteration);
+
+		/*scene->geoms.at(6).translation += glm::vec3(1, 1, 10);
+	
+		scene->geoms.at(6).transform = utilityCore::buildTransformationMatrix(
+			scene->geoms.at(6).translation, scene->geoms.at(6).rotation, scene->geoms.at(6).scale);
+		scene->geoms.at(6).inverseTransform = glm::inverse(scene->geoms.at(6).transform);
+		scene->geoms.at(6).invTranspose = glm::inverseTranspose(scene->geoms.at(6).transform);*/
 
         // unmap buffer object
         cudaGLUnmapBufferObject(pbo);
