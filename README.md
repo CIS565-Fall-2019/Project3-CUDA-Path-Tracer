@@ -11,6 +11,13 @@ CUDA Path Tracer
 
 This is where I would write about my path tracer... IF I HAD ONE
 
+## Configuration Notes
+
+### CMakeLists changes
+
+I put the `tinyobjloader` library contents into the `external` folder, so I had to include the relevant header and source file in the project, as well as mark their locations to be included and linked.
+
+Additionally, I decided to compile this all with `C++17`, in case I decided to make use of the `std::filesystem` library (a slight quality of life fix over just calling it via `std::experimental::filesystem`)
 
 ## Sources
 
