@@ -8,6 +8,7 @@
 #include <thrust/device_ptr.h>
 #include <thrust/partition.h>
 
+#include "optimizations.h"
 #include "sceneStructs.h"
 #include "scene.h"
 #include "glm/glm.hpp"
@@ -442,12 +443,15 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		cudaDeviceSynchronize();
 		depth++;
 
-		//// Sort by Material IDX. This will improve cache reuse on Shader stage
-		//thrust::sort_by_key(
-		//	thrust::device_ptr<ShadeableIntersection>(dev_intersections),
-		//	thrust::device_ptr<ShadeableIntersection>(dev_intersections + num_active_paths),
-		//	thrust::device_ptr<PathSegment>(dev_paths),
-		//	material_idx_less_than());
+#ifdef PRESHADER_SORT
+		// Sort by Material IDX. This will improve cache reuse on Shader stage
+		// Also reduces branch divergence in shader!
+		thrust::sort_by_key(
+			thrust::device_ptr<ShadeableIntersection>(dev_intersections),
+			thrust::device_ptr<ShadeableIntersection>(dev_intersections + num_active_paths),
+			thrust::device_ptr<PathSegment>(dev_paths),
+			material_idx_less_than());
+#endif
 
 		// TODO:
 		// --- Shading Stage ---
@@ -465,6 +469,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			dev_materials
 			);
 
+#ifdef POSTSHADER_PARTITION
 		// Remove all null intersections. Returns new end interator.
 		dev_path_end = thrust::partition(
 			thrust::device_ptr<PathSegment>(dev_paths),
@@ -480,6 +485,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 		// Update num_paths
 		num_active_paths = dev_path_end - dev_paths;
+#endif
 
 		// Run until all paths are done OR the trace depth has been reached.
 		if (num_active_paths == 0 || depth >= traceDepth) {
