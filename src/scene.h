@@ -21,7 +21,10 @@ public:
     Scene(string filename);
     ~Scene();
 
-    std::vector<Geom> geoms;
-    std::vector<Material> materials;
+    Geom_v geoms;
+    Material_v materials;
     RenderState state;
+
+	//TODO: just feed in the transformation matrix, so we can get rotation in as well
+	Geom_v readFromMesh(string filename, int materialid, gmat4 transform = MAT4I);//default to the identity matrix
 };

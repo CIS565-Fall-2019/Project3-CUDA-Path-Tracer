@@ -41,6 +41,9 @@ typedef std::vector<std::string> string_v;
 //Preprocessor macro for cross product
 #define CROSSP(a, b) (gvec3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x))
 
+#define MAT3I (gmat3(1, 0, 0, 0, 1, 0, 0, 0, 1))
+#define MAT4I (gmat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1))
+
 //some stupid bits of math
 /** Returns a normalized version of the vector **/
 extern inline gvec3 normalized(const gvec3 input);

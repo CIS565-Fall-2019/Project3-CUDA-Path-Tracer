@@ -5,6 +5,8 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
 
+#define SKIPFACES 16//skip all mesh faces save one out of this many
+
 Scene::Scene(string filename) {
     cout << "Reading scene from " << filename << " ..." << endl;
     cout << " " << endl;
@@ -31,23 +33,6 @@ Scene::Scene(string filename) {
             }
         }
     }
-	
-	//this is to test if we can actually load an object
-	//bool LoadObj(attrib_t * attrib, std::vector<shape_t> * shapes,
-	//	std::vector<material_t> * materials, std::string * warn,
-	//	std::string * err, const char* filename, const char* mtl_basedir,
-	//	bool trianglulate, bool default_vcols_fallback);
-	std::string warn;
-	std::string err;
-	const char* meshfile = "../objects/teapot.obj";
-	tinyobj::attrib_t attrib;
-	std::vector<tinyobj::shape_t> shapes;
-	std::vector<tinyobj::material_t> materials;
-	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, meshfile);
-
-	printf("Return result: %d\n", ret);
-	printf("Warning: %s\n", warn.c_str());
-	printf("Error: %s\n", err.c_str());
 
 }
 
@@ -76,9 +61,10 @@ int Scene::loadGeom(string objectid) {
 				newGeom.type = TRIANGLE;
 			}
 			else if (strcmp(line.c_str(), "mesh") == 0) {
-				cout << "WHY ARE YOU TRYING TO IMPORT A MESH? YOU KNOW WE HAVEN'T GOT THE POWER, CAPTAIN!" << endl;
-				//TODO: any mesh-loading capabilities go here, likely just directly adding a fuckload of triangles
+				cout << "Creating new mesh..." << endl;
+				newGeom.type = MESH;
 			}
+
         }
 
         //link material
@@ -89,7 +75,7 @@ int Scene::loadGeom(string objectid) {
             cout << "Connecting Geom " << objectid << " to Material " << newGeom.materialid << "..." << endl;
         }
 
-		if (newGeom.type != TRIANGLE) {
+		if (newGeom.type == SPHERE || newGeom.type == CUBE) {
 			//load transformations
 			utilityCore::safeGetline(fp_in, line);
 			while (!line.empty() && fp_in.good()) {
@@ -112,8 +98,38 @@ int Scene::loadGeom(string objectid) {
 				newGeom.translation, newGeom.rotation, newGeom.scale);
 			newGeom.inverseTransform = glm::inverse(newGeom.transform);
 			newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
-		}//not a triangle
-		else {
+		}//cube or sphere
+		else if (newGeom.type == MESH) {
+			string filename;
+			utilityCore::safeGetline(fp_in, line);
+			while (!line.empty() && fp_in.good()) {
+				vector<string> tokens = utilityCore::tokenizeString(line);
+
+				//load tranformations
+				if (strcmp(tokens[0].c_str(), "TRANS") == 0) {
+					newGeom.translation = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+				}
+				else if (strcmp(tokens[0].c_str(), "ROTAT") == 0) {
+					newGeom.rotation = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+				}
+				else if (strcmp(tokens[0].c_str(), "SCALE") == 0) {
+					newGeom.scale = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+				}
+				else if (strcmp(tokens[0].c_str(), "FILE") == 0) {
+					filename = tokens[1];
+				}
+
+				utilityCore::safeGetline(fp_in, line);
+			}
+			newGeom.transform = utilityCore::buildTransformationMatrix(
+				newGeom.translation, newGeom.rotation, newGeom.scale);
+			newGeom.inverseTransform = glm::inverse(newGeom.transform);
+			newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
+
+			Geom_v triList = readFromMesh(filename, newGeom.materialid, newGeom.transform);
+			geoms.insert(geoms.end(), triList.begin(), triList.end());
+		}//mesh
+		else if (newGeom.type == TRIANGLE){
 			utilityCore::safeGetline(fp_in, line);
 			while (!line.empty() && fp_in.good()) {
 				string_v tokens = utilityCore::tokenizeString(line);
@@ -135,7 +151,8 @@ int Scene::loadGeom(string objectid) {
 		}//triangle
 
 
-        geoms.push_back(newGeom);
+		if (newGeom.type != MESH)
+			geoms.push_back(newGeom);
         return 1;
     }
 }
@@ -236,4 +253,91 @@ int Scene::loadMaterial(string materialid) {
         materials.push_back(newMaterial);
         return 1;
     }
+}
+
+Geom_v Scene::readFromMesh(string filename, int materialid, gmat4 transform) {
+//bool LoadObj(attrib_t * attrib, std::vector<shape_t> * shapes,
+//	std::vector<material_t> * materials, std::string * warn,
+//	std::string * err, const char* filename, const char* mtl_basedir,
+//	bool trianglulate, bool default_vcols_fallback);
+	std::string warn;
+	std::string err;
+	const char* meshfile = filename.c_str();
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, meshfile);
+
+	//printf("Return result: %d\n", ret);
+	//printf("Warning: %s\n", warn.c_str());
+	//printf("Error: %s\n", err.c_str());
+
+	Geom_v retval = Geom_v();
+	
+	for (tinyobj::shape_t shape : shapes) {
+		string name = shape.name;
+		tinyobj::mesh_t mesh = shape.mesh;
+		vector<tinyobj::index_t> indices = mesh.indices;
+		//banking on there being three sides per polygon, because triangulation
+		for (int i = 0; i < indices.size(); i += 3) {
+#ifdef SKIPFACES
+			if ((i / 3) % SKIPFACES != 0) continue;
+#endif
+			tinyobj::index_t index0 = indices[i + 0];
+			tinyobj::index_t index1 = indices[i + 1];
+			tinyobj::index_t index2 = indices[i + 2];
+
+			gvec3 vert0 = gvec3(attrib.vertices[3*index0.vertex_index + 0],
+								attrib.vertices[3*index0.vertex_index + 1],
+								attrib.vertices[3*index0.vertex_index + 2]);
+			gvec3 vert1 = gvec3(attrib.vertices[3*index1.vertex_index + 0],
+								attrib.vertices[3*index1.vertex_index + 1],
+								attrib.vertices[3*index1.vertex_index + 2]);
+			gvec3 vert2 = gvec3(attrib.vertices[3*index2.vertex_index + 0],
+								attrib.vertices[3*index2.vertex_index + 1],
+								attrib.vertices[3*index2.vertex_index + 2]);
+
+			vert0 = gvec3(transform * gvec4(vert0, 1.0));
+			vert1 = gvec3(transform * gvec4(vert1, 1.0));
+			vert2 = gvec3(transform * gvec4(vert2, 1.0));
+
+
+
+			gvec3 norm;
+			if (index0.normal_index > 0) {
+
+			
+				gvec3 norm0 = gvec3(attrib.normals[3 * index0.normal_index + 0],
+									attrib.normals[3 * index0.normal_index + 1],
+									attrib.normals[3 * index0.normal_index + 2]);
+				gvec3 norm1 = gvec3(attrib.normals[3 * index1.normal_index + 0],
+									attrib.normals[3 * index1.normal_index + 1],
+									attrib.normals[3 * index1.normal_index + 2]);
+				gvec3 norm2 = gvec3(attrib.normals[3 * index2.normal_index + 0],
+									attrib.normals[3 * index2.normal_index + 1],
+									attrib.normals[3 * index2.normal_index + 2]);
+
+				norm = normalized(norm0 + norm1 + norm2);
+			}//if we have normal indexes
+			else {
+				gvec3 edge0 = vert1 - vert0;
+				gvec3 edge1 = vert2 - vert0;
+				norm = normalized(CROSSP(edge1, edge0));
+			}//else (hoping for clockwise winding)
+
+			Geom newGeom = Geom();
+			newGeom.type = TRIANGLE;
+			newGeom.vert0 = vert0;
+			newGeom.vert1 = vert1;
+			newGeom.vert2 = vert2;
+			newGeom.normal = norm;
+			newGeom.materialid = materialid;
+
+			retval.push_back(newGeom);
+		}//for each face
+
+	}//for each shape
+
+
+	return retval;
 }
