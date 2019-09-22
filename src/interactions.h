@@ -48,13 +48,15 @@ __host__ __device__ void compute_reflection(PathSegment& path, glm::vec3 normal,
 	glm::vec3 old_color = path.color;
 
 	// based off of our surface normal and ray direction we want to reflect the path
-	glm::vec3 new_ray_direction = glm::reflect(normal, old_ray_direction);
+	// https://glm.g-truc.net/0.9.4/api/a00131.html#gabe1fa0bef5f854242eb70ce56e5a7d03
+	// glm reflect handles where the new ray shoots out
+	glm::vec3 new_ray_direction = glm::reflect(old_ray_direction,normal);
 
-	// we want to compute our new color, which is just the reflection of the material divided by the PDF (probability distribut ion ) which is 1
-	// we want to compute our new color, which for a reflection stays the same.
+	// we want to accumulate some more color.
 	old_color *= m.specular.color;
 
-	path.color = glm::max(old_color, glm::vec3(0.f));
+	// set our new color
+	path.color = old_color;
 
 	// compute our new ray origin
 	path.ray.origin = (old_ray_origin + old_ray_direction * t) + (new_ray_direction *.001f); // the is some floating error TA said add this
@@ -96,7 +98,7 @@ __host__ __device__ void compute_diffuse(PathSegment& path, glm::vec3 normal, fl
 
 	float rand = u01(rng);
 
-	// goes through the object?
+	// specular bounce?
 	if (rand > .5f )
 	{
 		new_ray_direction = glm::normalize(old_ray_direction);
