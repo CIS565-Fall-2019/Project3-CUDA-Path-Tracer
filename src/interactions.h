@@ -73,9 +73,6 @@ void scatterRay(
         glm::vec3 normal,
         const Material &m,
         thrust::default_random_engine &rng) {
-    // TODO: implement this.
-    // A basic implementation of pure-diffuse shading will just call the
-    // calculateRandomDirectionInHemisphere defined above.
 	thrust::uniform_real_distribution<float> u01(0, 1);
 
 	// No matter what, new origin is intersect point.
@@ -110,6 +107,8 @@ void scatterRay(
 	}
 	// Ideal Diffuse
 	else {
+		// A basic implementation of pure-diffuse shading will just call the
+	    // calculateRandomDirectionInHemisphere defined above.
 		pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
 		pathSegment.color *= m.color;
 		pathSegment.remainingBounces--;

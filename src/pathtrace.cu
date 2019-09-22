@@ -77,8 +77,10 @@ static Geom * dev_geoms = NULL;
 static Material * dev_materials = NULL;
 static PathSegment * dev_paths = NULL;
 static ShadeableIntersection * dev_intersections = NULL;
-// TODO: static variables for device memory, any extra info you need, etc
-// ...
+static PathSegment * cache_dev_paths = NULL;
+static ShadeableIntersection * cache_dev_intersections = NULL;
+static bool cache_valid = false;
+static int cache_num_active_paths = 0;
 
 void pathtraceInit(Scene *scene) {
 	hst_scene = scene;
@@ -89,6 +91,7 @@ void pathtraceInit(Scene *scene) {
 	cudaMemset(dev_image, 0, pixelcount * sizeof(glm::vec3));
 
 	cudaMalloc(&dev_paths, pixelcount * sizeof(PathSegment));
+	cudaMalloc(&cache_dev_paths, pixelcount * sizeof(PathSegment));
 
 	cudaMalloc(&dev_geoms, scene->geoms.size() * sizeof(Geom));
 	cudaMemcpy(dev_geoms, scene->geoms.data(), scene->geoms.size() * sizeof(Geom), cudaMemcpyHostToDevice);
@@ -98,8 +101,8 @@ void pathtraceInit(Scene *scene) {
 
 	cudaMalloc(&dev_intersections, pixelcount * sizeof(ShadeableIntersection));
 	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
-
-	// TODO: initialize any extra device memeory you need
+	cudaMalloc(&cache_dev_intersections, pixelcount * sizeof(ShadeableIntersection));
+	cudaMemset(cache_dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
 	checkCUDAError("pathtraceInit");
 }
@@ -107,9 +110,11 @@ void pathtraceInit(Scene *scene) {
 void pathtraceFree() {
 	cudaFree(dev_image);  // no-op if dev_image is null
 	cudaFree(dev_paths);
+	cudaFree(cache_dev_paths);
 	cudaFree(dev_geoms);
 	cudaFree(dev_materials);
 	cudaFree(dev_intersections);
+	cudaFree(cache_dev_intersections);
 	// TODO: clean up any extra device memory you created
 
 	checkCUDAError("pathtraceFree");
@@ -425,33 +430,48 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	bool iterationComplete = false;
 	while (!iterationComplete) {
-
-		// clean shading chunks
-		cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
-
-		// tracing
 		dim3 numblocksPathSegmentTracing = (num_active_paths + blockSize1d - 1) / blockSize1d;
-		computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
-			depth
-			, num_active_paths
-			, dev_paths
-			, dev_geoms
-			, hst_scene->geoms.size()
-			, dev_intersections
-			);
-		checkCUDAError("trace one bounce");
-		cudaDeviceSynchronize();
+
+		if (CACHE_ENABLED && depth == 0 && cache_valid) {
+			// Use the cached version of the first loop.
+			// This will always be the same
+			cudaMemcpy(dev_intersections, cache_dev_intersections, pixelcount * sizeof(ShadeableIntersection), ::cudaMemcpyDeviceToDevice);
+			checkCUDAError("Cache load");
+			cudaDeviceSynchronize();
+		}
+		else {
+			// Cache is either invalid or not depth 0
+			// Clear previous intersections and calculate next set
+			cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
+			computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
+				depth
+				, num_active_paths
+				, dev_paths
+				, dev_geoms
+				, hst_scene->geoms.size()
+				, dev_intersections
+				);
+			checkCUDAError("trace one bounce");
+			cudaDeviceSynchronize();
+
+			if (CACHE_ENABLED && !cache_valid) {
+				// Cache these values if the flag is not set
+				cudaMemcpy(cache_dev_intersections, dev_intersections, pixelcount * sizeof(ShadeableIntersection), ::cudaMemcpyDeviceToDevice);
+				cache_valid = true;
+			}
+		}
+
 		depth++;
 
-#ifdef PRESHADER_SORT
 		// Sort by Material IDX. This will improve cache reuse on Shader stage
 		// Also reduces branch divergence in shader!
-		thrust::sort_by_key(
-			thrust::device_ptr<ShadeableIntersection>(dev_intersections),
-			thrust::device_ptr<ShadeableIntersection>(dev_intersections + num_active_paths),
-			thrust::device_ptr<PathSegment>(dev_paths),
-			material_idx_less_than());
-#endif
+		if (PRESHADER_SORT) {
+			thrust::sort_by_key(
+				thrust::device_ptr<ShadeableIntersection>(dev_intersections),
+				thrust::device_ptr<ShadeableIntersection>(dev_intersections + num_active_paths),
+				thrust::device_ptr<PathSegment>(dev_paths),
+				material_idx_less_than());
+		}
 
 		// TODO:
 		// --- Shading Stage ---
@@ -469,23 +489,23 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			dev_materials
 			);
 
-#ifdef POSTSHADER_PARTITION
-		// Remove all null intersections. Returns new end interator.
-		dev_path_end = thrust::partition(
-			thrust::device_ptr<PathSegment>(dev_paths),
-			thrust::device_ptr<PathSegment>(dev_path_end),
-			thrust::device_ptr<ShadeableIntersection>(dev_intersections),
-			is_not_null_intersection()).get();
+		if (POSTSHADER_PARTITION) {
+			// Remove all null intersections. Returns new end interator.
+			dev_path_end = thrust::partition(
+				thrust::device_ptr<PathSegment>(dev_paths),
+				thrust::device_ptr<PathSegment>(dev_path_end),
+				thrust::device_ptr<ShadeableIntersection>(dev_intersections),
+				is_not_null_intersection()).get();
 
-		// Remove any paths that have hit their bounce limit
-		dev_path_end = thrust::partition(
-			thrust::device_ptr<PathSegment>(dev_paths),
-			thrust::device_ptr<PathSegment>(dev_path_end),
-			bounces_remaining()).get();
+			// Remove any paths that have hit their bounce limit
+			dev_path_end = thrust::partition(
+				thrust::device_ptr<PathSegment>(dev_paths),
+				thrust::device_ptr<PathSegment>(dev_path_end),
+				bounces_remaining()).get();
 
-		// Update num_paths
-		num_active_paths = dev_path_end - dev_paths;
-#endif
+			// Update num_paths
+			num_active_paths = dev_path_end - dev_paths;
+		}
 
 		// Run until all paths are done OR the trace depth has been reached.
 		if (num_active_paths == 0 || depth >= traceDepth) {
@@ -507,4 +527,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
 
 	checkCUDAError("pathtrace");
+}
+
+void pathtraceInvalidateCache()
+{
+	cache_valid = false;
 }
