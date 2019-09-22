@@ -41,6 +41,89 @@ glm::vec3 calculateRandomDirectionInHemisphere(
         + sin(around) * over * perpendicularDirection2;
 }
 
+__host__ __device__ void compute_reflection(PathSegment& path, glm::vec3 normal, float t,const Material& m)
+{
+	glm::vec3 old_ray_origin = path.ray.origin;
+	glm::vec3 old_ray_direction = path.ray.direction;
+	glm::vec3 old_color = path.color;
+
+	// based off of our surface normal and ray direction we want to reflect the path
+	glm::vec3 new_ray_direction = glm::reflect(normal, old_ray_direction);
+
+	// we want to compute our new color, which is just the reflection of the material divided by the PDF (probability distribut ion ) which is 1
+	// we want to compute our new color, which for a reflection stays the same.
+	old_color *= m.specular.color;
+
+	path.color = glm::max(old_color, glm::vec3(0.f));
+
+	// compute our new ray origin
+	path.ray.origin = (old_ray_origin + old_ray_direction * t) + (new_ray_direction *.001f); // the is some floating error TA said add this
+	path.ray.direction = new_ray_direction;
+	return;
+}
+
+__host__ __device__ void compute_refraction(PathSegment& path, glm::vec3 normal, float t,const Material& m)
+{
+	glm::vec3 old_ray_origin = path.ray.origin;
+	glm::vec3 old_ray_direction = path.ray.direction;
+	glm::vec3 old_color = path.color;
+
+	// need to add logic for total internal reflection
+
+	// based off of our surface normal and ray direction we want to reflect the path
+	glm::vec3 new_ray_direction = glm::refract(normal, old_ray_direction,m.indexOfRefraction);
+
+	// we want to compute our new color, which for a reflection stays the same.
+	old_color = m.color;
+
+	path.color = old_color;// glm::max(old_color, glm::vec3(0.0f));
+
+	// compute our new ray origin
+	path.ray.origin = (old_ray_origin + old_ray_direction * t) + (new_ray_direction * .001f); // the is some floating error TA said add this
+	path.ray.direction = new_ray_direction;
+	return;
+}
+
+__host__ __device__ void compute_diffuse(PathSegment& path, glm::vec3 normal, float t, const Material& m, thrust::default_random_engine &rng)
+{
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	glm::vec3 old_ray_origin = path.ray.origin;
+	glm::vec3 old_ray_direction = path.ray.direction;
+	glm::vec3 old_color = path.color;
+
+	// based off of our surface normal and ray direction we want to reflect the path
+	glm::vec3 new_ray_direction =glm::normalize( calculateRandomDirectionInHemisphere(normal, rng) );
+
+	float rand = u01(rng);
+
+	// goes through the object?
+	if (rand > .5f )
+	{
+		new_ray_direction = glm::normalize(old_ray_direction);
+	}
+
+	//float cos = glm::dot(normal, (new_ray_direction));
+	//float denom = cos / glm::pi<float>();
+
+	//float denom = rand;
+
+	// we want to compute our new color, which for a reflection stays the same.
+	//old_color *= m.color;
+
+	glm::vec3 c = m.color;
+		
+	//c*= cos * glm::one_over_pi<float>();
+
+	old_color *= c ;
+
+	path.color = old_color;//glm::max(old_color, glm::vec3(0.f));
+
+	// compute our new ray origin
+	path.ray.origin = (old_ray_origin + old_ray_direction * t) + (new_ray_direction *.001f); // the is some floating error TA said add this
+	path.ray.direction = new_ray_direction;
+	return;
+}
+
 /**
  * Scatter a ray with some probabilities according to the material properties.
  * For example, a diffuse surface scatters in a cosine-weighted hemisphere.
@@ -69,13 +152,35 @@ glm::vec3 calculateRandomDirectionInHemisphere(
 __host__ __device__
 void scatterRay(
 		PathSegment & pathSegment,
-        glm::vec3 intersect,
         glm::vec3 normal,
         const Material &m,
+		float t,
         thrust::default_random_engine &rng) {
     // TODO: implement this.
     // A basic implementation of pure-diffuse shading will just call the
     // calculateRandomDirectionInHemisphere defined above.
 	// calculateRandomDirection or depending on what we want to call
 	// is diffuse is reflective is refractive. is opaque? etc etc
+
+
+	if (m.hasReflective > 0.0f && m.hasRefractive > 0.0f)
+	{
+		assert(0); // not yet implemented
+	}
+	// if reflective
+	else if (m.hasReflective > 0.0f)
+	{
+		compute_reflection(pathSegment, normal, t, m);
+	}
+	//if refractive
+	else if (m.hasRefractive > 0.0f) 
+	{
+		compute_refraction(pathSegment, normal, t, m);
+		printf("refract\n");
+		assert(0); // not yet implemented
+	}
+	// else diffuse
+	else{
+		compute_diffuse(pathSegment, normal, t, m, rng);
+	}
 }
