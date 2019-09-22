@@ -40,6 +40,8 @@ typedef std::vector<std::string> string_v;
 #define DOTP(a, b) (a.x * b.x + a.y * b.y + a.z * b.z)
 //Preprocessor macro for cross product
 #define CROSSP(a, b) (gvec3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x))
+//Preprocessor macro for ray reflection of a (incoming) over n (normal)
+#define REFLECT(a, n) (a - (2 * DOTP(a, n)) * n)
 
 #define MAT3I (gmat3(1, 0, 0, 0, 1, 0, 0, 0, 1))
 #define MAT4I (gmat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1))

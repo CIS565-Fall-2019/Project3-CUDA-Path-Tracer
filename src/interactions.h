@@ -8,13 +8,13 @@
  * Used for diffuse lighting.
  */
 __host__ __device__
-glm::vec3 calculateRandomDirectionInHemisphere(glm::vec3 normal, 
+gvec3 calculateRandomDirectionInHemisphere(glm::vec3 normal, 
 							thrust::default_random_engine &rng) {
 
     thrust::uniform_real_distribution<float> u01(0, 1);
 
-    float up = sqrt(u01(rng)); // cos(theta)
-    float over = sqrt(1 - up * up); // sin(theta)
+    float up = sqrtf(u01(rng)); // cos(theta)
+    float over = sqrtf(1 - up * up); // sin(theta)
     float around = u01(rng) * TWO_PI;
 
     // Find a direction that is not the normal based off of whether or not the
@@ -40,7 +40,43 @@ glm::vec3 calculateRandomDirectionInHemisphere(glm::vec3 normal,
     return up * normal
         + cos(around) * over * perpendicularDirection1
         + sin(around) * over * perpendicularDirection2;
-}
+}//calculateRandomInHemisphere
+
+__host__ __device__ gvec3 calculateShinyDirection(gvec3 incoming, gvec3 normal, float exponent,
+												thrust::default_random_engine& rng) {
+	gvec3 perfectMirror = REFLECT(incoming, normal);//will be adding an offset to this
+
+	thrust::uniform_real_distribution<float> u01(0, 1);
+
+	float costheta = powf(u01(rng), (1.0 / (exponent + 1)));//this op may be expensive
+	float sintheta = sqrtf(1.0 - costheta * costheta);
+	float phi = TWO_PI * u01(rng);
+	/*
+	gvec3 offset = gvec3(sintheta * cosf(phi),
+						sintheta * sinf(phi),
+						costheta);//random direction off of z-axis "reflect-vector"
+	*/
+
+	glm::vec3 directionNotNormal;
+	if (abs(perfectMirror.x) < SQRT_OF_ONE_THIRD) {
+		directionNotNormal = glm::vec3(1, 0, 0);
+	}
+	else if (abs(perfectMirror.y) < SQRT_OF_ONE_THIRD) {
+		directionNotNormal = glm::vec3(0, 1, 0);
+	}
+	else {
+		directionNotNormal = glm::vec3(0, 0, 1);
+	}
+	glm::vec3 perpendicularDirection1 =
+		glm::normalize(glm::cross(perfectMirror, directionNotNormal));
+	glm::vec3 perpendicularDirection2 =
+		glm::normalize(glm::cross(perfectMirror, perpendicularDirection1));
+
+	return costheta * normal
+		+ cos(phi) * sintheta * perpendicularDirection1
+		+ sin(phi) * sintheta * perpendicularDirection2;
+
+}//calculateShinyDirection
 
 /**
  * Scatter a ray with some probabilities according to the material properties.
@@ -75,9 +111,37 @@ void scatterRay(
         const Material &m,
         thrust::default_random_engine &rng) {
 
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	float branchRandom = u01(rng);
+	float probDiff = glm::length(m.color);
+	float probSpec = glm::length(m.specular.color);
 
-	//DIFFUSE
-	gvec3 newDirection = calculateRandomDirectionInHemisphere(normal, rng);
-	pathSegment.ray = Ray{  intersect,  newDirection };
+	if (probDiff + probSpec < EPSILON) {
+		pathSegment.color = gvec3(0.0f, 0.0f, 0.0f);
+		pathSegment.remainingBounces = 0;
+		return;
+	}//if some jackass put a black color in the scene
 
-}
+	//else, probabilistically choose between diffuse/specular
+	probDiff /= (probDiff + probSpec);
+	probSpec /= (probDiff + probSpec);
+	//these now sum to 1
+
+	if (branchRandom < probDiff) {//DIFFUSE
+		gvec3 newDirection = calculateRandomDirectionInHemisphere(normal, rng);
+		pathSegment.ray = Ray{ intersect,  newDirection };
+		pathSegment.color *= m.color;
+	}
+	else {//SPECULAR (either mirror or otherwise)
+		if (m.hasReflective > 0) {//MIRROR
+			gvec3 newDirection = REFLECT(pathSegment.ray.direction, normal);
+			pathSegment.ray = Ray{ intersect, newDirection };
+		}//if
+		else {//NON-MIRROR SPECULAR
+			gvec3 newDirection = calculateShinyDirection(pathSegment.ray.direction, normal, m.specular.exponent, rng);
+			pathSegment.ray = Ray{ intersect, newDirection };
+		}//else
+		pathSegment.color *= m.specular.color;
+	}
+
+}//scatterRay

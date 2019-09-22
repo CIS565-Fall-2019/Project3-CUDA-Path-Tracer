@@ -240,7 +240,8 @@ __global__ void shadeRealMaterial(
 			gvec3 reverseIncoming = incoming->ray.direction;
 			reverseIncoming *= -1;
 			float lightTerm = DOTP(intersection.surfaceNormal, reverseIncoming);
-			incoming->color *= (materialColor * lightTerm);
+			incoming->color *= lightTerm;//scale by that costheta
+			//incoming->color *= (materialColor * lightTerm);
 			incoming->remainingBounces--;
 			//pathSegments[idx].color *= u01(rng); // apply some noise because why not
 			scatterRay(*incoming, getPointOnRay(incoming->ray, intersection.t), intersection.surfaceNormal, material, rng);

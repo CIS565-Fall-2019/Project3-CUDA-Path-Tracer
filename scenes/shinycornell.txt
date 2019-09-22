@@ -50,8 +50,8 @@ EMITTANCE   0
 
 // Shiny cyan
 MATERIAL 5
-RGB         0 .85 1
-SPECEX      10
+RGB         0 .6 .8
+SPECEX      100
 SPECRGB     0 .85 1
 REFL        0
 REFR        0
@@ -130,6 +130,6 @@ SCALE       3 3 3
 OBJECT 7
 sphere
 material 5
-TRANS       2.5 4 -1
+TRANS       2.5 4 -4
 ROTAT       0 0 0
 SCALE       3 3 3
