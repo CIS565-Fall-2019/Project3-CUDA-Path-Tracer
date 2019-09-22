@@ -194,6 +194,10 @@ __global__ void computeIntersections(
 			{
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
+			else if (geom.type == TRIANGLE)
+			{
+				t = triangleIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+			}
 			// TODO: add more intersection tests here... triangle? metaball? CSG?
 
 			// Compute the minimum t from the intersection tests to determine what
@@ -532,4 +536,17 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 void pathtraceInvalidateCache()
 {
 	cache_valid = false;
+}
+
+
+void generateTerrainGeometries() {
+
+}
+
+float tgDensityFunction(float3 ws) {
+	float density = 0.0f;
+
+	density = -ws.y;
+
+	return density;
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-// A common place to enable or disable certain optimizations.
+// A common place to enable or disable certain optimizations or additional options
 
 //// PRESHADER_SORT
 // This enables a step before shader kernels are called that sorts paths by
@@ -29,3 +29,9 @@ CACHE_ENABLED = true;
 //ANTIALIASING = false;
 //
 //static_assert(CACHE_ENABLED && !ANTIALIASING, "Cannot have cahcing and antialiasing enabled together!");
+
+//// GENERATE_TERRAIN
+// This option choses to ignore the scene file and instead generate a random
+// terrain based on noise.
+constexpr bool
+TERRAIN_GENERATION = true;

@@ -62,6 +62,9 @@ set(GLM_ROOT_DIR "external")
 find_package(GLM REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
 
+## tinyobjloader Library stuff
+include_directories(external/tinyobjloader)
+
 set(headers
     src/main.h
     src/image.h
@@ -73,6 +76,7 @@ set(headers
     src/sceneStructs.h
     src/preview.h
     src/utilities.h
+	external/tinyobjloader/tiny_obj_loader.h
     )
 
 set(sources
@@ -84,6 +88,7 @@ set(sources
     src/scene.cpp
     src/preview.cpp
     src/utilities.cpp
+	external/tinyobjloader/tiny_obj_loader.cc
     )
 
 list(SORT headers)
