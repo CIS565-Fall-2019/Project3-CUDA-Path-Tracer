@@ -75,6 +75,7 @@ __global__ void sendImageToPBO(uchar4* pbo, glm::ivec2 resolution,
 static Scene * hst_scene = NULL;
 static glm::vec3 * dev_image = NULL;
 static Geom * dev_geoms = NULL;
+static Triangle* dev_tris = NULL;
 static Material * dev_materials = NULL;
 static PathSegment* dev_paths = NULL;
 static ShadeableIntersection* dev_intersections = NULL;
@@ -95,6 +96,9 @@ void pathtraceInit(Scene *scene) {
   	cudaMalloc(&dev_geoms, scene->geoms.size() * sizeof(Geom));
   	cudaMemcpy(dev_geoms, scene->geoms.data(), scene->geoms.size() * sizeof(Geom), cudaMemcpyHostToDevice);
 
+	cudaMalloc(&dev_tris, scene->triangles.size() * sizeof(Geom));
+	cudaMemcpy(dev_tris, scene->triangles.data(), scene->triangles.size() * sizeof(Geom), cudaMemcpyHostToDevice);
+
   	cudaMalloc(&dev_materials, scene->materials.size() * sizeof(Material));
   	cudaMemcpy(dev_materials, scene->materials.data(), scene->materials.size() * sizeof(Material), cudaMemcpyHostToDevice);
 
@@ -113,6 +117,7 @@ void pathtraceFree() {
     cudaFree(dev_image);  // no-op if dev_image is null
   	cudaFree(dev_paths);
   	cudaFree(dev_geoms);
+	cudaFree(dev_tris);
   	cudaFree(dev_materials);
   	cudaFree(dev_intersections);
 	cudaFree(dev_intersections_first);
@@ -249,9 +254,9 @@ __global__ void shadeRealMaterial(
 			incoming->color *= lightTerm;//scale by that costheta
 			//incoming->color *= (materialColor * lightTerm);
 			incoming->remainingBounces--;
-			//pathSegments[idx].color *= u01(rng); // apply some noise because why not
+
 			scatterRay(*incoming, getPointOnRay(incoming->ray, intersection.t), intersection.surfaceNormal, material, rng);
-			//NEXT STEP - culling the PathSegments from the buffer if they have no bounces
+
 		}
 	}//if we have an intersection
 	else {
@@ -358,36 +363,6 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 	// 1D block for path tracing
 	const int blockSize1d = 128;
 
-	///////////////////////////////////////////////////////////////////////////
-
-	// Recap:
-	// * Initialize array of path rays (using rays that come out of the camera)
-	//   * You can pass the Camera object to that kernel.
-	//   * Each path ray must carry at minimum a (ray, color) pair,
-	//   * where color starts as the multiplicative identity, white = (1, 1, 1).
-	//   * This has already been done for you.
-	// * For each depth:
-	//   * Compute an intersection in the scene for each path ray.
-	//     A very naive version of this has been implemented for you, but feel
-	//     free to add more primitives and/or a better algorithm.
-	//     Currently, intersection distance is recorded as a parametric distance,
-	//     t, or a "distance along the ray." t = -1.0 indicates no intersection.
-	//     * Color is attenuated (multiplied) by reflections off of any object
-	//   * TODO: Stream compact away all of the terminated paths.
-	//     You may use either your implementation or `thrust::remove_if` or its
-	//     cousins.
-	//     * Note that you can't really use a 2D kernel launch any more - switch
-	//       to 1D.
-	//   * TODO: Shade the rays that intersected something or didn't bottom out.
-	//     That is, color the ray by performing a color computation according
-	//     to the shader, then generate a new ray to continue the ray path.
-	//     We recommend just updating the ray's PathSegment in place.
-	//     Note that this step may come before or after stream compaction,
-	//     since some shaders you write may also cause a path to terminate.
-	// * Finally, add this iteration's results to the image. This has been done
-	//   for you.
-
-	// TODO: perform one iteration of path tracing
 
 	//makes our initial path segments in dev_paths; contains the ray, a color, a pixelIndex, and bounce count for each
 	generateRayFromCamera <<<blocksPerGrid2d, blockSize2d >>> (cam, iter, traceDepth, dev_paths);
@@ -455,15 +430,6 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 #if SORTING_MATERIAL
 		thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + num_paths, dev_paths, materialIdLess());
 #endif
-
-		// TODO:
-		// --- Shading Stage ---
-		// Shade path segments based on intersections and generate new rays by
-	  // evaluating the BSDF.
-	  // Start off with just a big kernel that handles all the different
-	  // materials you have in the scenefile.
-	  // TODO: compare between directly shading the path segments and shading
-	  // path segments that have been reshuffled to be contiguous in memory.
 
 		shadeRealMaterial <<<numblocksPathSegmentTracing, blockSize1d >>> (
 			iter,

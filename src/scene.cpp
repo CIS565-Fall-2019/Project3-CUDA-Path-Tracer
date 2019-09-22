@@ -5,7 +5,7 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
 
-#define SKIPFACES 64//skip all mesh faces save one out of this many
+//#define SKIPFACES 16//skip all mesh faces save one out of this many
 
 Scene::Scene(string filename) {
     cout << "Reading scene from " << filename << " ..." << endl;
@@ -16,6 +16,8 @@ Scene::Scene(string filename) {
         cout << "Error reading from file - aborting!" << endl;
         throw;
     }
+	triangles = Triangle_v();
+
     while (fp_in.good()) {
         string line;
         utilityCore::safeGetline(fp_in, line);
@@ -260,13 +262,17 @@ Geom_v Scene::readFromMesh(string filename, int materialid, gmat4 transform) {
 //	std::vector<material_t> * materials, std::string * warn,
 //	std::string * err, const char* filename, const char* mtl_basedir,
 //	bool trianglulate, bool default_vcols_fallback);
+	fs::path destination = fs::path(filename);
+	fs::path parent = destination.parent_path();
+
+
 	std::string warn;
 	std::string err;
 	const char* meshfile = filename.c_str();
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;
-	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, meshfile);
+	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, meshfile, parent.string().c_str());
 
 	//printf("Return result: %d\n", ret);
 	//printf("Warning: %s\n", warn.c_str());
@@ -275,6 +281,8 @@ Geom_v Scene::readFromMesh(string filename, int materialid, gmat4 transform) {
 	Geom_v retval = Geom_v();
 	
 	for (tinyobj::shape_t shape : shapes) {
+		//for each shape, make a geom with relevant bounding box parameters
+		//will assume the bounding box is a cube, constructed like the others in the scene description
 		string name = shape.name;
 		tinyobj::mesh_t mesh = shape.mesh;
 		vector<tinyobj::index_t> indices = mesh.indices;
@@ -283,55 +291,15 @@ Geom_v Scene::readFromMesh(string filename, int materialid, gmat4 transform) {
 #ifdef SKIPFACES
 			if ((i / 3) % SKIPFACES != 0) continue;
 #endif
-			tinyobj::index_t index0 = indices[i + 0];
-			tinyobj::index_t index1 = indices[i + 1];
-			tinyobj::index_t index2 = indices[i + 2];
-
-			gvec3 vert0 = gvec3(attrib.vertices[3*index0.vertex_index + 0],
-								attrib.vertices[3*index0.vertex_index + 1],
-								attrib.vertices[3*index0.vertex_index + 2]);
-			gvec3 vert1 = gvec3(attrib.vertices[3*index1.vertex_index + 0],
-								attrib.vertices[3*index1.vertex_index + 1],
-								attrib.vertices[3*index1.vertex_index + 2]);
-			gvec3 vert2 = gvec3(attrib.vertices[3*index2.vertex_index + 0],
-								attrib.vertices[3*index2.vertex_index + 1],
-								attrib.vertices[3*index2.vertex_index + 2]);
-
-			vert0 = gvec3(transform * gvec4(vert0, 1.0));
-			vert1 = gvec3(transform * gvec4(vert1, 1.0));
-			vert2 = gvec3(transform * gvec4(vert2, 1.0));
-
-
-
-			gvec3 norm;
-			if (index0.normal_index > 0) {
-
-			
-				gvec3 norm0 = gvec3(attrib.normals[3 * index0.normal_index + 0],
-									attrib.normals[3 * index0.normal_index + 1],
-									attrib.normals[3 * index0.normal_index + 2]);
-				gvec3 norm1 = gvec3(attrib.normals[3 * index1.normal_index + 0],
-									attrib.normals[3 * index1.normal_index + 1],
-									attrib.normals[3 * index1.normal_index + 2]);
-				gvec3 norm2 = gvec3(attrib.normals[3 * index2.normal_index + 0],
-									attrib.normals[3 * index2.normal_index + 1],
-									attrib.normals[3 * index2.normal_index + 2]);
-
-				norm = normalized(norm0 + norm1 + norm2);
-			}//if we have normal indexes
-			else {
-				gvec3 edge0 = vert1 - vert0;
-				gvec3 edge1 = vert2 - vert0;
-				norm = normalized(CROSSP(edge1, edge0));
-			}//else (hoping for clockwise winding)
+			Triangle tri = triangleFromIndex(i / 3, indices, mesh.material_ids, attrib, materialid, transform);
 
 			Geom newGeom = Geom();
 			newGeom.type = TRIANGLE;
-			newGeom.vert0 = vert0;
-			newGeom.vert1 = vert1;
-			newGeom.vert2 = vert2;
-			newGeom.normal = norm;
-			newGeom.materialid = materialid;
+			newGeom.vert0 = tri.vert0;
+			newGeom.vert1 = tri.vert1;
+			newGeom.vert2 = tri.vert2;
+			newGeom.normal = tri.normal;
+			newGeom.materialid = tri.materialid;
 
 			retval.push_back(newGeom);
 		}//for each face
@@ -341,3 +309,132 @@ Geom_v Scene::readFromMesh(string filename, int materialid, gmat4 transform) {
 
 	return retval;
 }
+
+Material Scene::materialFromObj(tinyobj::material_t mat) {
+	Material retval;
+	retval.color = gvec3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+	retval.specular.color = gvec3(mat.specular[0], mat.specular[1], mat.specular[2]);
+	retval.specular.exponent = mat.shininess;//guessing
+
+	retval.indexOfRefraction = mat.ior;
+
+	if (mat.emission[0] || mat.emission[1] || mat.emission[2]) {
+		retval.color = gvec3(mat.emission[0], mat.emission[1], mat.emission[2]);
+		normalize(&retval.color);
+		retval.emittance = sqrtf(mat.emission[0] * mat.emission[0] 
+							   + mat.emission[1] * mat.emission[1] 
+							   + mat.emission[2] * mat.emission[2]);
+	}//if a light
+
+
+	return retval;
+}
+
+Geom Scene::geomFromShape(tinyobj::shape_t shape, tinyobj::attrib_t attrib, std::vector<tinyobj::material_t> materials) {
+	int startingTriangle = triangles.size();
+
+	Geom newGeom = Geom();
+
+	string name = shape.name;
+	tinyobj::mesh_t mesh = shape.mesh;
+	vector<tinyobj::index_t> indices = mesh.indices;
+	//banking on there being three sides per polygon, because triangulation
+	for (int i = 0; i < indices.size(); i += 3) {
+#ifdef SKIPFACES
+		if ((i / 3) % SKIPFACES != 0) continue;
+#endif
+		Triangle tri = triangleFromIndex(i / 3, indices, mesh.material_ids, attrib, materialid, transform);
+
+		newGeom = Geom();
+		newGeom.type = TRIANGLE;
+		newGeom.vert0 = tri.vert0;
+		newGeom.vert1 = tri.vert1;
+		newGeom.vert2 = tri.vert2;
+		newGeom.normal = tri.normal;
+		newGeom.materialid = tri.materialid;
+
+	}//for each face
+
+	return newGeom;
+}//geomFromShape
+
+//TODO: connect better to materials
+Triangle Scene::triangleFromIndex(int index, vector<tinyobj::index_t> indices, vector<int> material_ids,
+						   tinyobj::attrib_t attrib, 
+						   int defaultMaterialId, gmat4 transform) {
+	Triangle retval;
+
+	//COLLECT ALL THE DATA
+
+	//note: treating index as the index for the triangle as a whole
+	//as a result, indexing into 3 * index
+	tinyobj::index_t index0 = indices[3 * index + 0];//index for our first vertex
+	tinyobj::index_t index1 = indices[3 * index + 1];
+	tinyobj::index_t index2 = indices[3 * index + 2];
+
+	gvec3 vert0 = gvec3(attrib.vertices[3 * index0.vertex_index + 0],
+						attrib.vertices[3 * index0.vertex_index + 1],
+						attrib.vertices[3 * index0.vertex_index + 2]);
+	gvec3 vert1 = gvec3(attrib.vertices[3 * index1.vertex_index + 0],
+						attrib.vertices[3 * index1.vertex_index + 1],
+						attrib.vertices[3 * index1.vertex_index + 2]);
+	gvec3 vert2 = gvec3(attrib.vertices[3 * index2.vertex_index + 0],
+						attrib.vertices[3 * index2.vertex_index + 1],
+						attrib.vertices[3 * index2.vertex_index + 2]);
+
+	gvec3 norm, norm0, norm1, norm2;
+	if (index0.normal_index > 0) {
+
+		norm0 = gvec3(attrib.normals[3 * index0.normal_index + 0],
+					  attrib.normals[3 * index0.normal_index + 1],
+					  attrib.normals[3 * index0.normal_index + 2]);
+		norm1 = gvec3(attrib.normals[3 * index1.normal_index + 0],
+					  attrib.normals[3 * index1.normal_index + 1],
+					  attrib.normals[3 * index1.normal_index + 2]);
+		norm2 = gvec3(attrib.normals[3 * index2.normal_index + 0],
+					  attrib.normals[3 * index2.normal_index + 1],
+					  attrib.normals[3 * index2.normal_index + 2]);
+
+		norm = normalized(norm0 + norm1 + norm2);
+	}//if we have normal indexes
+	else {
+		gvec3 edge0 = vert1 - vert0;
+		gvec3 edge1 = vert2 - vert0;
+		norm = normalized(CROSSP(edge1, edge0));
+		norm0 = norm;
+		norm1 = norm;
+		norm2 = norm;
+	}//else (hoping for clockwise winding)
+
+	//HERE IS WHERE WE WOULD FUCK WITH MATERIALS
+	int materialId = defaultMaterialId;
+	if (material_ids.size() > index) {
+		if (material_ids[index] > 0) {
+			materialId = material_ids[index];//would need a variant mapping
+		}
+	}//if
+
+	//TRANSFORM
+	vert0 = gvec3(transform * gvec4(vert0, 1.0));
+	vert1 = gvec3(transform * gvec4(vert1, 1.0));
+	vert2 = gvec3(transform * gvec4(vert2, 1.0));
+
+	gmat4 normTransform = glm::inverseTranspose(transform);
+	norm0 = normalized(gvec3(normTransform * gvec4(norm0, 1.0)));
+	norm1 = normalized(gvec3(normTransform * gvec4(norm1, 1.0)));
+	norm2 = normalized(gvec3(normTransform * gvec4(norm2, 1.0)));
+	norm = normalized(gvec3(normTransform * gvec4(norm, 1.0)));
+
+
+	//SET VALUES
+	retval.materialid = materialId;
+	retval.vert0 = vert0;
+	retval.vert1 = vert1;
+	retval.vert2 = vert2;
+	retval.norm0 = norm0;
+	retval.norm1 = norm1;
+	retval.norm2 = norm2;
+	retval.normal = norm;
+
+	return retval;
+}//triangleFromIndex

@@ -33,6 +33,19 @@ struct Geom {
 	gvec3 vert1;
 	gvec3 vert2;
 	gvec3 normal;
+	int triangleIndex;
+	int triangleNumber;
+};//conceit that this is either a primitive or a primitive acting as a bounding box to contain a fuckload of triangles
+
+struct Triangle {
+	int materialid;
+	gvec3 vert0;
+	gvec3 vert1;
+	gvec3 vert2;
+	gvec3 normal;
+	gvec3 norm0;//for interpolation
+	gvec3 norm1;//for interpolation
+	gvec3 norm2;//for interpolation
 };
 
 struct Material {
@@ -94,6 +107,7 @@ typedef std::vector<Geom>           Geom_v;
 typedef std::vector<Material>       Material_v;
 typedef std::vector<Camera>         Camera_v;
 typedef std::vector<PathSegment>    PathSegment_v;
+typedef std::vector<Triangle>		Triangle_v;
 
 
 
