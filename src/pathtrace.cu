@@ -19,6 +19,7 @@
 
 #define ERRORCHECK 1
 #define SORTING_MATERIAL 0//pretty sure this fucks performance
+#define CACHING_FIRST 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -76,7 +77,8 @@ static glm::vec3 * dev_image = NULL;
 static Geom * dev_geoms = NULL;
 static Material * dev_materials = NULL;
 static PathSegment* dev_paths = NULL;
-static ShadeableIntersection * dev_intersections = NULL;
+static ShadeableIntersection* dev_intersections = NULL;
+static ShadeableIntersection* dev_intersections_first = NULL;
 // TODO: static variables for device memory, any extra info you need, etc
 // ...
 
@@ -99,6 +101,9 @@ void pathtraceInit(Scene *scene) {
   	cudaMalloc(&dev_intersections, pixelcount * sizeof(ShadeableIntersection));
   	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
+	cudaMalloc(&dev_intersections_first, pixelcount * sizeof(ShadeableIntersection));
+	cudaMemset(dev_intersections_first, 0, pixelcount * sizeof(ShadeableIntersection));
+
     // TODO: initialize any extra device memeory you need
 
     checkCUDAError("pathtraceInit");
@@ -110,6 +115,7 @@ void pathtraceFree() {
   	cudaFree(dev_geoms);
   	cudaFree(dev_materials);
   	cudaFree(dev_intersections);
+	cudaFree(dev_intersections_first);
     // TODO: clean up any extra device memory you created
 
     checkCUDAError("pathtraceFree");
@@ -401,10 +407,40 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 		// clean shading chunks
 		cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
+#if CACHING_FIRST
 		// tracing
 		dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
-		computeIntersections <<<numblocksPathSegmentTracing, blockSize1d >>> (
-			depth, 
+		if (depth == 0 && iter == 1) {
+			computeIntersections <<<numblocksPathSegmentTracing, blockSize1d >>> (
+				depth,
+				num_paths,
+				dev_paths,
+				dev_geoms,
+				hst_scene->geoms.size(),
+				dev_intersections_first);
+			checkCUDAError("trace one bounce");
+			cudaDeviceSynchronize();
+			cudaMemcpy(dev_intersections, dev_intersections_first, num_paths * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+		}//if the first set of intersections
+		else if (depth == 0) {
+			cudaMemcpy(dev_intersections, dev_intersections_first, num_paths * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+		}//use the cached intersections
+		else {
+			computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
+				depth,
+				num_paths,
+				dev_paths,
+				dev_geoms,
+				hst_scene->geoms.size(),
+				dev_intersections);
+			checkCUDAError("trace one bounce");
+			cudaDeviceSynchronize();
+		}
+#else
+		// tracing
+		dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
+		computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
+			depth,
 			num_paths,
 			dev_paths,
 			dev_geoms,
@@ -412,7 +448,9 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 			dev_intersections);
 		checkCUDAError("trace one bounce");
 		cudaDeviceSynchronize();
-		depth++;//does this get used??
+#endif
+
+		depth++;
 
 #if SORTING_MATERIAL
 		thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + num_paths, dev_paths, materialIdLess());

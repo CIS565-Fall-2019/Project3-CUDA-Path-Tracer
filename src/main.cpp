@@ -26,6 +26,11 @@ int iteration;
 int width;
 int height;
 
+//time stuff
+static std::chrono::high_resolution_clock::time_point beginTime;
+static std::chrono::high_resolution_clock::time_point currentTime;
+std::vector<unsigned long long> timeMarkings = std::vector<unsigned long long>();
+
 //-------------------------------
 //-------------MAIN--------------
 //-------------------------------
@@ -125,6 +130,7 @@ void runCuda() {
     if (iteration == 0) {
         pathtraceFree();
         pathtraceInit(scene);
+		beginTime = std::chrono::high_resolution_clock::now();
     }
 
     if (iteration < renderState->iterations) {
@@ -132,6 +138,8 @@ void runCuda() {
         iteration++;
         cudaGLMapBufferObject((void**)&pbo_dptr, pbo);
 
+
+		logTimePoint();//keep track of timing!
         // execute the kernel
         int frame = 0;
         pathtrace(pbo_dptr, frame, iteration);
@@ -203,3 +211,31 @@ void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
   lastX = xpos;
   lastY = ypos;
 }
+
+void logTimePoint() {
+	currentTime = std::chrono::high_resolution_clock::now();
+	unsigned long long sinceBeginning = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - beginTime).count();
+	timeMarkings.push_back(sinceBeginning);
+	
+}//logTimePoint
+
+void writeTimePoints(std::string filename) {
+	//Assuming our marks are one-per-iteration
+	//format is (iterationNumber, totalTime(s), diffTime(s))
+	std::FILE* of = std::fopen(filename.c_str(), "w");
+
+	for (int i = 0; i < timeMarkings.size(); i++) {
+		int iterationNumber = i + 1;
+		unsigned long long totalTime = timeMarkings[i];
+		unsigned long long diffTime;
+		if (i == 0) diffTime = timeMarkings[i];
+		else diffTime = timeMarkings[i] - timeMarkings[i - 1];
+
+		double totalTimeD = totalTime / 1000.0;
+		double diffTimeD = diffTime / 1000.0;
+
+		std::fprintf(of, "%d,%0.3f,%0.3f\n", iterationNumber, totalTimeD, diffTimeD);
+	}
+
+	std::fclose(of);
+}//writeTimePoints
