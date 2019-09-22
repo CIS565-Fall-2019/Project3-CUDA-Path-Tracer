@@ -41,10 +41,16 @@ struct Material {
         float exponent;
         gvec3 color;
     } specular;
-    float hasReflective;
+    float hasReflective;//use this as proportion-of-mirror-like term?
     float hasRefractive;
     float indexOfRefraction;
     float emittance;
+	/* Eventually, may want to think in these terms
+	gvec3 diffuse;
+	gvec3 specular;
+	gvec3 transmittance;
+	gvec3 emission;
+	*/
 };
 
 struct Camera {

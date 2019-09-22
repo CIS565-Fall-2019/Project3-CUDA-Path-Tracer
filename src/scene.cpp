@@ -5,7 +5,7 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
 
-#define SKIPFACES 16//skip all mesh faces save one out of this many
+#define SKIPFACES 64//skip all mesh faces save one out of this many
 
 Scene::Scene(string filename) {
     cout << "Reading scene from " << filename << " ..." << endl;

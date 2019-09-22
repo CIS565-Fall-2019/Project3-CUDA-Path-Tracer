@@ -48,6 +48,16 @@ REFR        0
 REFRIOR     0
 EMITTANCE   0
 
+// Shiny cyan
+MATERIAL 5
+RGB         0 .85 1
+SPECEX      10
+SPECRGB     0 .85 1
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
 // Camera
 CAMERA
 RES         800 800
@@ -60,8 +70,16 @@ LOOKAT      0 5 0
 UP          0 1 0
 
 
-// Floor
+// Ceiling light
 OBJECT 0
+cube
+material 0
+TRANS       0 10 0
+ROTAT       0 0 0
+SCALE       3 .3 3
+
+// Floor
+OBJECT 1
 cube
 material 1
 TRANS       0 0 0
@@ -69,7 +87,7 @@ ROTAT       0 0 0
 SCALE       10 .01 10
 
 // Ceiling
-OBJECT 1
+OBJECT 2
 cube
 material 1
 TRANS       0 10 0
@@ -77,7 +95,7 @@ ROTAT       0 0 90
 SCALE       .01 10 10
 
 // Back wall
-OBJECT 2
+OBJECT 3
 cube
 material 1
 TRANS       0 5 -5
@@ -85,7 +103,7 @@ ROTAT       0 90 0
 SCALE       .01 10 10
 
 // Left wall
-OBJECT 3
+OBJECT 4
 cube
 material 2
 TRANS       -5 5 0
@@ -93,18 +111,25 @@ ROTAT       0 0 0
 SCALE       .01 10 10
 
 // Right wall
-OBJECT 4
+OBJECT 5
 cube
 material 3
 TRANS       5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
 
-// Teapot
-OBJECT 5
-mesh
-material 0
-TRANS 1 8 0
-ROTAT 0 90 0
-SCALE 0.07 0.07 0.07
-FILE ../objects/teapot.obj
+// Sphere
+OBJECT 6
+sphere
+material 4
+TRANS       -2.5 4 -1
+ROTAT       0 0 0
+SCALE       3 3 3
+
+// Sphere
+OBJECT 7
+sphere
+material 5
+TRANS       2.5 4 -1
+ROTAT       0 0 0
+SCALE       3 3 3
