@@ -3,54 +3,6 @@
 #include <cstring>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
-#include "tiny_obj_loader.h"
-
-static std::vector<std::string> mesh_filenames;
-static const std::string MESH_DIR = "../meshes/";
-
-void Scene::loadMeshes() {
-	std::vector<Geom> meshes;
-
-	// Find all Meshes
-	for (const auto& g : geoms) {
-		if (g.type == MESH) {
-			meshes.push_back(g);
-		}
-	}
-
-	// For each mesh, load the objects as triangles
-	// And assign each triangle as a Geom with the correct material.
-	for (int i = 0; i < meshes.size(); i++) {
-		Geom g = meshes[i];
-		std::string filename = mesh_filenames[i];
-		tinyobj::attrib_t attrib;
-		std::vector<tinyobj::shape_t> shapes;
-		std::vector<tinyobj::material_t> materials;
-		std::string warn;
-		std::string err;
-
-		bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename.c_str(), MESH_DIR.c_str());
-		if (!warn.empty()) {
-			std::cout << "WARN: " << warn << std::endl;
-		}
-		if (!err.empty()) {
-			std::cerr << err << std::endl;
-		}
-
-		// OK, now we have all the shapes
-		// For now I'll ignore the materials. Just use the materials in our Scene.
-		for (const auto& s : shapes) {
-			tinyobj::mesh_t m = s.mesh;
-			auto indicies = m.indices;
-			
-			// From the indicies, generate a triangle and store that in the geoms vector
-			Geom g = Geom();
-			g.type = TRIANGLE;
-
-			// TODO: Parse the darn thing.
-		}
-	}
-}
 
 Scene::Scene(string filename) {
 	cout << "Reading scene from " << filename << " ..." << endl;
@@ -80,9 +32,6 @@ Scene::Scene(string filename) {
 			}
 		}
 	}
-
-	// Now parse the geoms list for all MESH objects and load those.
-	loadMeshes();
 }
 
 int Scene::loadGeom(string objectid) {
@@ -106,12 +55,6 @@ int Scene::loadGeom(string objectid) {
 			else if (strcmp(line.c_str(), "cube") == 0) {
 				cout << "Creating new cube..." << endl;
 				newGeom.type = CUBE;
-			}
-			else if (strcmp(line.c_str(), "mesh") == 0) {
-				// MESH's internal objects will be loaded in another step.
-				// I want to decouple the mesh object loading from the parsing of the file.
-				cout << "Creating new mesh..." << endl;
-				newGeom.type = MESH;
 			}
 		}
 
@@ -140,15 +83,6 @@ int Scene::loadGeom(string objectid) {
 			}
 
 			utilityCore::safeGetline(fp_in, line);
-		}
-
-		// Load mesh filename (if needed)
-		if (newGeom.type == MESH) {
-			utilityCore::safeGetline(fp_in, line);
-			vector<string> tokens = utilityCore::tokenizeString(line);
-			if (strcmp(tokens[0].c_str(), "FILENAME") == 0) {
-				mesh_filenames.push_back(tokens[1]);
-			}
 		}
 
 		newGeom.transform = utilityCore::buildTransformationMatrix(newGeom.translation, newGeom.rotation, newGeom.scale);
