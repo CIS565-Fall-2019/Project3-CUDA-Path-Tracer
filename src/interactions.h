@@ -105,43 +105,47 @@ __host__ __device__ gvec3 calculateShinyDirection(gvec3 incoming, gvec3 normal, 
  */
 __host__ __device__
 void scatterRay(
-		PathSegment& pathSegment,
-        gvec3 intersect,
-        gvec3 normal,
-        const Material &m,
-        thrust::default_random_engine &rng) {
+	PathSegment& pathSegment,
+	gvec3 intersect,
+	gvec3 normal,
+	const Material& m,
+	thrust::default_random_engine& rng) {
 
 	thrust::uniform_real_distribution<float> u01(0, 1);
 	float branchRandom = u01(rng);
 	float probDiff = glm::length(m.color);
 	float probSpec = glm::length(m.specular.color);
+	float probMirror = probSpec * m.hasReflective;
+	probSpec *= (1.0 - m.hasReflective);
 
-	if (probDiff + probSpec < EPSILON) {
+	float totalProb = probDiff + probSpec + probMirror;
+
+	if (totalProb < EPSILON) {
 		pathSegment.color = gvec3(0.0f, 0.0f, 0.0f);
 		pathSegment.remainingBounces = 0;
 		return;
 	}//if some jackass put a black color in the scene
 
 	//else, probabilistically choose between diffuse/specular
-	probDiff /= (probDiff + probSpec);
-	probSpec /= (probDiff + probSpec);
+	probDiff /= totalProb;
+	probSpec /= totalProb;
+	probMirror /= totalProb;
 	//these now sum to 1
 
-	if (branchRandom < probDiff) {//DIFFUSE
+	if (branchRandom < probDiff) {
 		gvec3 newDirection = calculateRandomDirectionInHemisphere(normal, rng);
 		pathSegment.ray = Ray{ intersect,  newDirection };
 		pathSegment.color *= m.color;
-	}
-	else {//SPECULAR (either mirror or otherwise)
-		if (m.hasReflective > 0) {//MIRROR
-			gvec3 newDirection = REFLECT(pathSegment.ray.direction, normal);
-			pathSegment.ray = Ray{ intersect, newDirection };
-		}//if
-		else {//NON-MIRROR SPECULAR
-			gvec3 newDirection = calculateShinyDirection(pathSegment.ray.direction, normal, m.specular.exponent, rng);
-			pathSegment.ray = Ray{ intersect, newDirection };
-		}//else
+	}//if diffuse
+	else if (branchRandom < probDiff + probSpec) {
+		gvec3 newDirection = calculateShinyDirection(pathSegment.ray.direction, normal, m.specular.exponent, rng);
+		pathSegment.ray = Ray{ intersect, newDirection };
 		pathSegment.color *= m.specular.color;
-	}
+	}//else if specular
+	else {
+		gvec3 newDirection = REFLECT(pathSegment.ray.direction, normal);
+		pathSegment.ray = Ray{ intersect, newDirection };
+		pathSegment.color *= m.specular.color;
+	}//else if mirror
 
 }//scatterRay

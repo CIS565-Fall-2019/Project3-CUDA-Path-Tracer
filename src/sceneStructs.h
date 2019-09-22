@@ -41,7 +41,7 @@ struct Material {
         float exponent;
         gvec3 color;
     } specular;
-    float hasReflective;//use this as proportion-of-mirror-like term?
+    float hasReflective;//currently using as "proportion of specular that is precisely mirror-like"
     float hasRefractive;
     float indexOfRefraction;
     float emittance;
