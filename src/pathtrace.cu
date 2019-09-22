@@ -18,7 +18,7 @@
 #include "interactions.h"
 
 #define ERRORCHECK 1
-#define SORTING_MATERIAL 1
+#define SORTING_MATERIAL 0//pretty sure this fucks performance
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -318,16 +318,25 @@ __global__ void finalGather(int nPaths, glm::vec3 * image, PathSegment * iterati
 	}
 }
 
-//thrust construct for telling whether we're out of bounces
+/*thrust construct for telling whether we're out of bounces*/
 struct hasRemainingBounces {
 	__host__ __device__ bool operator()(const PathSegment x) {
 		return x.remainingBounces != 0;
 	}
 };
 
+/*thrust construct for sorting by material id*/
+struct materialIdLess {
+	__host__ __device__ bool operator()(const ShadeableIntersection& a, const ShadeableIntersection& b) {
+		if (a.t < 0 && b.t > 0) return true;//might be extraneous
+		if (b.t < 0 && a.t > 0) return false;//might be extraneous
+		return(a.materialId < b.materialId);
+	}
+};
+
 /**
- * Wrapper for the __global__ call that sets up the kernel calls and does a ton
- * of memory management
+ Wrapper for the __global__ call that sets up the kernel calls and does a ton
+ of memory management
  */
 void pathtrace(uchar4* pbo, int frame, int iter) {
 	const int traceDepth = hst_scene->state.traceDepth;
@@ -403,8 +412,11 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 			dev_intersections);
 		checkCUDAError("trace one bounce");
 		cudaDeviceSynchronize();
-		depth++;
+		depth++;//does this get used??
 
+#if SORTING_MATERIAL
+		thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + num_paths, dev_paths, materialIdLess());
+#endif
 
 		// TODO:
 		// --- Shading Stage ---

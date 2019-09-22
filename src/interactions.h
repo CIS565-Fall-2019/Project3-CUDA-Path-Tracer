@@ -48,7 +48,7 @@ __host__ __device__ gvec3 calculateShinyDirection(gvec3 incoming, gvec3 normal, 
 
 	thrust::uniform_real_distribution<float> u01(0, 1);
 
-	float costheta = powf(u01(rng), (1.0 / (exponent + 1)));//this op may be expensive
+	float costheta = powf(u01(rng), (1.0 / (exponent + 1)));//is this op expensive?
 	float sintheta = sqrtf(1.0 - costheta * costheta);
 	float phi = TWO_PI * u01(rng);
 	/*
