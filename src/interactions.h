@@ -52,11 +52,15 @@ __host__ __device__ void compute_reflection(PathSegment& path, glm::vec3 normal,
 	// glm reflect handles where the new ray shoots out
 	glm::vec3 new_ray_direction = glm::reflect(old_ray_direction,normal);
 
+	// need to add some epsilon according to slides od I add to ray or color?
+	// think color
+	// http://web.cse.ohio-state.edu/~shen.94/681/Site/Slides_files/reflection_refraction.pdf
+
 	// we want to accumulate some more color.
 	old_color *= m.specular.color;
 
 	// set our new color
-	path.color = old_color;
+	path.color = old_color ;
 
 	// compute our new ray origin
 	path.ray.origin = (old_ray_origin + old_ray_direction * t) + (new_ray_direction *.001f); // the is some floating error TA said add this
@@ -69,16 +73,43 @@ __host__ __device__ void compute_refraction(PathSegment& path, glm::vec3 normal,
 	glm::vec3 old_ray_origin = path.ray.origin;
 	glm::vec3 old_ray_direction = path.ray.direction;
 	glm::vec3 old_color = path.color;
-
-	// need to add logic for total internal reflection
+	
+	float eta;
+	
+	// notes from https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
+	// for refraction we have some corner cases we need to handle.
+	// maybe negative?
+	float cos_theta = glm::dot(normal, old_ray_direction);
+	//normal = glm::faceforward(normal, old_ray_direction, normal);
+	if (cos_theta < 0.f) {
+		// we are outside the surface, we want cos(theta) to be positive
+		// we are outside moving towards a surface
+		// NdotI = -NdotI;
+		eta = 1 / m.indexOfRefraction; // we are doing pretty much air over our index of refraction.. airs index ~= 1.
+	}
+	else {
+		// we are inside the surface, cos(theta) is already positive but reverse normal direction
+		// we are inside the material moving towards air
+		 normal = -normal;
+		assert(0);
+		eta = m.indexOfRefraction; // material index over air index
+	}
 
 	// based off of our surface normal and ray direction we want to reflect the path
-	glm::vec3 new_ray_direction = glm::refract(normal, old_ray_direction,m.indexOfRefraction);
+	glm::vec3 new_ray_direction = glm::refract(old_ray_direction,normal,eta);
+	
+	// if the length of the ray is small total internal reflection?
+	if (glm::length(new_ray_direction) < .001f)
+	{
+		//total internal refraction 
+		assert(0);
+
+	}
 
 	// we want to compute our new color, which for a reflection stays the same.
-	old_color = m.color;
+	old_color *= m.color;
 
-	path.color = old_color;// glm::max(old_color, glm::vec3(0.0f));
+	path.color = glm::max(old_color, glm::vec3(0.0f));
 
 	// compute our new ray origin
 	path.ray.origin = (old_ray_origin + old_ray_direction * t) + (new_ray_direction * .001f); // the is some floating error TA said add this
@@ -101,29 +132,84 @@ __host__ __device__ void compute_diffuse(PathSegment& path, glm::vec3 normal, fl
 	// specular bounce?
 	if (rand > .5f )
 	{
-		new_ray_direction = glm::normalize(old_ray_direction);
+		// this works but confused ...
+		//new_ray_direction = glm::normalize(old_ray_direction);
+		// reflect makes it look dope
+		//new_ray_direction = glm::reflect(old_ray_direction, normal);
 	}
 
-	//float cos = glm::dot(normal, (new_ray_direction));
-	//float denom = cos / glm::pi<float>();
-
-	//float denom = rand;
-
-	// we want to compute our new color, which for a reflection stays the same.
-	//old_color *= m.color;
-
 	glm::vec3 c = m.color;
-		
-	//c*= cos * glm::one_over_pi<float>();
-
 	old_color *= c ;
-
 	path.color = old_color;//glm::max(old_color, glm::vec3(0.f));
 
 	// compute our new ray origin
 	path.ray.origin = (old_ray_origin + old_ray_direction * t) + (new_ray_direction *.001f); // the is some floating error TA said add this
 	path.ray.direction = new_ray_direction;
 	return;
+}
+
+__host__ __device__ float fresnels(glm::vec3 normal, glm::vec3 old_ray_direction,const Material& material)
+{
+	float eta_air = 1; // n1
+	float eta_mat = material.indexOfRefraction; //n2 
+	float Fresnels_number;
+	
+	// list of trig identities for making sense of fresnels and snells
+	// https://en.wikipedia.org/wiki/Snell%27s_law
+	// cos theta1 = -surface vector dot light vector; //
+	// sin theta2 = ( (n1/n2) * sin theta1 ) = (n1/n2) * (sqrt ( 1 - cos_theta1^2))  
+	// cos theta2 = (sqrt ( 1 - sin theta2^2))  
+
+	float cos_theta1 = glm::dot(-normal, old_ray_direction);
+	
+	// may have to do a swap 
+	if (cos_theta1 > 0) { std::swap(eta_air, eta_mat); } // cant use std in device code TODO
+
+	// do more trig identity ... gross
+	float sin_theta2 = (eta_air / eta_mat) * (sqrtf(std::max( 0.f, 1 - (cos_theta1 * cos_theta1) ) ) );
+	
+	// total internal reflection
+	if (sin_theta2 >= 1)
+	{
+		Fresnels_number = 1;
+		return Fresnels_number;
+	}
+	else
+	{
+		// do more trig identity ... gross 
+		float cos_theta2 = sqrtf(std::max(0.f, 1 - (sin_theta2 * sin_theta2) )); // cant use std in device code TODO
+		// ensure positive
+		cos_theta1 = fabsf(cos_theta1);
+		// this is fresnels equation finally
+		float Fresnel_R_Parallel = ((eta_mat * cos_theta1) - (eta_air * cos_theta2)) / ((eta_mat * cos_theta1) + (eta_air * cos_theta2));
+		float Fresnel_R_Perp = ((eta_air * cos_theta2) - (eta_mat * cos_theta1)) / ((eta_air * cos_theta2) + (eta_mat * cos_theta1));
+		// 
+		Fresnels_number = ( (Fresnel_R_Parallel * Fresnel_R_Parallel) + (Fresnel_R_Perp * Fresnel_R_Perp) ) / 2;
+		return Fresnels_number;
+	}
+
+}
+
+// we come here when we have a material that is both reflective AND refractive
+// based off of fresenels equation we follow the route of reflection or refraction
+// resources: https://computergraphics.stackexchange.com/questions/2482/choosing-reflection-or-refraction-in-path-tracing
+// https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
+__host__ __device__ void compute_fresnels(PathSegment& path, glm::vec3 normal, float t, const Material& m, thrust::default_random_engine &rng)
+{
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	float rand = u01(rng);
+
+	// fresnelse number needs to be added to the color i belive ... so TODO 
+	float Fresnels_Number = fresnels(normal,path.ray.direction,m);
+
+	if (rand > .5f)
+	{
+		compute_refraction(path, normal, t, m);
+	}
+	else
+	{
+		compute_reflection(path, normal, t, m);
+	}
 }
 
 /**
@@ -167,7 +253,7 @@ void scatterRay(
 
 	if (m.hasReflective > 0.0f && m.hasRefractive > 0.0f)
 	{
-		assert(0); // not yet implemented
+		compute_fresnels(pathSegment, normal, t, m,rng);
 	}
 	// if reflective
 	else if (m.hasReflective > 0.0f)
@@ -178,8 +264,6 @@ void scatterRay(
 	else if (m.hasRefractive > 0.0f) 
 	{
 		compute_refraction(pathSegment, normal, t, m);
-		printf("refract\n");
-		assert(0); // not yet implemented
 	}
 	// else diffuse
 	else{
