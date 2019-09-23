@@ -39,7 +39,9 @@ public:
 	/**
 	Constructs a Geom object with all the relevant bounding-box parameters 
 	*/
-	Geom Scene::geomFromShape(tinyobj::shape_t shape, tinyobj::attrib_t attrib, std::vector<tinyobj::material_t> materials);
+	Geom Scene::geomFromShape(tinyobj::shape_t shape, tinyobj::attrib_t attrib,
+		std::vector<tinyobj::material_t> materials, int materialid,
+		gmat4 transform);
 	/**
 	Pulls out the relevant information to make a triangle from the given face index
 	*/

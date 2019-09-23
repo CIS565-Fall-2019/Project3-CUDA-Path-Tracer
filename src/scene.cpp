@@ -4,8 +4,9 @@
 #include <cstring>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <glm/gtx/normal.hpp>
 
-//#define SKIPFACES 16//skip all mesh faces save one out of this many
+//#define SKIPFACES 4//skip all mesh faces save one out of this many
 
 Scene::Scene(string filename) {
     cout << "Reading scene from " << filename << " ..." << endl;
@@ -128,9 +129,10 @@ int Scene::loadGeom(string objectid) {
 			newGeom.inverseTransform = glm::inverse(newGeom.transform);
 			newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
 
-			Geom_v triList = readFromMesh(filename, newGeom.materialid, newGeom.transform);
-			geoms.insert(geoms.end(), triList.begin(), triList.end());
+			Geom_v meshList = readFromMesh(filename, newGeom.materialid, newGeom.transform);
+			geoms.insert(geoms.end(), meshList.begin(), meshList.end());
 		}//mesh
+		/*
 		else if (newGeom.type == TRIANGLE){
 			utilityCore::safeGetline(fp_in, line);
 			while (!line.empty() && fp_in.good()) {
@@ -151,7 +153,7 @@ int Scene::loadGeom(string objectid) {
 				utilityCore::safeGetline(fp_in, line);
 			}
 		}//triangle
-
+		*/
 
 		if (newGeom.type != MESH)
 			geoms.push_back(newGeom);
@@ -281,28 +283,9 @@ Geom_v Scene::readFromMesh(string filename, int materialid, gmat4 transform) {
 	Geom_v retval = Geom_v();
 	
 	for (tinyobj::shape_t shape : shapes) {
-		//for each shape, make a geom with relevant bounding box parameters
-		//will assume the bounding box is a cube, constructed like the others in the scene description
-		string name = shape.name;
-		tinyobj::mesh_t mesh = shape.mesh;
-		vector<tinyobj::index_t> indices = mesh.indices;
-		//banking on there being three sides per polygon, because triangulation
-		for (int i = 0; i < indices.size(); i += 3) {
-#ifdef SKIPFACES
-			if ((i / 3) % SKIPFACES != 0) continue;
-#endif
-			Triangle tri = triangleFromIndex(i / 3, indices, mesh.material_ids, attrib, materialid, transform);
 
-			Geom newGeom = Geom();
-			newGeom.type = TRIANGLE;
-			newGeom.vert0 = tri.vert0;
-			newGeom.vert1 = tri.vert1;
-			newGeom.vert2 = tri.vert2;
-			newGeom.normal = tri.normal;
-			newGeom.materialid = tri.materialid;
-
-			retval.push_back(newGeom);
-		}//for each face
+		Geom newGeom = geomFromShape(shape, attrib, materials, materialid, transform);
+		retval.push_back(newGeom);
 
 	}//for each shape
 
@@ -310,50 +293,62 @@ Geom_v Scene::readFromMesh(string filename, int materialid, gmat4 transform) {
 	return retval;
 }
 
-Material Scene::materialFromObj(tinyobj::material_t mat) {
-	Material retval;
-	retval.color = gvec3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-	retval.specular.color = gvec3(mat.specular[0], mat.specular[1], mat.specular[2]);
-	retval.specular.exponent = mat.shininess;//guessing
-
-	retval.indexOfRefraction = mat.ior;
-
-	if (mat.emission[0] || mat.emission[1] || mat.emission[2]) {
-		retval.color = gvec3(mat.emission[0], mat.emission[1], mat.emission[2]);
-		normalize(&retval.color);
-		retval.emittance = sqrtf(mat.emission[0] * mat.emission[0] 
-							   + mat.emission[1] * mat.emission[1] 
-							   + mat.emission[2] * mat.emission[2]);
-	}//if a light
-
-
-	return retval;
-}
-
-Geom Scene::geomFromShape(tinyobj::shape_t shape, tinyobj::attrib_t attrib, std::vector<tinyobj::material_t> materials) {
+Geom Scene::geomFromShape(tinyobj::shape_t shape, tinyobj::attrib_t attrib, 
+							std::vector<tinyobj::material_t> materials, int materialid, 
+							gmat4 transform) {
 	int startingTriangle = triangles.size();
-
 	Geom newGeom = Geom();
+	newGeom.type = MESH;
 
-	string name = shape.name;
+	//make the triangles
+
+	string name = shape.name;//maybe useful?
 	tinyobj::mesh_t mesh = shape.mesh;
 	vector<tinyobj::index_t> indices = mesh.indices;
-	//banking on there being three sides per polygon, because triangulation
 	for (int i = 0; i < indices.size(); i += 3) {
 #ifdef SKIPFACES
 		if ((i / 3) % SKIPFACES != 0) continue;
 #endif
 		Triangle tri = triangleFromIndex(i / 3, indices, mesh.material_ids, attrib, materialid, transform);
 
-		newGeom = Geom();
-		newGeom.type = TRIANGLE;
-		newGeom.vert0 = tri.vert0;
-		newGeom.vert1 = tri.vert1;
-		newGeom.vert2 = tri.vert2;
-		newGeom.normal = tri.normal;
-		newGeom.materialid = tri.materialid;
+		triangles.push_back(tri);
 
 	}//for each face
+
+	int endingTriangle = triangles.size();
+
+	//compute bounding box (could maybe parallelize this... maybe not worth it)
+	float minX = INFINITY; float minY = INFINITY; float minZ = INFINITY;
+	float maxX = -INFINITY; float maxY = -INFINITY; float maxZ = -INFINITY;
+	for (int i = startingTriangle; i < endingTriangle; i++) {
+		gvec3 vert0 = triangles[i].vert0;
+		gvec3 vert1 = triangles[i].vert1;
+		gvec3 vert2 = triangles[i].vert2;
+		minX = vert0.x < minX ? vert0.x : minX; minX = vert1.x < minX ? vert1.x : minX; minX = vert2.x < minX ? vert2.x : minX;		
+		minY = vert0.y < minY ? vert0.y : minY; minY = vert1.y < minY ? vert1.y : minY; minY = vert2.y < minY ? vert2.y : minY;
+		minZ = vert0.z < minZ ? vert0.z : minZ; minZ = vert1.z < minZ ? vert1.z : minZ; minZ = vert2.z < minZ ? vert2.z : minZ;
+		maxX = vert0.x > maxX ? vert0.x : maxX; maxX = vert1.x > maxX ? vert1.x : maxX; maxX = vert2.x > maxX ? vert2.x : maxX;
+		maxY = vert0.y > maxY ? vert0.y : maxY; maxY = vert1.y > maxY ? vert1.y : maxY; maxY = vert2.y > maxY ? vert2.y : maxY;
+		maxZ = vert0.z > maxZ ? vert0.z : maxZ; maxZ = vert1.z > maxZ ? vert1.z : maxZ; maxZ = vert2.z > maxZ ? vert2.z : maxZ;
+	}//for
+
+	float xWidth = maxX - minX;
+	float yWidth = maxY - minY;
+	float zWidth = maxZ - minZ;
+	float xCenter = xWidth / 2 + minX;
+	float yCenter = yWidth / 2 + minY;
+	float zCenter = zWidth / 2 + minZ;
+	newGeom.scale = gvec3(xWidth, yWidth, zWidth);
+	newGeom.translation = gvec3(xCenter, yCenter, zCenter);
+	newGeom.rotation = gvec3(0, 0, 0);
+
+	newGeom.transform = utilityCore::buildTransformationMatrix(
+		newGeom.translation, newGeom.rotation, newGeom.scale);
+	newGeom.inverseTransform = glm::inverse(newGeom.transform);
+	newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
+	
+	newGeom.triangleIndex = startingTriangle;
+	newGeom.triangleCount = endingTriangle - startingTriangle;
 
 	return newGeom;
 }//geomFromShape
@@ -401,6 +396,7 @@ Triangle Scene::triangleFromIndex(int index, vector<tinyobj::index_t> indices, v
 		gvec3 edge0 = vert1 - vert0;
 		gvec3 edge1 = vert2 - vert0;
 		norm = normalized(CROSSP(edge1, edge0));
+		//norm = glm::triangleNormal(vert0, vert1, vert2);
 		norm0 = norm;
 		norm1 = norm;
 		norm2 = norm;
@@ -438,3 +434,23 @@ Triangle Scene::triangleFromIndex(int index, vector<tinyobj::index_t> indices, v
 
 	return retval;
 }//triangleFromIndex
+
+Material Scene::materialFromObj(tinyobj::material_t mat) {
+	Material retval;
+	retval.color = gvec3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+	retval.specular.color = gvec3(mat.specular[0], mat.specular[1], mat.specular[2]);
+	retval.specular.exponent = mat.shininess;//guessing
+
+	retval.indexOfRefraction = mat.ior;
+
+	if (mat.emission[0] || mat.emission[1] || mat.emission[2]) {
+		retval.color = gvec3(mat.emission[0], mat.emission[1], mat.emission[2]);
+		normalize(&retval.color);
+		retval.emittance = sqrtf(mat.emission[0] * mat.emission[0]
+			+ mat.emission[1] * mat.emission[1]
+			+ mat.emission[2] * mat.emission[2]);
+	}//if a light
+
+
+	return retval;
+}

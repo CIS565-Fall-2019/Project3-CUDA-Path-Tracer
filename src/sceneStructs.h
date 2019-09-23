@@ -23,19 +23,15 @@ struct Ray {
 struct Geom {
     enum GeomType type;
     int materialid;
-    gvec3 translation;//TODO: also make this vert0
-    gvec3 rotation;//TODO: also make this vert1
-    gvec3 scale;//TODO: also make this vert2
+    gvec3 translation;
+    gvec3 rotation;
+    gvec3 scale;
     gmat4 transform;
     gmat4 inverseTransform;
     gmat4 invTranspose;
-	gvec3 vert0;
-	gvec3 vert1;
-	gvec3 vert2;
-	gvec3 normal;
 	int triangleIndex;
-	int triangleNumber;
-};//conceit that this is either a primitive or a primitive acting as a bounding box to contain a fuckload of triangles
+	int triangleCount;
+};//conceit that this is either a primitive or a primitive acting as a bounding box to contain a boatload of triangles
 
 struct Triangle {
 	int materialid;

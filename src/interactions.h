@@ -2,6 +2,10 @@
 
 #include "intersections.h"
 
+__host__ __device__ gvec3 reflectIncomingByNormal(const gvec3 incoming, const gvec3 normal) {
+	return incoming - 2 * DOTP(incoming, normal) * normal;
+}//reflecTIncomingByNormal
+
 // CHECKITOUT
 /**
  * Computes a cosine-weighted random direction in a hemisphere.
@@ -44,7 +48,8 @@ gvec3 calculateRandomDirectionInHemisphere(glm::vec3 normal,
 
 __host__ __device__ gvec3 calculateShinyDirection(gvec3 incoming, gvec3 normal, float exponent,
 												thrust::default_random_engine& rng) {
-	gvec3 perfectMirror = REFLECT(incoming, normal);//will be adding an offset to this
+	//gvec3 perfectMirror = REFLECT(incoming, normal);//will be adding an offset to this
+	gvec3 perfectMirror = glm::normalize(reflectIncomingByNormal(incoming, normal));//will be adding an offset to this
 
 	thrust::uniform_real_distribution<float> u01(0, 1);
 
@@ -72,7 +77,7 @@ __host__ __device__ gvec3 calculateShinyDirection(gvec3 incoming, gvec3 normal, 
 	glm::vec3 perpendicularDirection2 =
 		glm::normalize(glm::cross(perfectMirror, perpendicularDirection1));
 
-	return costheta * normal
+	return costheta * perfectMirror
 		+ cos(phi) * sintheta * perpendicularDirection1
 		+ sin(phi) * sintheta * perpendicularDirection2;
 
@@ -143,8 +148,19 @@ void scatterRay(
 		pathSegment.color *= m.specular.color;
 	}//else if specular
 	else {
-		gvec3 newDirection = REFLECT(pathSegment.ray.direction, normal);
-		pathSegment.ray = Ray{ intersect, newDirection };
+		float rayX = pathSegment.ray.direction.x;
+		float rayY = pathSegment.ray.direction.y;
+		float rayZ = pathSegment.ray.direction.z;
+		float normX = normal.x;
+		float normY = normal.y;
+		float normZ = normal.z;
+
+		//TODO: simplify this down, once convinced about the math being right
+		//gvec3 newDirection = REFLECT(pathSegment.ray.direction, normal);
+		//gvec3 newDirection = REFLECT(gvec3(rayX, rayY, rayZ), gvec3(normX, normY, normZ));
+		gvec3 newDirection = glm::normalize(reflectIncomingByNormal(gvec3(rayX, rayY, rayZ), gvec3(normX, normY, normZ)));
+		float newX = newDirection.x; float newY = newDirection.y; float newZ = newDirection.z;
+		pathSegment.ray = Ray{ intersect, gvec3(newX, newY, newZ) };
 		pathSegment.color *= m.specular.color;
 	}//else if mirror
 

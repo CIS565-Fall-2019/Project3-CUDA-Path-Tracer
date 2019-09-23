@@ -39,7 +39,7 @@ __host__ __device__ gvec3 multiplyMV(glm::mat4 m, glm::vec4 v) {
 /**
 Lifted nearly verbatim from Wikipedia article on Moller-Trumbore intersection algorithm
 */
-__host__ __device__ float triangleIntersectionTest(Geom tri, Ray r,
+__host__ __device__ float triangleIntersectionTest(Triangle tri, Ray r,
 	gvec3& intersectionPoint, gvec3& normal) {
 
 	if (DOTP(tri.normal, r.direction) >= 0) return -1;//triangle facing the same way we are
@@ -58,11 +58,14 @@ __host__ __device__ float triangleIntersectionTest(Geom tri, Ray r,
 	float v = f * DOTP(r.direction, q);
 	if (v < 0.0 || u + v > 1.0) return -1;
 
+	float share0 = 1.0 - u - v;
+
 	float t = f * DOTP(edge2, q);
 
 	if (t > EPSILON) {
 		intersectionPoint = getPointOnRay(r, t);
-		normal = tri.normal;
+		normal = share0 * tri.norm0 + v * tri.norm1 + u * tri.norm2;
+		//normal = tri.normal;
 		return t;
 	}//if intersection in front of us
 	else {
@@ -71,7 +74,50 @@ __host__ __device__ float triangleIntersectionTest(Geom tri, Ray r,
 
 }
 
-// CHECKITOUT
+__host__ __device__ float boxIntersectionTest(Geom box, Ray r,
+	gvec3& intersectionPoint, gvec3& normal, bool& outside);
+
+/**
+ * Test intersection between a ray and a transformed bounding box. Untransformed,
+ * the cube ranges from -0.5 to 0.5 in each axis and is centered at the origin.
+ *
+ * @param intersectionPoint  Output parameter for point of intersection.
+ * @param normal             Output parameter for surface normal.
+ * @param outside            Output param for whether the ray came from outside.
+ * @return                   Ray parameter `t` value. -1 if no intersection.
+ */
+__host__ __device__ float meshIntersectionTest(Geom mesh, Ray r,
+	gvec3& intersectionPoint, gvec3& normal, bool& outside, Triangle* tris, int* triIndex) {
+
+	float t = boxIntersectionTest(mesh, r, intersectionPoint, normal, outside);
+	if (t < 0) return -1;
+	//if we hit inside the box, THEN check against our triangles
+
+	gvec3 tmp_intersection, min_intersection;
+	gvec3 tmp_normal, min_normal;
+	float t_min = INFINITY;
+	for (int i = mesh.triangleIndex; i < mesh.triangleIndex + mesh.triangleCount; i++) {
+		Triangle tri = tris[i];
+		t = triangleIntersectionTest(tri, r, tmp_intersection, tmp_normal);
+		if (t > 0.0 && t < t_min) {
+			*triIndex = i;
+			min_intersection = tmp_intersection;
+			min_normal = tmp_normal;
+			t_min = t;
+		}//new minimum
+	}//for
+
+	if (t_min > 0.0 && t_min < INFINITY) {
+		intersectionPoint = min_intersection;
+		normal = min_normal;
+
+		return t_min;
+	}//if
+	else {
+		return -1;
+	}
+}
+
 /**
  * Test intersection between a ray and a transformed cube. Untransformed,
  * the cube ranges from -0.5 to 0.5 in each axis and is centered at the origin.
@@ -125,7 +171,6 @@ __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
     return -1;
 }
 
-// CHECKITOUT
 /**
  * Test intersection between a ray and a transformed sphere. Untransformed,
  * the sphere always has radius 0.5 and is centered at the origin.
