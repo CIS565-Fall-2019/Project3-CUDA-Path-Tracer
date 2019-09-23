@@ -15,6 +15,30 @@ CUDA Path Tracer
 
 This is where I would write about my path tracer... IF I HAD ONE
 
+### Object loading
+
+TODO: describe how to describe in scene file
+
+#### Bounding Volume
+
+Simple axis-aligned bounding box for each Shape object in the mesh
+
+#### TODO: parallel triangle ingestion
+
+Spin up kernels to move/copy the memory around, compute the triangle normals
+
+#### TODO: textures? (Maybe)
+
+### Specular Sampling with Exponent
+
+Implemented specular reflections with configurable exponent
+
+TODO: link picture with exponent comparison noted
+
+### TODO: refraction
+
+### TODO: subsurface scattering
+
 ## Configuration Notes
 
 ### CMakeLists changes
