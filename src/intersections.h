@@ -6,6 +6,10 @@
 #include "sceneStructs.h"
 #include "utilities.h"
 
+__device__ DebugVector DVV(gvec3 v) {
+	return { v.x, v.y, v.z };
+}
+
 /**
  * Handy-dandy hash function that provides seeds for random number generation.
  */
@@ -42,14 +46,35 @@ Lifted nearly verbatim from Wikipedia article on Moller-Trumbore intersection al
 __host__ __device__ float triangleIntersectionTest(Triangle tri, Ray r,
 	gvec3& intersectionPoint, gvec3& normal) {
 
-	if (DOTP(tri.normal, r.direction) >= 0) return -1;//triangle facing the same way we are
+	gvec3 results;
+	bool didHit = glm::intersectRayTriangle(r.origin, r.direction, tri.vert0, tri.vert1, tri.vert2, results);
+	if (!didHit) return -1;
+	float alpha = results.x;
+	float beta = results.y;
+	float t = results.z;
 
-	gvec3 edge1 = tri.vert1 - tri.vert0;
-	gvec3 edge2 = tri.vert2 - tri.vert0;
+	//WHY IS THE NORMAL WRONG??
+	normal = (tri.norm0 * (1.0f - alpha - beta)) + (tri.norm1 * alpha) + (tri.norm2 * beta);
+	intersectionPoint = getPointOnRay(r, t);
 
-	gvec3 h = CROSSP(r.direction, edge2);
+	return t;
+
+	/*
+	//if (DOTP(tri.normal, r.direction) >= 0) return -1;//triangle facing the same way we are
+	float rdx = r.direction.x; float rdy = r.direction.y; float rdz = r.direction.z;
+	float tv0x = tri.vert0.x; float tv0y = tri.vert0.y; float tv0z = tri.vert0.z;
+	float tv1x = tri.vert1.x; float tv1y = tri.vert1.y; float tv1z = tri.vert1.z;
+	float tv2x = tri.vert2.x; float tv2y = tri.vert2.y; float tv2z = tri.vert2.z;
+	float tnx = tri.normal.x; float tny = tri.normal.y; float tnz = tri.normal.z;
+
+	//gvec3 edge1 = tri.vert1 - tri.vert0;
+	//gvec3 edge2 = tri.vert2 - tri.vert0;
+	gvec3 edge1 = gvec3(tv1x, tv1y, tv1z) - gvec3(tv0x, tv0y, tv0z);
+	gvec3 edge2 = gvec3(tv2x, tv2y, tv2z) - gvec3(tv0x, tv0y, tv0z);
+
+	gvec3 h = CROSSP(gvec3(rdx, rdy, rdz), edge2);
 	float a = DOTP(edge1, h);
-	if (a > -EPSILON && a < EPSILON) return -1;
+	if (a > -EPSILON && a < EPSILON) return -1;//ray parallel to triangle
 	float f = 1.0 / a;
 	gvec3 s = r.origin - tri.vert0;
 	float u = f * DOTP(s, h);
@@ -64,13 +89,15 @@ __host__ __device__ float triangleIntersectionTest(Triangle tri, Ray r,
 
 	if (t > EPSILON) {
 		intersectionPoint = getPointOnRay(r, t);
-		normal = share0 * tri.norm0 + v * tri.norm1 + u * tri.norm2;
-		//normal = tri.normal;
+		//normal = share0 * tri.norm0 + v * tri.norm1 + u * tri.norm2;
+		//normal = tri.normal; //BLOCKidx = 2271, 0, 0, THREADidx = 111, 0, 0
+		normal = gvec3(tnx, tny, tnz);
 		return t;
 	}//if intersection in front of us
 	else {
 		return -1;
 	}
+	*/
 
 }
 
@@ -101,7 +128,12 @@ __host__ __device__ float meshIntersectionTest(Geom mesh, Ray r,
 		t = triangleIntersectionTest(tri, r, tmp_intersection, tmp_normal);
 		if (t > 0.0 && t < t_min) {
 			*triIndex = i;
+			//float dinx = tmp_intersection.x; float diny = tmp_intersection.y; float dinz = tmp_intersection.z;
+			//float dnox = tmp_normal.x; float dnoy = tmp_normal.y; float dnoz = tmp_normal.z;
+
+			//min_intersection = gvec3(dinx, diny, dinz);
 			min_intersection = tmp_intersection;
+			//min_normal = gvec3(dnox, dnoy, dnoz);
 			min_normal = tmp_normal;
 			t_min = t;
 		}//new minimum

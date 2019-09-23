@@ -6,11 +6,11 @@ SPECRGB     0 0 0
 REFL        0
 REFR        0
 REFRIOR     0
-EMITTANCE   5
+EMITTANCE   40
 
 // Diffuse white
 MATERIAL 1
-RGB         .98 .98 .98
+RGB         .6 .6 .6 
 SPECEX      0
 SPECRGB     0 0 0
 REFL        0
@@ -20,13 +20,33 @@ EMITTANCE   0
 
 // Shiny cyn
 MATERIAL 2
-RGB         0 0 0
-SPECEX      256
-SPECRGB     0 1 1
-REFL        1
+RGB         .5 1 1
+SPECEX      512
+SPECRGB     .375 0.75 0.75
+REFL        0
 REFR        0
 REFRIOR     0
 EMITTANCE   0
+
+// R09 Light
+MATERIAL 3
+RGB         1 .84 .62
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   40
+
+// L201 Light
+MATERIAL 4
+RGB         .45 .67 .92
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   40
 
 // Camera
 CAMERA
@@ -45,21 +65,21 @@ cube
 material 1
 TRANS       0 0 0
 ROTAT       0 0 0
-SCALE       10 .01 10
+SCALE       20 .01 10
 
 // Light (R)
 OBJECT 1
 cube
-material 0
-TRANS       10 10 0
+material 3
+TRANS       10 10 2
 ROTAT       0 0 -45
 SCALE       2 0.01 2
 
 // Light (L)
 OBJECT 2
 cube
-material 0
-TRANS       -10 10 0
+material 4
+TRANS       -10 10 2
 ROTAT       0 0 45
 SCALE       2 0.01 2
 
@@ -69,13 +89,13 @@ cube
 material 1
 TRANS       0 5 -5
 ROTAT       0 90 0
-SCALE       .01 10 10
+SCALE       .01 10 20
 
 // Teapot
 OBJECT 4
 mesh
 material 2
-TRANS 0 2 0
-ROTAT 0 0 0
-SCALE 2 2 2
-FILE ../objects/geodesic_classI_2.obj
+TRANS 0 0 0
+ROTAT 0 -30 0
+SCALE 0.05 0.05 0.05
+FILE ../objects/teapot.obj

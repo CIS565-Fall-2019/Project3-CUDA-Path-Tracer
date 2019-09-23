@@ -148,17 +148,8 @@ void scatterRay(
 		pathSegment.color *= m.specular.color;
 	}//else if specular
 	else {
-		float rayX = pathSegment.ray.direction.x;
-		float rayY = pathSegment.ray.direction.y;
-		float rayZ = pathSegment.ray.direction.z;
-		float normX = normal.x;
-		float normY = normal.y;
-		float normZ = normal.z;
-
-		//TODO: simplify this down, once convinced about the math being right
 		//gvec3 newDirection = REFLECT(pathSegment.ray.direction, normal);
-		//gvec3 newDirection = REFLECT(gvec3(rayX, rayY, rayZ), gvec3(normX, normY, normZ));
-		gvec3 newDirection = glm::normalize(reflectIncomingByNormal(gvec3(rayX, rayY, rayZ), gvec3(normX, normY, normZ)));
+		gvec3 newDirection = glm::normalize(reflectIncomingByNormal(pathSegment.ray.direction, normal));
 		float newX = newDirection.x; float newY = newDirection.y; float newZ = newDirection.z;
 		pathSegment.ray = Ray{ intersect, gvec3(newX, newY, newZ) };
 		pathSegment.color *= m.specular.color;

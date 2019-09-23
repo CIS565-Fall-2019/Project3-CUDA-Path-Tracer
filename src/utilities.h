@@ -33,6 +33,13 @@ typedef std::vector<ivec3> ivec3_v;
 typedef std::vector<ivec4> ivec4_v;
 typedef std::vector<std::string> string_v;
 
+struct DebugVector {
+	float x;
+	float y;
+	float z;
+};
+
+
 //Preprocessor functions that you really shouldn't trust, but they might do what we want
 //note: only work for gvec3 types
 
