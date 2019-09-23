@@ -73,18 +73,19 @@ __host__ __device__ void compute_refraction(PathSegment& path, glm::vec3 normal,
 	glm::vec3 old_ray_origin = path.ray.origin;
 	glm::vec3 old_ray_direction = path.ray.direction;
 	glm::vec3 old_color = path.color;
+	glm::vec3 new_ray_direction;
 	
-	float eta;
+	float eta; // essentially n1/n2 or n2/n1 depending on persepctive of ray
 	
 	// notes from https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
 	// for refraction we have some corner cases we need to handle.
 	// maybe negative?
-	float cos_theta = glm::dot(normal, old_ray_direction);
+	float cos_theta1 = glm::dot(normal, old_ray_direction);
 	//normal = glm::faceforward(normal, old_ray_direction, normal);
-	if (cos_theta < 0.f) {
+	if (cos_theta1 < 0.f) {
 		// we are outside the surface, we want cos(theta) to be positive
 		// we are outside moving towards a surface
-		// NdotI = -NdotI;
+		cos_theta1  = -cos_theta1;
 		eta = 1 / m.indexOfRefraction; // we are doing pretty much air over our index of refraction.. airs index ~= 1.
 	}
 	else {
@@ -95,16 +96,44 @@ __host__ __device__ void compute_refraction(PathSegment& path, glm::vec3 normal,
 		eta = m.indexOfRefraction; // material index over air index
 	}
 
+	// list of trig identities for making sense of fresnels and snells
+	// https://en.wikipedia.org/wiki/Snell%27s_law
+	// cos theta1 = -surface vector dot light vector; //
+	// sin theta2 = ( (n1/n2) * sin theta1 ) = (n1/n2) * (sqrt ( 1 - cos_theta1^2))  
+	// cos theta2 = (sqrt ( 1 - sin theta2^2))  
+	// vrefract = (n1/n2) * ray + ( ( n1/n2 * cos theta1 ) - cos theta2  ) * nomal
+	// normal must be positive 
+
+
 	// based off of our surface normal and ray direction we want to reflect the path
-	glm::vec3 new_ray_direction = glm::refract(old_ray_direction,normal,eta);
+	//glm::vec3 new_ray_direction = glm::refract(old_ray_direction,normal,eta);
 	
 	// if the length of the ray is small total internal reflection?
-	if (glm::length(new_ray_direction) < .001f)
-	{
-		//total internal refraction 
-		assert(0);
+	//if (glm::length(new_ray_direction) < .001f)
+	//{
+	//	//total internal refraction 
+	//	assert(0);
 
+	//}
+
+	float sin_theta2 = (eta) * (sqrtf(1 - (cos_theta1 * cos_theta1)));
+
+	// total internal reflection
+	if (sin_theta2 >= 1)
+	{
+		assert(0);
+		return;
 	}
+	else
+	{
+		// do more trig identity ... gross 
+		float cos_theta2 = sqrtf(1 - (sin_theta2 * sin_theta2)); // may need to check if negative
+		assert(cos_theta2 > 0);
+		
+		// finally refract
+		new_ray_direction = (eta * old_ray_direction) +  (((eta * cos_theta1) - cos_theta2) * normal); // cos theta1 and normal must be positive ... this is guaranteed by statemetns above
+	}
+
 
 	// we want to compute our new color, which for a reflection stays the same.
 	old_color *= m.color;
@@ -133,7 +162,7 @@ __host__ __device__ void compute_diffuse(PathSegment& path, glm::vec3 normal, fl
 	if (rand > .5f )
 	{
 		// this works but confused ...
-		//new_ray_direction = glm::normalize(old_ray_direction);
+		new_ray_direction = glm::normalize(old_ray_direction);
 		// reflect makes it look dope
 		//new_ray_direction = glm::reflect(old_ray_direction, normal);
 	}
@@ -153,20 +182,31 @@ __host__ __device__ float fresnels(glm::vec3 normal, glm::vec3 old_ray_direction
 	float eta_air = 1; // n1
 	float eta_mat = material.indexOfRefraction; //n2 
 	float Fresnels_number;
-	
+	float eta; // n1/n2 or n2/n1
 	// list of trig identities for making sense of fresnels and snells
 	// https://en.wikipedia.org/wiki/Snell%27s_law
 	// cos theta1 = -surface vector dot light vector; //
 	// sin theta2 = ( (n1/n2) * sin theta1 ) = (n1/n2) * (sqrt ( 1 - cos_theta1^2))  
 	// cos theta2 = (sqrt ( 1 - sin theta2^2))  
 
-	float cos_theta1 = glm::dot(-normal, old_ray_direction);
-	
-	// may have to do a swap 
-	if (cos_theta1 > 0) { std::swap(eta_air, eta_mat); } // cant use std in device code TODO
+	float cos_theta1 = glm::dot(normal, old_ray_direction);
+	//normal = glm::faceforward(normal, old_ray_direction, normal);
+	if (cos_theta1 < 0.f) {
+		// we are outside the surface, we want cos(theta) to be positive
+		// we are outside moving towards a surface
+		cos_theta1 = -cos_theta1;
+		eta = 1 / material.indexOfRefraction; // we are doing pretty much air over our index of refraction.. airs index ~= 1.
+	}
+	else {
+		// we are inside the surface, cos(theta) is already positive but reverse normal direction
+		// we are inside the material moving towards air
+		normal = -normal;
+		assert(0);
+		eta = material.indexOfRefraction; // material index over air index
+	}
 
 	// do more trig identity ... gross
-	float sin_theta2 = (eta_air / eta_mat) * (sqrtf(std::max( 0.f, 1 - (cos_theta1 * cos_theta1) ) ) );
+	float sin_theta2 = (eta_air / eta_mat) * (sqrtf( 1 - (cos_theta1 * cos_theta1) ) );
 	
 	// total internal reflection
 	if (sin_theta2 >= 1)
@@ -177,7 +217,8 @@ __host__ __device__ float fresnels(glm::vec3 normal, glm::vec3 old_ray_direction
 	else
 	{
 		// do more trig identity ... gross 
-		float cos_theta2 = sqrtf(std::max(0.f, 1 - (sin_theta2 * sin_theta2) )); // cant use std in device code TODO
+		float cos_theta2 = sqrtf( 1 - (sin_theta2 * sin_theta2) ); // cant use std in device code TODO // check that aboce 0
+		assert(cos_theta2 > 0);
 		// ensure positive
 		cos_theta1 = fabsf(cos_theta1);
 		// this is fresnels equation finally
