@@ -33,6 +33,8 @@ Spin up kernels to move/copy the memory around, compute the triangle normals
 
 Implemented specular reflections with configurable exponent
 
+![Shiny balls with their exponents noted](progressImages/day3ShinyBall2.png)
+
 TODO: link picture with exponent comparison noted
 
 ### TODO: refraction
