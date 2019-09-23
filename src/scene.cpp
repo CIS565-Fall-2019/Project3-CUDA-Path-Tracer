@@ -407,7 +407,7 @@ Triangle Scene::triangleFromIndex(int index, vector<tinyobj::index_t> indices, v
 	retval.norm0 = norm0;
 	retval.norm1 = norm1;
 	retval.norm2 = norm2;
-	retval.normal = norm;
+	//retval.normal = norm;//deprecated
 
 	return retval;
 }//triangleFromIndex

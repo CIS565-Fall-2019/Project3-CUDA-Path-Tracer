@@ -38,7 +38,7 @@ struct Triangle {
 	gvec3 vert0;
 	gvec3 vert1;
 	gvec3 vert2;
-	gvec3 normal;
+	//gvec3 normal;
 	gvec3 norm0;//for interpolation
 	gvec3 norm1;//for interpolation
 	gvec3 norm2;//for interpolation
