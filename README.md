@@ -56,6 +56,7 @@ Additionally, I decided to compile this all with `C++17`, in case I decided to m
     * Bunny, Dragon, Teapot, Tree, Breakfast Room, Fireplace Room
 * Turbosquid
     * [Wine Glass](https://www.turbosquid.com/FullPreview/Index.cfm/ID/932821) by Mig91
+    * [Wine Glass 2](https://www.turbosquid.com/3d-models/free-3ds-mode-glass/651391) by besec
 
 ### Other Code
 * Used [TinyObjLoader](https://github.com/syoyo/tinyobjloader) library for loading `*.obj` files
