@@ -6,7 +6,7 @@
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtx/normal.hpp>
 
-//#define SKIPFACES 2//skip all mesh faces save one out of this many
+//#define SKIPFACES 4//skip all mesh faces save one out of this many
 
 Scene::Scene(string filename) {
     cout << "Reading scene from " << filename << " ..." << endl;
@@ -281,6 +281,7 @@ Geom Scene::geomFromShape(tinyobj::shape_t shape, tinyobj::attrib_t attrib,
 	string name = shape.name;//maybe useful?
 	tinyobj::mesh_t mesh = shape.mesh;
 	vector<tinyobj::index_t> indices = mesh.indices;
+	int totalIndices = indices.size() / 3;
 	for (int i = 0; i < indices.size(); i += 3) {
 #ifdef SKIPFACES
 		if ((i / 3) % SKIPFACES != 0) continue;
@@ -288,6 +289,10 @@ Geom Scene::geomFromShape(tinyobj::shape_t shape, tinyobj::attrib_t attrib,
 		Triangle tri = triangleFromIndex(i / 3, indices, mesh.material_ids, attrib, materialid, transform);
 
 		triangles.push_back(tri);
+
+		if ((i / 3) % 100 == 0) {
+			printf("\tProcessing triangle %d of %d\n", i / 3, totalIndices);
+		}//if
 
 	}//for each face
 
@@ -372,7 +377,6 @@ Triangle Scene::triangleFromIndex(int index, vector<tinyobj::index_t> indices, v
 		gvec3 edge0 = vert1 - vert0;
 		gvec3 edge1 = vert2 - vert0;
 		norm = normalized(CROSSP(edge0, edge1));
-		//norm = glm::triangleNormal(vert0, vert1, vert2);
 		norm0 = norm;
 		norm1 = norm;
 		norm2 = norm;
