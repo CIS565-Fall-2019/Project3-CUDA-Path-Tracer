@@ -22,13 +22,13 @@ POSTSHADER_PARTITION = true;
 // the most expensive. This optimization stores the first set of intersections so that
 // proceeding render samples are a little faster.
 constexpr bool
-CACHE_ENABLED = true;
+CACHE_ENABLED = false;
 
 // Not sure if the below is true, but I suspect it will be...
-//constexpr bool
-//ANTIALIASING = false;
-//
-//static_assert(CACHE_ENABLED && !ANTIALIASING, "Cannot have cahcing and antialiasing enabled together!");
+constexpr bool
+ANTIALIASING = true;
+
+static_assert(true != (CACHE_ENABLED && ANTIALIASING), "Cannot have cahcing and antialiasing enabled together!");
 
 //// GENERATE_TERRAIN
 // This option choses to ignore the scene file and instead generate a random
