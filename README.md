@@ -9,7 +9,7 @@ CUDA Path Tracer
 
 ![A bunny lit by colored light](progressImages/day4Bunny.png)
 
-![Colored balls with different specular coefficients](progressImages/day3ShinyBall2.png)
+![Colored balls with different specular coefficients](progressImages/day4ShinyBall.png)
 
 ## Path Tracer
 
@@ -31,11 +31,9 @@ Spin up kernels to move/copy the memory around, compute the triangle normals
 
 ### Specular Sampling with Exponent
 
-Implemented specular reflections with configurable exponent
+Implemented specular reflections with configurable exponent. Pictured below is a comparison of various exponential values for specularity. Notice that the very high value is effectively mirror-like; with such a highly specular object, the slight variations we get off the "mirror" direction are small enough to, effectively, not alter the ray at all. In this fashion, if we wished, we could eliminate the idea of "reflectivity" from our material description altogether.
 
-![Shiny balls with their exponents noted](progressImages/day3ShinyBall2Annotated.png)
-
-TODO: link picture with exponent comparison noted
+![Shiny balls with their exponents noted](progressImages/day4ShinyBallAnnotated.png)
 
 ### TODO: refraction
 
