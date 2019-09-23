@@ -50,7 +50,7 @@ glm::vec3 calculateRandomDirectionInHemisphere(
  * 
  * The visual effect you want is to straight-up add the diffuse and specular
  * components. You can do this in a few ways. This logic also applies to
- * combining other types of materias (such as refractive).
+ * combining other types of materials (such as refractive).
  * 
  * - Always take an even (50/50) split between a each effect (a diffuse bounce
  *   and a specular bounce), but divide the resulting color of either branch
@@ -66,14 +66,55 @@ glm::vec3 calculateRandomDirectionInHemisphere(
  *
  * You may need to change the parameter list for your purposes!
  */
-__host__ __device__
-void scatterRay(
-		PathSegment & pathSegment,
-        glm::vec3 intersect,
-        glm::vec3 normal,
-        const Material &m,
-        thrust::default_random_engine &rng) {
+__host__ __device__ void scatterRay(PathSegment & pathSegment, glm::vec3 intersect, 
+	glm::vec3 normal, const Material &m, thrust::default_random_engine &rng) {
     // TODO: implement this.
     // A basic implementation of pure-diffuse shading will just call the
     // calculateRandomDirectionInHemisphere defined above.
+
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	float probability = u01(rng);
+
+	glm::vec3 newDir(0.f);
+	glm::vec3 newColor(1.f);
+
+	// assume m.hasReflective + m.hasRefractive + probability of being diffuse = 1
+	if (probability < m.hasReflective) { 
+		// reflective
+		// new direction is old direction of ray reflected across surface normal
+		newDir = glm::normalize(glm::reflect(pathSegment.ray.direction, normal));
+		newColor = m.specular.color / m.hasReflective;
+	}
+	else if (probability < m.hasRefractive) {
+		// refractive
+		// TODO: I don't remember how to do refractive
+		newColor = m.color / float(1.0 - m.hasReflective - m.hasRefractive);
+	}
+	else {
+		// diffuse
+		newDir = glm::normalize(calculateRandomDirectionInHemisphere(normal, rng));
+		newColor = m.color / float(1.0 - m.hasReflective - m.hasRefractive);
+	}
+
+	// update color
+	float lambertian = glm::abs((glm::dot(glm::normalize(normal), glm::normalize(pathSegment.ray.direction)))); // uhh should this be old or new direction...
+	pathSegment.color *= newColor;// *lambertian;// *pathSegment.color;
+
+	// update ray
+	pathSegment.ray.direction = glm::normalize(newDir);
+	pathSegment.ray.origin = intersect + (pathSegment.ray.direction * EPSILON);
 }
+
+/*
+struct Material {
+	glm::vec3 color;
+	struct {
+		float exponent;
+		glm::vec3 color;
+	} specular;
+	float hasReflective;
+	float hasRefractive;
+	float indexOfRefraction;
+	float emittance;
+};
+*/
