@@ -51,7 +51,7 @@ Additionally, I decided to compile this all with `C++17`, in case I decided to m
 
 ### OBJ Files
 * Models downloaded from Morgan McGuire's [Computer Graphics Archive](https://casual-effects.com/data)
-    * Bunny, Dragon, Teapot, Tree, Breakfast Room, Fireplace Room
+    * Bunny, Dragon, Teapot, Tree, Fireplace Room
 * Turbosquid
     * [Wine Glass](https://www.turbosquid.com/FullPreview/Index.cfm/ID/667624) by OmniStorm
     * [Secondary Wine Glass](https://www.turbosquid.com/FullPreview/Index.cfm/ID/932821) by Mig91
