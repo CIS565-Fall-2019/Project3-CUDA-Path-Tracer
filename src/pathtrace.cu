@@ -208,6 +208,8 @@ __global__ void computeIntersections(
 			intersections[path_index].t = t_min;
 			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
 			intersections[path_index].surfaceNormal = normal;
+			intersections[path_index].is_inside = !outside;
+			intersections[path_index].intersect = intersect_point;
 		}
 	}
 }
@@ -252,8 +254,9 @@ __global__ void shadeMaterial(
 			// like what you would expect from shading in a rasterizer like OpenGL.
 			// TODO: replace this! you should be able to start with basically a one-liner
 			else if (pathSegments[idx].remainingBounces > 0) {
-				glm::vec3 intersectionPoint = getPointOnRay(pathSegments[idx].ray, intersection.t);//pathSegments[idx].ray.origin + pathSegments[idx].ray.direction * intersection.t;
-				scatterRay(pathSegments[idx], intersection.t, intersectionPoint, intersection.surfaceNormal, material, rng);
+				//glm::vec3 intersectionPoint;
+				//intersectionPoint = getPointOnRay(pathSegments[idx].ray, intersection.t);//pathSegments[idx].ray.origin + pathSegments[idx].ray.direction * intersection.t;
+				scatterRay(pathSegments[idx], intersection, material, rng);
 				--pathSegments[idx].remainingBounces;
 			}
 			// If there was no intersection, color the ray black.
@@ -280,7 +283,7 @@ __global__ void finalGather(int nPaths, glm::vec3 * image, PathSegment * iterati
 	}
 }
 
-struct zero_equality_test
+struct path_termination_test
 {
 	__host__ __device__
 		bool operator()(const PathSegment &path)
@@ -379,17 +382,12 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			dev_paths,
 			dev_materials
 			);
-		dev_path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, zero_equality_test());
-		num_paths = dev_path_end - dev_paths;
-
+		dev_path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, path_termination_test());// split data into completed and non completed
+		num_paths = dev_path_end - dev_paths; // update end point to reflect new pivot
 		cout<< num_paths<<endl;
-
-		if (num_paths == 0) {
-			num_paths = pixelcount;
-			iterationComplete = true;
-		}
+		iterationComplete = (num_paths == 0 || depth == traceDepth);
 	}
-
+	num_paths = pixelcount;
 	// Assemble this iteration and apply it to the image
 	dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
 	finalGather << <numBlocksPixels, blockSize1d >> > (num_paths, dev_image, dev_paths);

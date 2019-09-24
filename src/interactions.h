@@ -67,11 +67,23 @@ glm::vec3 calculateRandomDirectionInHemisphere(
  * You may need to change the parameter list for your purposes!
  */
 __host__ __device__
+glm::vec3 refract(const glm::vec3 &I, const glm::vec3 &N, float eta)
+{
+	/*float cosi = glm::clamp(glm::dot(I, N), -1.0f, 1.0f);
+	float etai = 1, etat = ior;
+	glm::vec3 n = N;
+	if (cosi < 0) { cosi = -cosi; }
+	else { std::swap(etai, etat); n = -N; }
+	float eta = etai / etat;
+	float k = 1 - eta * eta * (1 - cosi * cosi);
+	return k < 0 ? glm::vec3(0) : eta * I + (eta * cosi - sqrtf(k)) * n;*/
+	float cosi = glm::clamp(glm::dot(N, I), -1.0f, 1.0f);
+	return (I * eta - N * (-cosi + eta * cosi));
+}
+__host__ __device__
 void scatterRay(
 		PathSegment & pathSegment,
-		float &t,
-        glm::vec3 intersect,
-        glm::vec3 normal,
+		const ShadeableIntersection &intersection,
         const Material &m,
         thrust::default_random_engine &rng) {
 	glm::vec3 dir = pathSegment.ray.direction;
@@ -79,23 +91,23 @@ void scatterRay(
 	thrust::uniform_real_distribution<float> u01(0, 1);
 	float pdf = u01(rng);
 	if (pdf < m.hasReflective) {
-		dir = glm::reflect(dir, normal);
+		dir = glm::reflect(dir, intersection.surfaceNormal);
 		color = m.specular.color;
 	}
 	else if (pdf  - m.hasReflective < m.hasRefractive) {
-		if (glm::dot(normal, dir) > 0.0f)
-			dir = glm::refract(dir, -normal, m.indexOfRefraction);
+		if (glm::dot(intersection.surfaceNormal, pathSegment.ray.direction) > 0.0f)
+			dir = glm::normalize(refract(pathSegment.ray.direction, -intersection.surfaceNormal, 1/m.indexOfRefraction));
 		else
-			dir = glm::refract(dir, normal, 1 / m.indexOfRefraction);
+			dir = glm::normalize(refract(pathSegment.ray.direction, intersection.surfaceNormal, m.indexOfRefraction));
 		color = m.color;
 	}
 	else {
-		dir = calculateRandomDirectionInHemisphere(normal, rng);
+		dir = calculateRandomDirectionInHemisphere(intersection.surfaceNormal, rng);
 		color = m.color;
 	}
 	pathSegment.ray.direction = dir;
-	pathSegment.ray.origin = intersect + normal * EPSILON;
-	float lightTerm = glm::dot(normal, glm::vec3(0.0f, 1.0f, 0.0f));
+	pathSegment.ray.origin = intersection.intersect + dir * EPSILON;
+	//float lightTerm = glm::dot(normal, glm::vec3(0.0f, 1.0f, 0.0f));
 	//pathSegment.color = pathSegment.color * ((color * lightTerm) * 0.3f + ((1.0f - t * 0.02f) * color) * 0.7f);//glm::clamp(pathSegment.color * ((color * lightTerm) * 0.3f + ((1.0f - t * 0.02f) * color) * 0.7f), glm::vec3(0.0), glm::vec3(255.0));
 	pathSegment.color *= color;
 }

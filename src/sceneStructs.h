@@ -73,4 +73,6 @@ struct ShadeableIntersection {
   float t;
   glm::vec3 surfaceNormal;
   int materialId;
+  bool is_inside;
+  glm::vec3 intersect;
 };
