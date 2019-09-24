@@ -83,12 +83,11 @@ void scatterRay(
 
 
 
-	if (p < m.hasReflective) {
+	if (p <= m.hasReflective) {
 		// Reflection
 		pathSegment.ray.direction = glm::normalize(glm::reflect(originalDirection, normal));
 		pathSegment.ray.origin = intersect + EPSILON * normal;
 		pathSegment.color *= m.specular.color / m.hasReflective;
-
 	}
 	else {
 		pathSegment.ray.direction = glm::normalize(calculateRandomDirectionInHemisphere(normal, rng));

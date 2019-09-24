@@ -20,6 +20,14 @@
 
 #define ERRORCHECK 1
 
+#define LENSRADIUS 0.3
+#define FOCALLENGTH 11.5
+#define DEPTHOFFIELD 1
+#define SORTBYMATERIAL 1
+#define STREAMCOMPACT 1
+#define ANTIALIASING 1
+#define CACHEFIRSTBOUNCE 0
+
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
 void checkCUDAErrorFn(const char *msg, const char *file, int line) {
@@ -135,19 +143,41 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		segment.ray.origin = cam.position;
 		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
 
-		/*thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, 0);
-		thrust::uniform_real_distribution<float> u0x(0, 0.05);
-		thrust::uniform_real_distribution<float> u0y(0, 0.05);
+		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, 0);
+		thrust::uniform_real_distribution<float> u01(0, 1.0);
 
-		float randx =  0.975 + u0x(rng);
-		float randy =  0.975 + u0y(rng);*/
-
+		float offsetx = 0;
+		float offsety = 0;
+#if ANTIALIASING
+		offsetx = u01(rng);
+		offsety = u01(rng);
+#endif
 
 		// TODO: implement antialiasing by jittering the ray
 		segment.ray.direction = glm::normalize(cam.view
-			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f) /** randx*/
-			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f) /** randy*/
-			);
+			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f + offsetx)
+			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f + offsety)
+		);
+
+
+#if DEPTHOFFIELD
+		float px = u01(rng);
+		float py = u01(rng);
+
+		// Put this in a function eventually, maybe do concentric
+		float r = sqrt(px);
+		float theta = 2 * PI * py;
+		glm::vec3 lensOriginOffset = glm::vec3(r * cos(theta), r * sin(theta), 0);
+		lensOriginOffset *= LENSRADIUS;
+
+		segment.ray.origin += lensOriginOffset;
+		float rayZ = segment.ray.direction.z;
+
+		float tValue = glm::abs(FOCALLENGTH / rayZ);
+		glm::vec3 focalPoint = segment.ray.direction * tValue;
+
+		segment.ray.direction = glm::normalize(focalPoint - lensOriginOffset);
+#endif
 
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
@@ -251,42 +281,44 @@ __global__ void shadeMaterial (
   if (idx < num_paths)
   {
     ShadeableIntersection intersection = shadeableIntersections[idx];
-    if (intersection.t > 0.0f) { // if the intersection exists...
-      // Set up the RNG
-      // LOOK: this is how you use thrust's RNG! Please look at
-      // makeSeededRandomEngine as well.
-      thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, 0);
-      thrust::uniform_real_distribution<float> u01(0, 1);
+	if (intersection.t > 0.0f) { // if the intersection exists...
+	  // Set up the RNG
+	  // LOOK: this is how you use thrust's RNG! Please look at
+	  // makeSeededRandomEngine as well.
+		thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, 0);
+		thrust::uniform_real_distribution<float> u01(0, 1);
 
-      Material material = materials[intersection.materialId];
-      glm::vec3 materialColor = material.color;
+		Material material = materials[intersection.materialId];
+		glm::vec3 materialColor = material.color;
 
-      // If the material indicates that the object was a light, "light" the ray
-      if (material.emittance > 0.0f) {
-        pathSegments[idx].color *= (materialColor * material.emittance);
-		pathSegments[idx].remainingBounces = 0;
-      }
-      // Otherwise, do some pseudo-lighting computation. This is actually more
-      // like what you would expect from shading in a rasterizer like OpenGL.
-      // TODO: replace this! you should be able to start with basically a one-liner
-      else {
-		  glm::vec3 originalDirection = pathSegments[idx].ray.direction;
-		  glm::vec3 currIntersectionPos = getPointOnRay(pathSegments[idx].ray, intersection.t);
-		  scatterRay(pathSegments[idx], currIntersectionPos, intersection.surfaceNormal, material, rng);
+		if (pathSegments[idx].remainingBounces > 0) {
+			// If the material indicates that the object was a light, "light" the ray
+			if (material.emittance > 0.0f) {
+				pathSegments[idx].color *= (materialColor * material.emittance);
+				pathSegments[idx].remainingBounces = 0;
+			}
+			// Otherwise, do some pseudo-lighting computation. This is actually more
+			// like what you would expect from shading in a rasterizer like OpenGL.
+			// TODO: replace this! you should be able to start with basically a one-liner
+			else {
+				//glm::vec3 originalDirection = pathSegments[idx].ray.direction;
+				glm::vec3 currIntersectionPos = getPointOnRay(pathSegments[idx].ray, intersection.t);
+				scatterRay(pathSegments[idx], currIntersectionPos, intersection.surfaceNormal, material, rng);
 
-		  float lambertianTerm = glm::abs(glm::dot(intersection.surfaceNormal, originalDirection));
-		  pathSegments[idx].color *= lambertianTerm;
-		  pathSegments[idx].remainingBounces--; // TODO: maybe move to scatter?
+				/*float lambertianTerm = glm::abs(glm::dot(intersection.surfaceNormal, originalDirection));
+				pathSegments[idx].color *= lambertianTerm;*/
+				pathSegments[idx].remainingBounces--; // TODO: maybe move to scatter?
 
 
-        //float lightTerm = glm::dot(intersection.surfaceNormal, glm::vec3(0.0f, 1.0f, 0.0f));
-        //pathSegments[idx].color *= (materialColor * lightTerm) * 0.3f + ((1.0f - intersection.t * 0.02f) * materialColor) * 0.7f;
-        //pathSegments[idx].color *= u01(rng); // apply some noise because why not
-      }
-    // If there was no intersection, color the ray black.
-    // Lots of renderers use 4 channel color, RGBA, where A = alpha, often
-    // used for opacity, in which case they can indicate "no opacity".
-    // This can be useful for post-processing and image compositing.
+			  //float lightTerm = glm::dot(intersection.surfaceNormal, glm::vec3(0.0f, 1.0f, 0.0f));
+			  //pathSegments[idx].color *= (materialColor * lightTerm) * 0.3f + ((1.0f - intersection.t * 0.02f) * materialColor) * 0.7f;
+			  //pathSegments[idx].color *= u01(rng); // apply some noise because why not
+			}
+		}
+	// If there was no intersection, color the ray black.
+	// Lots of renderers use 4 channel color, RGBA, where A = alpha, often
+	// used for opacity, in which case they can indicate "no opacity".
+	// This can be useful for post-processing and image compositing.
     } else {
       pathSegments[idx].color = glm::vec3(0.0f);
 	  pathSegments[idx].remainingBounces = 0;
@@ -412,12 +444,12 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		// TODO: compare between directly shading the path segments and shading
 		// path segments that have been reshuffled to be contiguous in memory.
 
+#if SORTBYMATERIAL
 		thrust::device_ptr<PathSegment> dev_thrust_paths = thrust::device_pointer_cast<PathSegment>(dev_paths);
 		thrust::device_ptr<ShadeableIntersection> dev_thrust_intersections = thrust::device_pointer_cast<ShadeableIntersection>(dev_intersections);
 
-
-
 		thrust::sort_by_key(dev_thrust_intersections, dev_thrust_intersections + num_paths, dev_thrust_paths, materialOrdering());
+#endif
 
 
 		shadeMaterial<<<numblocksPathSegmentTracing, blockSize1d>>> (
@@ -428,25 +460,20 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			dev_materials
 		);
 
-
+#if STREAMCOMPACT
 		PathSegment *new_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, is_terminated());
 		num_paths = new_end - dev_paths;
-
-
 
 		if (num_paths < 1) {
 			depth = traceDepth + 10;
 		}
+#endif
 
 		if (depth > traceDepth) {
 			iterationComplete = true;
 		}
 
 		depth++;
-
-
-		//iterationComplete = true; // TODO: should be based off stream compaction results.
-
 	}
 
 	num_paths = dev_path_end - dev_paths;
