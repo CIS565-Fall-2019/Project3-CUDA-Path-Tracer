@@ -126,5 +126,7 @@ TRANS       0 3.75 0
 ROTAT       0 0 0
 // SCALE    .667 .667 .667
 // FILE ../objects/wineglass.obj
-SCALE       0.01 0.01 0.01
-FILE        ../objects/wine.obj
+// SCALE       0.01 0.01 0.01
+// FILE        ../objects/wine.obj
+SCALE       1 1 1
+FILE        ../objects/zelda/scene.gltf

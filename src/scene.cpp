@@ -130,7 +130,16 @@ int Scene::loadGeom(string objectid) {
 		newGeom.inverseTransform = glm::inverse(newGeom.transform);
 		newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
 
-		Geom_v meshList = readObjFromMesh(filename, newGeom.materialid, newGeom.transform);
+
+		Geom_v meshList = Geom_v();
+		fs::path givenPath = fs::path(filename);
+		if (!givenPath.extension().string().compare(".obj")) {
+			meshList = readObjFromMesh(filename, newGeom.materialid, newGeom.transform);
+		}//if obj
+		else if (!givenPath.extension().string().compare(".gltf")) {
+			meshList = readGltfFromMesh(filename, newGeom.materialid, newGeom.transform);
+		}
+
 		geoms.insert(geoms.end(), meshList.begin(), meshList.end());
 	}//mesh
 
