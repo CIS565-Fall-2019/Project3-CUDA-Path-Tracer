@@ -91,23 +91,21 @@ void scatterRay(
 	thrust::uniform_real_distribution<float> u01(0, 1);
 	float pdf = u01(rng);
 	if (pdf < m.hasReflective) {
-		dir = glm::reflect(dir, intersection.surfaceNormal);
+		dir = glm::normalize(glm::reflect(dir, intersection.surfaceNormal));
 		color = m.specular.color;
 	}
 	else if (pdf  - m.hasReflective < m.hasRefractive) {
-		if (glm::dot(intersection.surfaceNormal, pathSegment.ray.direction) > 0.0f)
-			dir = glm::normalize(refract(pathSegment.ray.direction, -intersection.surfaceNormal, 1/m.indexOfRefraction));
+		if (!intersection.is_inside)
+			dir = glm::normalize(glm::refract(pathSegment.ray.direction, intersection.surfaceNormal, 1/m.indexOfRefraction));
 		else
-			dir = glm::normalize(refract(pathSegment.ray.direction, intersection.surfaceNormal, m.indexOfRefraction));
+			dir = glm::normalize(glm::refract(pathSegment.ray.direction, intersection.surfaceNormal, m.indexOfRefraction));
 		color = m.color;
 	}
 	else {
-		dir = calculateRandomDirectionInHemisphere(intersection.surfaceNormal, rng);
+		dir = glm::normalize(calculateRandomDirectionInHemisphere(intersection.surfaceNormal, rng));
 		color = m.color;
 	}
 	pathSegment.ray.direction = dir;
 	pathSegment.ray.origin = intersection.intersect + dir * EPSILON;
-	//float lightTerm = glm::dot(normal, glm::vec3(0.0f, 1.0f, 0.0f));
-	//pathSegment.color = pathSegment.color * ((color * lightTerm) * 0.3f + ((1.0f - t * 0.02f) * color) * 0.7f);//glm::clamp(pathSegment.color * ((color * lightTerm) * 0.3f + ((1.0f - t * 0.02f) * color) * 0.7f), glm::vec3(0.0), glm::vec3(255.0));
-	pathSegment.color *= color;
+	pathSegment.color = pathSegment.color * color;// glm::clamp(pathSegment.color * color, glm::vec3(0.0f), glm::vec3(1.0f));
 }
