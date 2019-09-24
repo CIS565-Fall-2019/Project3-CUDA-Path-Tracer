@@ -1,10 +1,13 @@
 #include <iostream>
 #include "scene.h"
+#include "image.h"
 #include "tiny_obj_loader.h"
 #include <cstring>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtx/normal.hpp>
+
+#include <tiny_gltf.h>
 
 //#define SKIPFACES 4//skip all mesh faces save one out of this many
 
@@ -127,7 +130,7 @@ int Scene::loadGeom(string objectid) {
 		newGeom.inverseTransform = glm::inverse(newGeom.transform);
 		newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
 
-		Geom_v meshList = readFromMesh(filename, newGeom.materialid, newGeom.transform);
+		Geom_v meshList = readObjFromMesh(filename, newGeom.materialid, newGeom.transform);
 		geoms.insert(geoms.end(), meshList.begin(), meshList.end());
 	}//mesh
 
@@ -235,11 +238,43 @@ int Scene::loadMaterial(string materialid) {
     }
 }
 
-Geom_v Scene::readFromMesh(string filename, int materialid, gmat4 transform) {
+Geom_v Scene::readGltfFromMesh(string filename, int materialid, gmat4 transform) {
+	Geom_v retval = Geom_v();
+
+	fs::path destination = fs::path(filename);
+	fs::path parent = destination.parent_path();
+	std::string warn;
+	std::string err;
+
+	tinygltf::Model model;
+	tinygltf::TinyGLTF loader;
+
+	bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filename);
+
+	if (!warn.empty()) {
+		printf("Warn: %s\n", warn.c_str());
+	}
+
+	if (!err.empty()) {
+		printf("Err: %s\n", err.c_str());
+	}
+
+	if (!ret) {
+		printf("Failed to parse gltf!\n");
+		return retval;
+	}
+
+
+	return retval;
+}
+
+Geom_v Scene::readObjFromMesh(string filename, int materialid, gmat4 transform) {
 //bool LoadObj(attrib_t * attrib, std::vector<shape_t> * shapes,
 //	std::vector<material_t> * materials, std::string * warn,
 //	std::string * err, const char* filename, const char* mtl_basedir,
 //	bool trianglulate, bool default_vcols_fallback);
+	Geom_v retval = Geom_v();
+
 	fs::path destination = fs::path(filename);
 	fs::path parent = destination.parent_path();
 
@@ -252,11 +287,18 @@ Geom_v Scene::readFromMesh(string filename, int materialid, gmat4 transform) {
 	std::vector<tinyobj::material_t> materials;
 	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, meshfile, parent.string().c_str());
 
-	//printf("Return result: %d\n", ret);
-	//printf("Warning: %s\n", warn.c_str());
-	//printf("Error: %s\n", err.c_str());
+	if (!warn.empty()) {
+		printf("Warn: %s\n", warn.c_str());
+	}
 
-	Geom_v retval = Geom_v();
+	if (!err.empty()) {
+		printf("Err: %s\n", err.c_str());
+	}
+
+	if (!ret) {
+		printf("Failed to parse obj!\n");
+		return retval;
+	}
 	
 	for (tinyobj::shape_t shape : shapes) {
 

@@ -10,6 +10,7 @@
 #include "utilities.h"
 #include "sceneStructs.h"
 #include "tiny_obj_loader.h"
+#include "tiny_gltf.h"
 
 using namespace std;
 namespace fs = std::experimental::filesystem;
@@ -30,7 +31,7 @@ public:
     Material_v materials;
     RenderState state;
 
-	Geom_v readFromMesh(string filename, int materialid, gmat4 transform = MAT4I);//default to the identity matrix
+	Geom_v readObjFromMesh(string filename, int materialid, gmat4 transform = MAT4I);//default to the identity matrix
 
 	/**
 	Creates a Material object from the read-in material
@@ -42,6 +43,10 @@ public:
 	Geom Scene::geomFromShape(tinyobj::shape_t shape, tinyobj::attrib_t attrib,
 		std::vector<tinyobj::material_t> materials, int materialid,
 		gmat4 transform);
+	/**
+	Constructs a set of Geom objects from a Gltf file
+	*/
+	Geom_v readGltfFromMesh(string filename, int materialid, gmat4 transform);
 	/**
 	Pulls out the relevant information to make a triangle from the given face index
 	*/
