@@ -2,6 +2,8 @@
 #include <cuda.h>
 #include <cmath>
 #include <thrust/execution_policy.h>
+#include <thrust/device_vector.h>
+#include <thrust/host_vector.h>
 #include <thrust/random.h>
 #include <thrust/remove.h>
 
@@ -84,6 +86,7 @@ void pathtraceInit(Scene *scene) {
     cudaMalloc(&dev_image, pixelcount * sizeof(glm::vec3));
     cudaMemset(dev_image, 0, pixelcount * sizeof(glm::vec3));
 
+    //same number of path as pixel
   	cudaMalloc(&dev_paths, pixelcount * sizeof(PathSegment));
 
   	cudaMalloc(&dev_geoms, scene->geoms.size() * sizeof(Geom));
@@ -117,7 +120,7 @@ void pathtraceFree() {
 *
 * Antialiasing - add rays for sub-pixel sampling
 * motion blur - jitter rays "in time"
-* lens effect - jitter ray origin positions based on a lens
+* lens effect - jitter ray origin positions based on a lens -- need to modify if I want to implement
 */
 __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, PathSegment* pathSegments)
 {
@@ -129,7 +132,7 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		PathSegment & segment = pathSegments[index];
 
 		segment.ray.origin = cam.position;
-    segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
+        segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
 
 		// TODO: implement antialiasing by jittering the ray
 		segment.ray.direction = glm::normalize(cam.view
@@ -198,6 +201,7 @@ __global__ void computeIntersections(
 			}
 		}
 
+        //no hit
 		if (hit_geom_index == -1)
 		{
 			intersections[path_index].t = -1.0f;
@@ -243,24 +247,34 @@ __global__ void shadeFakeMaterial (
       Material material = materials[intersection.materialId];
       glm::vec3 materialColor = material.color;
 
-      // If the material indicates that the object was a light, "light" the ray
+      // If the material indicates that the object was a light, "light" the ray -- should light source be + instead of time?
       if (material.emittance > 0.0f) {
         pathSegments[idx].color *= (materialColor * material.emittance);
       }
       // Otherwise, do some pseudo-lighting computation. This is actually more
       // like what you would expect from shading in a rasterizer like OpenGL.
       // TODO: replace this! you should be able to start with basically a one-liner
+
+      //basic implementation of bsdf
       else {
-        float lightTerm = glm::dot(intersection.surfaceNormal, glm::vec3(0.0f, 1.0f, 0.0f));
-        pathSegments[idx].color *= (materialColor * lightTerm) * 0.3f + ((1.0f - intersection.t * 0.02f) * materialColor) * 0.7f;
-        pathSegments[idx].color *= u01(rng); // apply some noise because why not
+          glm::vec3 intersec_pos = pathSegments[idx].ray.direction * intersection.t + pathSegments[idx].ray.origin;
+          scatterRay(pathSegments[idx], intersec_pos, intersection.surfaceNormal, material, rng);
       }
+
+      // fake implementation
+      //else {
+      //  float lightTerm = glm::dot(intersection.surfaceNormal, glm::vec3(0.0f, 1.0f, 0.0f));
+      //  pathSegments[idx].color *= (materialColor * lightTerm) * 0.3f + ((1.0f - intersection.t * 0.02f) * materialColor) * 0.7f;
+      //  pathSegments[idx].color *= u01(rng); // apply some noise because why not
+      //}
+
     // If there was no intersection, color the ray black.
     // Lots of renderers use 4 channel color, RGBA, where A = alpha, often
     // used for opacity, in which case they can indicate "no opacity".
     // This can be useful for post-processing and image compositing.
     } else {
       pathSegments[idx].color = glm::vec3(0.0f);
+      pathSegments[idx].remainingBounces = -1;//no further bouncing -- help stream compaction
     }
   }
 }
@@ -276,6 +290,17 @@ __global__ void finalGather(int nPaths, glm::vec3 * image, PathSegment * iterati
 		image[iterationPath.pixelIndex] += iterationPath.color;
 	}
 }
+
+//need to change position later
+struct no_more_bounce
+{
+    __host__ __device__
+        bool operator()(const PathSegment p)
+    {
+        return p.remainingBounces < 0;
+    }
+};
+
 
 /**
  * Wrapper for the __global__ call that sets up the kernel calls and does a ton
@@ -330,8 +355,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	checkCUDAError("generate camera ray");
 
 	int depth = 0;
-	PathSegment* dev_path_end = dev_paths + pixelcount;
-	int num_paths = dev_path_end - dev_paths;
+	PathSegment* dev_path_end = dev_paths + pixelcount; //the tail of path segment array
+	int num_paths = dev_path_end - dev_paths; //is that the same as pixel count? -- no when antialiasing, do we need to change?
 
 	// --- PathSegment Tracing Stage ---
 	// Shoot ray into scene, bounce between objects, push shading chunks
@@ -363,6 +388,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
   // evaluating the BSDF.
   // Start off with just a big kernel that handles all the different
   // materials you have in the scenefile.
+
   // TODO: compare between directly shading the path segments and shading
   // path segments that have been reshuffled to be contiguous in memory.
 
@@ -373,7 +399,14 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
     dev_paths,
     dev_materials
   );
-  iterationComplete = true; // TODO: should be based off stream compaction results.
+  // TODO: should be based off stream compaction results, and even shot more rays
+  // update the dev_path and num_paths
+  PathSegment* dev_paths_end_result = thrust::remove_if(thrust::device, dev_paths, dev_paths + num_paths, no_more_bounce());
+  num_paths = dev_paths_end_result - dev_paths;
+  if (depth > traceDepth)
+  {
+      iterationComplete = true;
+  }
 	}
 
   // Assemble this iteration and apply it to the image

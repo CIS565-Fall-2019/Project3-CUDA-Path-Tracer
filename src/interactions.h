@@ -50,7 +50,7 @@ glm::vec3 calculateRandomDirectionInHemisphere(
  * 
  * The visual effect you want is to straight-up add the diffuse and specular
  * components. You can do this in a few ways. This logic also applies to
- * combining other types of materias (such as refractive).
+ * combining other types of materias (such as refractive). --- only reflective is that right? diffuse shouldn't have reflected component
  * 
  * - Always take an even (50/50) split between a each effect (a diffuse bounce
  *   and a specular bounce), but divide the resulting color of either branch
@@ -66,6 +66,12 @@ glm::vec3 calculateRandomDirectionInHemisphere(
  *
  * You may need to change the parameter list for your purposes!
  */
+
+//it means that we will update the color directly in scatterRay and just need to call scatter Ray
+Ray ray;
+glm::vec3 color;
+int pixelIndex;
+int remainingBounces;
 __host__ __device__
 void scatterRay(
 		PathSegment & pathSegment,
@@ -76,4 +82,74 @@ void scatterRay(
     // TODO: implement this.
     // A basic implementation of pure-diffuse shading will just call the
     // calculateRandomDirectionInHemisphere defined above.
+    //very first determine whether we should keep bouncing
+    if (pathSegment.remainingBounces <= 0)
+    {
+        return;
+    }
+    //first determine the material
+    
+    //diffuse case
+    //if it is pure-diffuse, then it is the its material's color /invPi -- might have other diffuse
+    if (!m.hasReflective && !m.hasRefractive)
+    {
+        glm::vec3 diffuse_dir = calculateRandomDirectionInHemisphere(normal, rng);
+        glm::vec3 wo = -pathSegment.ray.direction;
+        glm::vec3 wi = diffuse_dir;
+        //first update color -- actually not related to ray inforamtion at all for now
+        pathSegment.color *= m.color * (float)InvPi;
+        //apply lambert's law
+        float lightTerm = glm::abs(glm::dot(wi, normal));
+        pathSegment.color *= lightTerm;
+        //update ray
+        pathSegment.ray.origin = intersect;
+        pathSegment.ray.direction = diffuse_dir;
+        pathSegment.remainingBounces--;
+    }
+    //if pure-specular, itself doesn't have color, all is about its reflected item's color
+    else if (m.hasReflective)
+    {
+        // 50-50 specular?
+        ////use random generator to genrate a num
+        //thrust::uniform_real_distribution<float> u01(0, 1);
+        //float condition = u01(rng);
+        ////first use simple 5/5 version
+        //if (condition < 0.5)
+        //{
+        //    glm::vec3 diffuse_dir = calculateRandomDirectionInHemisphere(normal, rng);
+        //    glm::vec3 wo = -pathSegment.ray.direction;
+        //    glm::vec3 wi = diffuse_dir;
+        //    //first update color -- actually not related to ray inforamtion at all for now
+        //    pathSegment.color *= m.color * (float)InvPi;
+        //    //apply lambert's law
+        //    float lightTerm = glm::abs(glm::dot(wi, normal));
+        //    pathSegment.color *= lightTerm;
+        //    //update ray
+        //    pathSegment.ray.origin = intersect;
+        //    pathSegment.ray.direction = diffuse_dir;
+        //}
+        //else
+        //{
+        //    glm::vec3 specular_dir = glm::reflect(pathSegment.ray.direction, normal);
+        //    //no update on color
+        //    //update ray
+        //    pathSegment.ray.origin = intersect;
+        //    pathSegment.ray.direction = specular_dir;
+        //}
+
+        //pure specular
+            glm::vec3 specular_dir = glm::reflect(pathSegment.ray.direction, normal);
+            //no update on color
+            //update ray
+            pathSegment.ray.origin = intersect;
+            pathSegment.ray.direction = specular_dir;
+            pathSegment.remainingBounces--;
+
+    }
+    else if (m.hasRefractive)
+    {
+        //under construction
+    
+    }
+
 }
