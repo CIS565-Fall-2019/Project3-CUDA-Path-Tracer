@@ -21,6 +21,14 @@
 #define CACHE_ME_OUTSIDE
 #define STREAM_COMPACTION
 #define MATERIAL_SORT
+//#define ANTIALIASING
+
+#ifdef CACHE_ME_OUTSIDE 
+#ifdef ANTIALIASING
+	static_assert(0,"Anti aliasing and caching can not be combined" );
+#endif
+#endif
+
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -196,18 +204,31 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	float alias_x = x;
+	float alias_y = y;
 
 	if (x < cam.resolution.x && y < cam.resolution.y) {
 		int index = x + (y * cam.resolution.x);
 		PathSegment & segment = pathSegments[index];
 
 		segment.ray.origin = cam.position;
-    segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
+		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
+
+#ifdef ANTIALIASING
+		// whats an appropriate range?-1,1? or more? 
+		thrust::default_random_engine rng = makeSeededRandomEngine(x, y, iter);
+		thrust::uniform_real_distribution<float> u01(-1, 1);
+		float x_alias = u01(rng);
+		float y_alias = u01(rng);
+		alias_x += x_alias;
+		alias_y += y_alias;
+
+#endif
 
 		// TODO: implement antialiasing by jittering the ray
 		segment.ray.direction = glm::normalize(cam.view
-			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f)
-			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f)
+			- cam.right * cam.pixelLength.x * (alias_x - (float)cam.resolution.x * 0.5f)
+			- cam.up * cam.pixelLength.y * (alias_y - (float)cam.resolution.y * 0.5f)
 			);
 
 		segment.pixelIndex = index;
@@ -316,7 +337,7 @@ __global__ void shadeFakeMaterial (
 	  
 	  //pathSegments[idx].remainingBounces=0;
 	  ShadeableIntersection intersection = shadeableIntersections[idx];
-    if (intersection.t > 0.0f ) { // if the intersection exists...
+    if (intersection.t > 0.0f) { // if the intersection exists...
       // Set up the RNG
       // LOOK: this is how you use thrust's RNG! Please look at
       // makeSeededRandomEngine as well.
@@ -325,6 +346,12 @@ __global__ void shadeFakeMaterial (
 
       Material material = materials[intersection.materialId];
       glm::vec3 materialColor = material.color;
+
+	/*  if (glm::length(pathSegments[idx].color) < EPSILON)
+	  {
+		  pathSegments[idx].remainingBounces = 0;
+		  return;
+	  }*/
 
       // If the material indicates that the object was a light, "light" the ray
       if (material.emittance > 0.0f) {

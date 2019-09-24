@@ -41,11 +41,11 @@ glm::vec3 calculateRandomDirectionInHemisphere(
         + sin(around) * over * perpendicularDirection2;
 }
 
-__host__ __device__ void compute_reflection(PathSegment& path, glm::vec3 normal, float t,const Material& m)
+__host__ __device__ glm::vec3 compute_reflection(PathSegment& path, glm::vec3 normal, float t,const Material& m)
 {
 	glm::vec3 old_ray_origin = path.ray.origin;
 	glm::vec3 old_ray_direction = path.ray.direction;
-	glm::vec3 old_color = path.color;
+	//glm::vec3 old_color = path.color;
 
 	// based off of our surface normal and ray direction we want to reflect the path
 	// https://glm.g-truc.net/0.9.4/api/a00131.html#gabe1fa0bef5f854242eb70ce56e5a7d03
@@ -57,22 +57,22 @@ __host__ __device__ void compute_reflection(PathSegment& path, glm::vec3 normal,
 	// http://web.cse.ohio-state.edu/~shen.94/681/Site/Slides_files/reflection_refraction.pdf
 
 	// we want to accumulate some more color.
-	old_color *= m.specular.color;
+	//old_color *= m.specular.color;
 
 	// set our new color
-	path.color = old_color ;
+	//path.color = old_color ;
 
 	// compute our new ray origin
-	path.ray.origin = (old_ray_origin + old_ray_direction * t) + (new_ray_direction *.001f); // the is some floating error TA said add this
+	path.ray.origin = (old_ray_origin + old_ray_direction * t) + (new_ray_direction * EPSILON); // the is some floating error TA said add this
 	path.ray.direction = new_ray_direction;
-	return;
+	return m.specular.color;
 }
 
-__host__ __device__ void compute_refraction(PathSegment& path, glm::vec3 normal, float t,const Material& m)
+__host__ __device__ glm::vec3 compute_refraction(PathSegment& path, glm::vec3 normal, float t,const Material& m)
 {
 	glm::vec3 old_ray_origin = path.ray.origin;
 	glm::vec3 old_ray_direction = path.ray.direction;
-	glm::vec3 old_color = path.color;
+	//glm::vec3 old_color = path.color;
 	glm::vec3 new_ray_direction;
 	
 	float eta; // essentially n1/n2 or n2/n1 depending on persepctive of ray
@@ -80,7 +80,7 @@ __host__ __device__ void compute_refraction(PathSegment& path, glm::vec3 normal,
 	// notes from https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
 	// for refraction we have some corner cases we need to handle.
 	// maybe negative?
-	float cos_theta1 = glm::dot(normal, old_ray_direction);
+	float cos_theta1 = glm::dot( normal, old_ray_direction);
 	//normal = glm::faceforward(normal, old_ray_direction, normal);
 	if (cos_theta1 < 0.f) {
 		// we are outside the surface, we want cos(theta) to be positive
@@ -96,6 +96,10 @@ __host__ __device__ void compute_refraction(PathSegment& path, glm::vec3 normal,
 		eta = m.indexOfRefraction; // material index over air index
 	}
 
+	// I think there was some rounding errors... dot product was producing values of 1.00000012
+	// so camp our values....
+	cos_theta1 = (cos_theta1 > 1) ? 1 : cos_theta1;
+
 	// list of trig identities for making sense of fresnels and snells
 	// https://en.wikipedia.org/wiki/Snell%27s_law
 	// cos theta1 = -surface vector dot light vector; //
@@ -106,7 +110,7 @@ __host__ __device__ void compute_refraction(PathSegment& path, glm::vec3 normal,
 
 
 	// based off of our surface normal and ray direction we want to reflect the path
-	//glm::vec3 new_ray_direction = glm::refract(old_ray_direction,normal,eta);
+	//new_ray_direction = glm::refract(old_ray_direction,normal,eta);
 	
 	// if the length of the ray is small total internal reflection?
 	//if (glm::length(new_ray_direction) < .001f)
@@ -117,18 +121,21 @@ __host__ __device__ void compute_refraction(PathSegment& path, glm::vec3 normal,
 	//}
 
 	float sin_theta2 = (eta) * (sqrtf(1 - (cos_theta1 * cos_theta1)));
+	assert((1 - (cos_theta1 * cos_theta1) >= 0)); // make sure no NaN's
 
+	
 	// total internal reflection
 	if (sin_theta2 >= 1)
 	{
 		assert(0);
-		return;
+		// return 0
+		return glm::vec3(0.f);
 	}
 	else
 	{
 		// do more trig identity ... gross 
 		float cos_theta2 = sqrtf(1 - (sin_theta2 * sin_theta2)); // may need to check if negative
-		assert(cos_theta2 > 0);
+		assert((1 - (sin_theta2 * sin_theta2) >= 0)); // make sure no NaN's
 		
 		// finally refract
 		new_ray_direction = (eta * old_ray_direction) +  (((eta * cos_theta1) - cos_theta2) * normal); // cos theta1 and normal must be positive ... this is guaranteed by statemetns above
@@ -136,45 +143,50 @@ __host__ __device__ void compute_refraction(PathSegment& path, glm::vec3 normal,
 
 
 	// we want to compute our new color, which for a reflection stays the same.
-	old_color *= m.color;
+	//float old_color = m.color;
 
-	path.color = glm::max(old_color, glm::vec3(0.0f));
+	//path.color = glm::max(old_color, glm::vec3(0.0f));
 
 	// compute our new ray origin
-	path.ray.origin = (old_ray_origin + old_ray_direction * t) + (new_ray_direction * .001f); // the is some floating error TA said add this
+	path.ray.origin = (old_ray_origin + old_ray_direction * t) + (new_ray_direction * EPSILON); // the is some floating error TA said add this
 	path.ray.direction = new_ray_direction;
-	return;
+	return m.color;
 }
 
-__host__ __device__ void compute_diffuse(PathSegment& path, glm::vec3 normal, float t, const Material& m, thrust::default_random_engine &rng)
+__host__ __device__ glm::vec3 compute_diffuse(PathSegment& path, glm::vec3 normal, float t, const Material& m, thrust::default_random_engine &rng)
 {
 	thrust::uniform_real_distribution<float> u01(0, 1);
 	glm::vec3 old_ray_origin = path.ray.origin;
 	glm::vec3 old_ray_direction = path.ray.direction;
-	glm::vec3 old_color = path.color;
+	glm::vec3 color;
 
 	// based off of our surface normal and ray direction we want to reflect the path
-	glm::vec3 new_ray_direction =glm::normalize( calculateRandomDirectionInHemisphere(normal, rng) );
+	glm::vec3 new_ray_direction = calculateRandomDirectionInHemisphere(normal, rng);
 
 	float rand = u01(rng);
 
 	// specular bounce?
 	if (rand > .5f )
 	{
-		// this works but confused ...
-		new_ray_direction = glm::normalize(old_ray_direction);
+		// specular makes it dark? even though they are the same numbers
+		//new_ray_direction = glm::normalize(old_ray_direction);
 		// reflect makes it look dope
 		//new_ray_direction = glm::reflect(old_ray_direction, normal);
+		color = m.specular.color;
+	}
+	else
+	{
+		color = m.color;
 	}
 
-	glm::vec3 c = m.color;
-	old_color *= c ;
-	path.color = old_color;//glm::max(old_color, glm::vec3(0.f));
+	//glm::vec3 c = m.color;
+	//old_color *= c ;
+	//path.color = old_color;//glm::max(old_color, glm::vec3(0.f));
 
 	// compute our new ray origin
-	path.ray.origin = (old_ray_origin + old_ray_direction * t) + (new_ray_direction *.001f); // the is some floating error TA said add this
+	path.ray.origin = (old_ray_origin + old_ray_direction * t) + (new_ray_direction *EPSILON); // the is some floating error TA said add this
 	path.ray.direction = new_ray_direction;
-	return;
+	return color;
 }
 
 __host__ __device__ float fresnels(glm::vec3 normal, glm::vec3 old_ray_direction,const Material& material)
@@ -212,6 +224,7 @@ __host__ __device__ float fresnels(glm::vec3 normal, glm::vec3 old_ray_direction
 	if (sin_theta2 >= 1)
 	{
 		Fresnels_number = 1;
+		assert(0);
 		return Fresnels_number;
 	}
 	else
@@ -235,22 +248,29 @@ __host__ __device__ float fresnels(glm::vec3 normal, glm::vec3 old_ray_direction
 // based off of fresenels equation we follow the route of reflection or refraction
 // resources: https://computergraphics.stackexchange.com/questions/2482/choosing-reflection-or-refraction-in-path-tracing
 // https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
-__host__ __device__ void compute_fresnels(PathSegment& path, glm::vec3 normal, float t, const Material& m, thrust::default_random_engine &rng)
+__host__ __device__ glm::vec3 compute_fresnels(PathSegment& path, glm::vec3 normal, float t, const Material& m, thrust::default_random_engine &rng)
 {
 	thrust::uniform_real_distribution<float> u01(0, 1);
 	float rand = u01(rng);
+	glm::vec3 color;
 
 	// fresnelse number needs to be added to the color i belive ... so TODO 
 	float Fresnels_Number = fresnels(normal,path.ray.direction,m);
+	assert(Fresnels_Number != 0); // make sure its reasonable
 
 	if (rand > .5f)
 	{
-		compute_refraction(path, normal, t, m);
+		color = compute_refraction(path, normal, t, m);
+		Fresnels_Number = 1 - Fresnels_Number;
+		assert(Fresnels_Number != 0);
 	}
 	else
 	{
-		compute_reflection(path, normal, t, m);
+		color = compute_reflection(path, normal, t, m);
 	}
+
+	//assert(Fresnels_Number >= 0 && Fresnels_Number < 1); // make sure its reasonable
+	return Fresnels_Number * color;
 }
 
 /**
@@ -290,24 +310,26 @@ void scatterRay(
     // calculateRandomDirectionInHemisphere defined above.
 	// calculateRandomDirection or depending on what we want to call
 	// is diffuse is reflective is refractive. is opaque? etc etc
-
+	glm::vec3 color;
 
 	if (m.hasReflective > 0.0f && m.hasRefractive > 0.0f)
 	{
-		compute_fresnels(pathSegment, normal, t, m,rng);
+		color = compute_fresnels(pathSegment, normal, t, m,rng);
 	}
 	// if reflective
 	else if (m.hasReflective > 0.0f)
 	{
-		compute_reflection(pathSegment, normal, t, m);
+		color = compute_reflection(pathSegment, normal, t, m);
 	}
 	//if refractive
 	else if (m.hasRefractive > 0.0f) 
 	{
-		compute_refraction(pathSegment, normal, t, m);
+		color = compute_refraction(pathSegment, normal, t, m);
 	}
 	// else diffuse
 	else{
-		compute_diffuse(pathSegment, normal, t, m, rng);
+		color = compute_diffuse(pathSegment, normal, t, m, rng);
 	}
+
+	pathSegment.color *= color; 
 }
