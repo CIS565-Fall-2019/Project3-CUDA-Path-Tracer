@@ -45,7 +45,7 @@ SPECEX      0
 SPECRGB     .98 .98 .98
 REFL        1
 REFR        0
-REFRIOR     1
+REFRIOR     1.3
 EMITTANCE   0
 
 // Camera
@@ -108,7 +108,7 @@ TRANS       5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
 
-// Sphere
+// Cube
 OBJECT 6
 sphere
 material 4

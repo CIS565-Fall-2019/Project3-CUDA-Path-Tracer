@@ -69,6 +69,7 @@ glm::vec3 calculateRandomDirectionInHemisphere(
 __host__ __device__
 void scatterRay(
 		PathSegment & pathSegment,
+		float &t,
         glm::vec3 intersect,
         glm::vec3 normal,
         const Material &m,
@@ -82,8 +83,11 @@ void scatterRay(
 		color = m.specular.color;
 	}
 	else if (pdf  - m.hasReflective < m.hasRefractive) {
-		dir = glm::refract(dir, normal, m.indexOfRefraction);
-		color = m.specular.color;
+		if (glm::dot(normal, dir) > 0.0f)
+			dir = glm::refract(dir, -normal, m.indexOfRefraction);
+		else
+			dir = glm::refract(dir, normal, 1 / m.indexOfRefraction);
+		color = m.color;
 	}
 	else {
 		dir = calculateRandomDirectionInHemisphere(normal, rng);
@@ -91,5 +95,7 @@ void scatterRay(
 	}
 	pathSegment.ray.direction = dir;
 	pathSegment.ray.origin = intersect + normal * EPSILON;
+	float lightTerm = glm::dot(normal, glm::vec3(0.0f, 1.0f, 0.0f));
+	//pathSegment.color = pathSegment.color * ((color * lightTerm) * 0.3f + ((1.0f - t * 0.02f) * color) * 0.7f);//glm::clamp(pathSegment.color * ((color * lightTerm) * 0.3f + ((1.0f - t * 0.02f) * color) * 0.7f), glm::vec3(0.0), glm::vec3(255.0));
 	pathSegment.color *= color;
 }

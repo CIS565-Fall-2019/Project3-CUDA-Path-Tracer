@@ -8,7 +8,6 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <iostream>
 #include <cstdio>
-
 #include "utilities.h"
 
 float utilityCore::clamp(float f, float min, float max) {
@@ -33,25 +32,6 @@ std::string utilityCore::convertIntToString(int number) {
     std::stringstream ss;
     ss << number;
     return ss.str();
-}
-
-glm::vec3 utilityCore::clampRGB(glm::vec3 color) {
-    if (color[0] < 0) {
-        color[0] = 0;
-    } else if (color[0] > 255) {
-        color[0] = 255;
-    }
-    if (color[1] < 0) {
-        color[1] = 0;
-    } else if (color[1] > 255) {
-        color[1] = 255;
-    }
-    if (color[2] < 0) {
-        color[2] = 0;
-    } else if (color[2] > 255) {
-        color[2] = 255;
-    }
-    return color;
 }
 
 bool utilityCore::epsilonCheck(float a, float b) {
