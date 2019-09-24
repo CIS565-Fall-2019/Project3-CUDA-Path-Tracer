@@ -18,11 +18,11 @@ REFR        0
 REFRIOR     0
 EMITTANCE   0
 
-// clear glass
+// Cool Green
 MATERIAL 2
-RGB         0 0 0 
+RGB         0.3 1 .8
 SPECEX      1024
-SPECRGB     .8 1 1
+SPECRGB     0.3 1 .8
 REFL        0
 REFR        0
 REFRIOR     0
@@ -81,7 +81,7 @@ SCALE       20 .01 10
 OBJECT 1
 cube
 material 4
-TRANS       10 10 2
+TRANS       7 10 2
 ROTAT       0 0 -45
 SCALE       3 0.01 3
 
@@ -89,7 +89,7 @@ SCALE       3 0.01 3
 OBJECT 2
 cube
 material 5
-TRANS       -10 10 2
+TRANS       -7 10 2
 ROTAT       0 0 45
 SCALE       3 0.01 3
 
@@ -117,16 +117,11 @@ TRANS       4 1 0
 ROTAT       0 0 0
 SCALE       2 2 2
 
-// Wine glass
+// METAL ZELDA
 OBJECT 6
 mesh
 material 2
-// TRANS       0 2 1
-TRANS       0 3.75 0
-ROTAT       0 0 0
-// SCALE    .667 .667 .667
-// FILE ../objects/wineglass.obj
-// SCALE       0.01 0.01 0.01
-// FILE        ../objects/wine.obj
-SCALE       0.5 0.5 0.5
+TRANS       0 0 0
+ROTAT       -90 0 0
+SCALE       .5 .5 .5
 FILE        ../objects/zelda/scene.gltf
