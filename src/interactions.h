@@ -81,13 +81,13 @@ void scatterRay(
 	// Reflection
 	if (rand_num < m.hasReflective) {
 		//TODO: approximate Fresnel effects using Schlick’s approximation
-		scattered_ray_direction = glm::reflect(pathSegment.ray.direction, normal);
+		scattered_ray_direction = glm::normalize(glm::reflect(pathSegment.ray.direction, normal));
 		pathSegment.color *= m.specular.color;
 	}
 	// Refraction
 	else if (rand_num < m.hasReflective + m.hasRefractive) {
 		//TODO: Snell’s law plus fresnel effects
-		scattered_ray_direction = glm::refract(pathSegment.ray.direction, normal, m.indexOfRefraction);
+		scattered_ray_direction = glm::normalize(glm::refract(pathSegment.ray.direction, normal, m.indexOfRefraction));
 		pathSegment.color *= m.color;
 		// Refraction
 	}

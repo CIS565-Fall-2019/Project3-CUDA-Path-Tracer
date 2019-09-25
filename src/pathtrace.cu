@@ -239,8 +239,9 @@ __global__ void shadeFakeMaterial(
 )
 {
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
-	if (id < num_paths && pathSegments[pathSegments[id].pixelIndex].remainingBounces > 0)
-	{
+	//if (id < num_paths && pathSegments[pathSegments[id].pixelIndex].remainingBounces > 0)
+	if (id < num_paths)
+		{
 		int idx = dev_leftover_indices[id];
 		ShadeableIntersection intersection = shadeableIntersections[idx];
 		if (intersection.t > 0.0f) { // if the intersection exists...
@@ -278,9 +279,10 @@ __global__ void shadeFakeMaterial(
 			pathSegments[idx].remainingBounces = 0;
 		}
 		// Need to remove this for next iteration
+#if COMPACT_RAYS
 		if (pathSegments[idx].remainingBounces <= 0)
 			dev_leftover_indices[id] = -1;
-
+#endif
 	}
 }
 
@@ -406,12 +408,12 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			dev_materials,
 			dev_leftover_indices
 			);
-		if (depth == 5)
-			iterationComplete = true;
 		// TODO: should be based off stream compaction results.
 		#if COMPACT_RAYS
 			dev_leftover_indices_end = thrust::remove_if(thrust::device, dev_leftover_indices, dev_leftover_indices + num_paths, is_complete());
 		#endif
+		if (depth == 5)
+			iterationComplete = true;
 
 	}
 
