@@ -14,6 +14,7 @@
 #include "pathtrace.h"
 #include "intersections.h"
 #include "interactions.h"
+#include "tiny_gltf.h"
 
 #define ERRORCHECK 1
 
@@ -250,7 +251,7 @@ __global__ void computeIntersections(
 	)
 {
 	int path_index = blockIdx.x * blockDim.x + threadIdx.x;
-
+	//printf("Hello from block %d thread %d\n", blockIdx.x, threadIdx.x);
 	if (path_index < num_paths)
 	{
 		PathSegment pathSegment = pathSegments[path_index];
@@ -362,7 +363,7 @@ __global__ void shadeFakeMaterial (
       // like what you would expect from shading in a rasterizer like OpenGL.
       // TODO: replace this! you should be able to start with basically a one-liner
       else{
-		  scatterRay(pathSegments[idx], intersection.surfaceNormal, material,intersection.t, rng);
+		  scatterRay(pathSegments[idx], getPointOnRay(pathSegments[idx].ray,intersection.t),intersection.surfaceNormal, material,intersection.t, rng);
 		  pathSegments[idx].remainingBounces--; // decrement our bounce
       }
     // If there was no intersection, color the ray black.
@@ -468,7 +469,6 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 // enable disable first bounce cachine. 
 #ifdef CACHE_ME_OUTSIDE
-	   // printf(" depth %d : iter %d\n", depth, iter);
 
 		//Checking if intersection cached results should be used
 		if(iter == 1 && depth == 0)

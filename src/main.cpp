@@ -1,6 +1,7 @@
 #include "main.h"
 #include "preview.h"
 #include <cstring>
+#include "tiny_gltf.h"
 
 static std::string startTimeString;
 
@@ -26,6 +27,32 @@ int iteration;
 int width;
 int height;
 
+
+bool _loadModel() {
+	tinygltf::TinyGLTF loader;
+	std::string err;
+	std::string warn;
+	tinygltf::Model model;
+	std::string filename = "../img/sloth/sloth/sloth3.mtl";
+
+
+	bool res = loader.LoadASCIIFromFile(&model, &err, &warn, filename.c_str());
+	if (!warn.empty()) {
+		std::cout << "WARN: " << warn << std::endl;
+	}
+
+	if (!err.empty()) {
+		std::cout << "ERR: " << err << std::endl;
+	}
+
+	if (!res)
+		std::cout << "Failed to load glTF: " << filename << std::endl;
+	else
+		std::cout << "Loaded glTF: " << filename << std::endl;
+
+	return res;
+}
+
 //-------------------------------
 //-------------MAIN--------------
 //-------------------------------
@@ -37,6 +64,8 @@ int main(int argc, char** argv) {
         printf("Usage: %s SCENEFILE.txt\n", argv[0]);
         return 1;
     }
+
+	_loadModel();
 
     const char *sceneFile = argv[1];
 
