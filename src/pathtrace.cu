@@ -129,6 +129,7 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		PathSegment & segment = pathSegments[index];
 
 		segment.ray.origin = cam.position;
+		segment.ray.origin = cam.position;
     segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
 
 		// TODO: implement antialiasing by jittering the ray
@@ -212,6 +213,54 @@ __global__ void computeIntersections(
 	}
 }
 
+// Added
+// Get the new color materIAL AFTER BOUNCING
+__global__ void getColorFromBSDF(int numPaths, ShadeableIntersection* shadeableIntersections, Material* materials, PathSegment* pathsegments) {
+	
+	int idx = threadIdx.x + blockIdx.x * blockDim.x;
+	if (idx >= numPaths)
+		return;
+
+	ShadeableIntersection &intersection = shadeableIntersections[idx];
+	Material &material = materials[intersection.materialId];
+	PathSegment &pathsegment = pathsegments[idx];
+
+	// Check whether the path will bounce or its stops and retracts back to camera
+
+	if (material.emittance > 0.0f) {
+		pathsegment.color = pathsegment.color * material.color * material.emittance;
+		pathsegment.dead = true;
+		return;
+	}
+
+	if (intersection.t < 0.0f || pathsegment.remainingBounces == 0 ) {
+		pathsegment.dead = true;
+		return;
+	}
+
+	if (intersection.t >= 0.0f) {
+		pathsegment.color = pathsegment.color * material.color;
+		pathsegment.remainingBounces--;
+	}
+
+}
+
+__global__ void getNewRays(int iter, int numPaths, ShadeableIntersection* shadeableIntersections, Material* materials, PathSegment* pathsegments) {
+	int idx = threadIdx.x + blockIdx.x * blockDim.x;
+	if (idx >= numPaths)
+		return;
+
+	ShadeableIntersection &intersection = shadeableIntersections[idx];
+	Material &material = materials[intersection.materialId];
+	PathSegment &pathsegment = pathsegments[idx];
+
+	// Check whther the path still exists
+	if (!pathsegment.dead) {
+		// Compute the new rays whether it's diffusion or reflection
+		thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, 0);
+
+	}
+}
 // LOOK: "fake" shader demonstrating what you might do with the info in
 // a ShadeableIntersection, as well as how to use thrust's random number
 // generator. Observe that since the thrust random number generator basically
