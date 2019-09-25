@@ -49,7 +49,7 @@ Additionally, I decided to compile this all with `C++17`, in case I decided to m
 
 ## Sources
 
-### OBJ Files
+### 3D Models
 * Models downloaded from Morgan McGuire's [Computer Graphics Archive](https://casual-effects.com/data)
     * Bunny, Dragon, Teapot, Tree, Fireplace Room
 * Turbosquid
