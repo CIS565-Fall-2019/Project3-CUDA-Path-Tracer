@@ -69,11 +69,33 @@ glm::vec3 calculateRandomDirectionInHemisphere(
 __host__ __device__
 void scatterRay(
 		PathSegment & pathSegment,
-        glm::vec3 intersect,
+        float intersect,
         glm::vec3 normal,
         const Material &m,
         thrust::default_random_engine &rng) {
-    // TODO: implement this.
-    // A basic implementation of pure-diffuse shading will just call the
-    // calculateRandomDirectionInHemisphere defined above.
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	glm::vec3 intersection_pt = pathSegment.ray.origin + intersect * pathSegment.ray.direction;
+	glm::vec3 scattered_ray_direction;
+	// Split according to probability
+	float rand_num = u01(rng);
+	// Reflection
+	if (rand_num < m.hasReflective) {
+		//TODO: approximate Fresnel effects using Schlick’s approximation
+		scattered_ray_direction = glm::reflect(pathSegment.ray.direction, normal);
+		pathSegment.color *= m.specular.color;
+	}
+	// Refraction
+	else if (rand_num < m.hasReflective + m.hasRefractive) {
+		//TODO: Snell’s law plus fresnel effects
+		scattered_ray_direction = glm::refract(pathSegment.ray.direction, normal, m.indexOfRefraction);
+		pathSegment.color *= m.color;
+		// Refraction
+	}
+	// Diffusion
+	else {
+		scattered_ray_direction = calculateRandomDirectionInHemisphere(normal, rng);
+		pathSegment.color *= m.color;
+	}
+	pathSegment.ray.origin = intersection_pt + scattered_ray_direction *0.01f;
+	pathSegment.ray.direction = scattered_ray_direction;
 }
