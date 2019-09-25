@@ -61,6 +61,7 @@ Additionally, I decided to compile this all with `C++17`, in case I decided to m
     * [Zelda](https://sketchfab.com/3d-models/ssbb-zelda-6612b024962b4141b1f867babe0f0e6c) by ThatOneGuyWhoDoesThings
     * [Sheik](https://sketchfab.com/3d-models/ssbb-sheik-4916d918d2c44f6bb984b59f082fc48c) by ThatOneGuyWhoDoesThings
     * [Hunter Rifle](https://sketchfab.com/3d-models/hunter-rifle-wip-ae83df4cc35c4eff89b34f266de9af3c) by cotman sam
+    * [2b (Nier Automata)](https://sketchfab.com/3d-models/2b-7f6592832c464477b866ad81c21b720e)
 
 ### Other Code
 * Used [TinyObjLoader](https://github.com/syoyo/tinyobjloader) library for loading `*.obj` files
