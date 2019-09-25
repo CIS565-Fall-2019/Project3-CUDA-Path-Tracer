@@ -76,6 +76,7 @@ set(headers
     src/sceneStructs.h
     src/preview.h
     src/utilities.h
+    src/texture.h
     external/gltfraytracexample/gltf-loader.h
     external/tinyobjloader/tiny_obj_loader.h
     )
@@ -89,6 +90,7 @@ set(sources
     src/scene.cpp
     src/preview.cpp
     src/utilities.cpp
+    src/texture.cpp
     external/gltfraytracexample/gltf-loader.cc
     external/tinyobjloader/tiny_obj_loader.cc
     )
