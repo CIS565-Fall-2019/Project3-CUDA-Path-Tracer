@@ -66,15 +66,42 @@ glm::vec3 calculateRandomDirectionInHemisphere(
  *
  * You may need to change the parameter list for your purposes!
  */
+
+
 __host__ __device__
 void scatterRay(
 		PathSegment & pathSegment,
         glm::vec3 intersect,
         glm::vec3 normal,
         const Material &m,
-        thrust::default_random_engine &rng) {
+        thrust::default_random_engine &rng, 
+		glm::vec3 incident,
+		float eta,
+		int type) {
     // TODO: implement this.
     // A basic implementation of pure-diffuse shading will just call the
     // calculateRandomDirectionInHemisphere defined above.
 
+	glm::vec3 newDirection;
+
+	// If type==1, then it is diffuse
+	if (type == 1)
+		newDirection = calculateRandomDirectionInHemisphere(normal, rng);
+
+	// If type is specular/reflective
+	else if (type == 2)
+		newDirection = glm::reflect(incident, normal);
+
+	// If the object is refractive
+	else if (type == 3) {
+		
+		if (glm::dot(incident, normal) > 0) 
+			eta = 1/eta;
+
+		newDirection = glm::refract(incident, normal, eta);
+	}
+
+ 	pathSegment.ray.direction = newDirection;
+	pathSegment.ray.origin = intersect;
+	}
 }

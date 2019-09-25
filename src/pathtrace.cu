@@ -254,11 +254,16 @@ __global__ void getNewRays(int iter, int numPaths, ShadeableIntersection* shadea
 	Material &material = materials[intersection.materialId];
 	PathSegment &pathsegment = pathsegments[idx];
 
-	// Check whther the path still exists
+	// Check whether the path still exists
 	if (!pathsegment.dead) {
 		// Compute the new rays whether it's diffusion or reflection
 		thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, 0);
+		if (material is diffusion)
+			scatterRay(pathsegment,point, intersection.surfaceNormal,material,rng,incident,0,1);
 
+		if (material is specular)
+			ScatterRay(pathsegment,point,)
+			
 	}
 }
 // LOOK: "fake" shader demonstrating what you might do with the info in
