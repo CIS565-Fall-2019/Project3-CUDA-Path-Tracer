@@ -7,9 +7,9 @@ CUDA Path Tracer
   * [LinkedIn](https://www.linkedin.com/in/taylor-k-7b2110191/), [twitter](https://twitter.com/nelms_taylor), etc.
 * Tested on: Windows 10, Intel i3 Coffee Lake 4-core 3.6GHz processor, 16GB RAM, NVidia GeForce GTX1650 4GB
 
-![A bunny lit by colored light](progressImages/day4Bunny.png)
+![A Challenger Approaches!](progressImages/day5MetalZelda.png)
 
-![Colored balls with different specular coefficients](progressImages/day4ShinyBall.png)
+![A bunny lit by colored light](progressImages/day4Bunny.png)
 
 ## Path Tracer
 
