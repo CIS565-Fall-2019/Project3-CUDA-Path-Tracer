@@ -41,6 +41,78 @@ glm::vec3 calculateRandomDirectionInHemisphere(
         + sin(around) * over * perpendicularDirection2;
 }
 
+__host__ __device__ glm::vec3 getImperfectSpecularRay(
+	const PathSegment & pathSegment,
+	const glm::vec3 intersect,
+	const glm::vec3 normal,
+	const Material &m,
+	thrust::default_random_engine &rng)
+{
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	float shininess = m.specular.exponent;
+
+	// Use Importance sampling to find the reflected vector
+	// Get random vector based on the reflective value
+	float st = acos(powf(u01(rng), 1.0f / (shininess + 1.0f))); // Spectral Theta
+	float sp = 2.0f * PI * u01(rng); // Spectral Psi
+	float cosPsi = cos(sp);
+	float sinPsi = sin(sp);
+	float cosTheta = cos(st);
+	float sinTheta = sin(st);
+	glm::vec3 sample(cosPsi*sinTheta, sinPsi*sinTheta, cosTheta);
+
+	// We now have a sample, orient it to the reflected vector.
+	// https://stackoverflow.com/questions/20923232/how-to-rotate-a-vector-by-a-given-direction
+	glm::vec3 reflected = glm::reflect(pathSegment.ray.direction, normal);
+	glm::vec3 transform_z = glm::normalize(reflected);
+	glm::vec3 transform_x = glm::normalize(glm::cross(transform_z, glm::vec3(0.0f, 0.0f, 1.0f)));
+	glm::vec3 transform_y = glm::normalize(glm::cross(transform_z, transform_x));
+	glm::mat3 transform = glm::mat3(transform_x, transform_y, transform_z);
+
+	// Transform the vector so that it aligns with the reflected vector as Z axis
+	return transform * sample;
+}
+
+__host__ __device__ glm::vec3 getRefractedSpecularRay(
+	const PathSegment & pathSegment,
+	const glm::vec3 intersect,
+	const glm::vec3 normal,
+	const Material &m,
+	thrust::default_random_engine &rng)
+{
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	// Specular Refraction/Transmission
+	float etaA = 1; // Assume always go from material to air.
+					// Would be cool to break this assumption.
+	float etaB = m.indexOfRefraction;
+
+	// Determine which is incident and which is transmitted
+	// by looking at direction of normal.
+	// Vectors are facing same direction if dot product is positive
+	bool entering = glm::dot(pathSegment.ray.direction, normal) > 0;
+	float etaI = entering ? etaA : etaB;
+	float etaT = entering ? etaB : etaA;
+	float eta = etaT / etaI;
+
+	// Get the two possible rays
+	glm::vec3 reflectedRay = glm::normalize(glm::reflect(pathSegment.ray.direction, normal));
+
+	// Calculate R_Theta based on Schlick's approximation
+	// R_Theta tells us the ratio of the amplitude of the reflecrted wave
+	// to the incident wave.
+	// We only deal with one ray at a time, so we use it to pick either reflection
+	// or refraction at random.
+	float r0 = powf((1 - eta) / (1 + eta), 2);
+	float r_theta = r0 + (1 - r0)*powf((1 - glm::abs(glm::dot(pathSegment.ray.direction, normal))), 5.0f);
+	bool isRefracted = r_theta < u01(rng);
+	if (isRefracted) {
+		return glm::normalize(glm::refract(pathSegment.ray.direction, normal, eta));
+	}
+	else {
+		return getImperfectSpecularRay(pathSegment, intersect, normal, m, rng);
+	}
+}
+
 /**
  * Scatter a ray with some probabilities according to the material properties.
  * For example, a diffuse surface scatters in a cosine-weighted hemisphere.
@@ -78,30 +150,20 @@ void scatterRay(
 	// No matter what, new origin is intersect point.
 	pathSegment.ray.origin = intersect;
 
-	// Imperfect Specular
-	if (m.hasReflective > 0.0f) {
-		float shininess = m.specular.exponent;
+	float totalProb = fmaxf(m.hasReflective + m.hasRefractive, 1);
+	float reflectiveProb = m.hasReflective / totalProb;
+	float refractiveProb = m.hasRefractive / totalProb;
+	float diffuseProb = 1 - reflectiveProb - refractiveProb;
+	float rand = u01(rng);
 
-		// Use Importance sampling to find the reflected vector
-		// Get random vector based on the reflective value
-		float st = acos(powf(u01(rng), 1.0f / (shininess + 1.0f))); // Spectral Theta
-		float sp = 2.0f * PI * u01(rng); // Spectral Psi
-		float cosPsi = cos(sp);
-		float sinPsi = sin(sp);
-		float cosTheta = cos(st);
-		float sinTheta = sin(st);
-		glm::vec3 sample(cosPsi*sinTheta, sinPsi*sinTheta, cosTheta);
-
-		// We now have a sample, orient it to the reflected vector.
-		// https://stackoverflow.com/questions/20923232/how-to-rotate-a-vector-by-a-given-direction
-		glm::vec3 reflected = glm::reflect(pathSegment.ray.direction, normal);
-		glm::vec3 transform_z = glm::normalize(reflected);
-		glm::vec3 transform_x = glm::normalize(glm::cross(transform_z, glm::vec3(0.0f, 0.0f, 1.0f)));
-		glm::vec3 transform_y = glm::normalize(glm::cross(transform_z, transform_x));
-		glm::mat3 transform = glm::mat3(transform_x, transform_y, transform_z);
-
-		// Transform the vector so that it aligns with the reflected vector as Z axis
-		pathSegment.ray.direction = transform * sample;
+	// Imperfect Specular Reflection
+	if (reflectiveProb > rand) {
+		pathSegment.ray.direction = getImperfectSpecularRay(pathSegment, intersect, normal, m, rng);
+		pathSegment.color *= m.specular.color;
+		pathSegment.remainingBounces--;
+	}
+	else if (refractiveProb > rand) {
+		pathSegment.ray.direction = getRefractedSpecularRay(pathSegment, intersect, normal, m, rng);
 		pathSegment.color *= m.specular.color;
 		pathSegment.remainingBounces--;
 	}
