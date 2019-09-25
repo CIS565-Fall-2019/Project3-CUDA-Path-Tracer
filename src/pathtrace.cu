@@ -68,6 +68,17 @@ __global__ void sendImageToPBO(uchar4* pbo, glm::ivec2 resolution,
     }
 }
 
+struct is_dead
+{
+	__host__ __device__
+		bool operator()(PathSegment x)
+	{
+		if (x.remainingBounces == 0) {
+			return true;
+		}
+	}
+};
+
 static Scene * hst_scene = NULL;
 static glm::vec3 * dev_image = NULL;
 static Geom * dev_geoms = NULL;
@@ -76,6 +87,8 @@ static PathSegment * dev_paths = NULL;
 static ShadeableIntersection * dev_intersections = NULL;
 // TODO: static variables for device memory, any extra info you need, etc
 // ...
+static PathSegment * dev_paths_cached = NULL;
+static bool is_cached = false;
 
 void pathtraceInit(Scene *scene) {
     hst_scene = scene;
@@ -97,6 +110,7 @@ void pathtraceInit(Scene *scene) {
   	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
     // TODO: initialize any extra device memeory you need
+	cudaMalloc(&dev_paths_cached, pixelcount * sizeof(PathSegment));
 
     checkCUDAError("pathtraceInit");
 }
@@ -249,6 +263,7 @@ __global__ void shadeFakeMaterial (
       // If the material indicates that the object was a light, "light" the ray
       if (material.emittance > 0.0f) {
         pathSegments[idx].color *= (materialColor * material.emittance);
+		pathSegments[idx].remainingBounces = 0;
       }
       // Otherwise, do some pseudo-lighting computation. This is actually more
       // like what you would expect from shading in a rasterizer like OpenGL.
@@ -266,6 +281,7 @@ __global__ void shadeFakeMaterial (
     // This can be useful for post-processing and image compositing.
     } else {
       pathSegments[idx].color = glm::vec3(0.0f);
+	  pathSegments[idx].remainingBounces = 0;
     }
 	pathSegments[idx].remainingBounces--;
   }
@@ -332,8 +348,17 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
     // TODO: perform one iteration of path tracing
 
-	generateRayFromCamera <<<blocksPerGrid2d, blockSize2d >>>(cam, iter, traceDepth, dev_paths);
-	checkCUDAError("generate camera ray");
+	if (!is_cached) {
+		generateRayFromCamera << <blocksPerGrid2d, blockSize2d >> > (cam, iter, traceDepth, dev_paths);
+
+		cudaMemcpy(dev_paths_cached, dev_paths, pixelcount * sizeof(PathSegment), cudaMemcpyDeviceToDevice);
+		is_cached = true;
+		checkCUDAError("generate camera ray");
+	}
+	else {
+		printf("HERE");
+		cudaMemcpy(dev_paths, dev_paths_cached, pixelcount * sizeof(PathSegment), cudaMemcpyDeviceToDevice);
+	}
 
 	int depth = 0;
 	PathSegment* dev_path_end = dev_paths + pixelcount;
@@ -380,6 +405,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
     dev_materials
   );
   
+  // Stream Compact dev_paths
+  thrust::remove_if(dev_paths, dev_paths + pixelcount, is_dead());
+
   if (depth >= traceDepth) {
 	  iterationComplete = true; // TODO: should be based off stream compaction results.
   }

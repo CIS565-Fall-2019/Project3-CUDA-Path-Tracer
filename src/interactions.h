@@ -84,29 +84,32 @@ void scatterRay(
 	if (prob <= m.hasReflective) {
 		new_ray = glm::normalize(glm::reflect(pathSegment.ray.direction, normal));
 		//Update the new ray in place in pathSegment
-		pathSegment.ray.origin = intersect;
+		pathSegment.ray.origin = intersect + 0.001f * new_ray;
 		pathSegment.ray.direction = new_ray;
 		//Update the color in place
 		glm::vec3 materialColor = m.specular.color;
 		pathSegment.color *= materialColor;
+		pathSegment.color = glm::clamp(pathSegment.color, 0.0f, 1.0f);
 	}
 	else if (prob > m.hasReflective && prob <= (m.hasRefractive + m.hasReflective)) {
 		new_ray = glm::normalize(glm::refract(pathSegment.ray.direction, normal, m.indexOfRefraction));
 		//Update the new ray in place in pathSegment
-		pathSegment.ray.origin = intersect;
+		pathSegment.ray.origin = intersect + 0.001f * new_ray;
 		pathSegment.ray.direction = new_ray;
 		//Update the color in place
 		glm::vec3 materialColor = m.specular.color;
 		pathSegment.color *= materialColor;
+		pathSegment.color = glm::clamp(pathSegment.color, 0.0f, 1.0f);
 	}
 	else {
-		new_ray = calculateRandomDirectionInHemisphere(normal, rng);
+		new_ray = glm::normalize(calculateRandomDirectionInHemisphere(normal, rng));
 		//Update the new ray in place in pathSegment
-		pathSegment.ray.origin = intersect;
+		pathSegment.ray.origin = intersect + 0.001f * new_ray;
 		pathSegment.ray.direction = new_ray;
 		//Update the color in place
 		glm::vec3 materialColor = m.color;
 		pathSegment.color *= materialColor;
+		pathSegment.color = glm::clamp(pathSegment.color, 0.0f, 1.0f);
 	}
 
 
