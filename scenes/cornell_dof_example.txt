@@ -50,7 +50,7 @@ EMITTANCE   0
 
 // Camera
 CAMERA
-RES         1200 1200
+RES         2000 1200
 FOVY        45
 ITERATIONS  5000
 DEPTH       8
@@ -128,23 +128,150 @@ SCALE       .01 20 20
 OBJECT 8
 sphere
 material 4
-TRANS       -1 4 -1
+TRANS       -9 5 -9
 ROTAT       0 0 0
-SCALE       3 3 3
+SCALE       1 1 1
 
 // Sphere
 OBJECT 9
 sphere
 material 4
-TRANS       -4 6 -1
+TRANS       -7 5 -7
 ROTAT       0 0 0
-SCALE       2 2 2
+SCALE       1 1 1
 
 // Sphere
 OBJECT 10
 sphere
 material 4
-TRANS       6 4 -1
+TRANS       -5 5 -5
 ROTAT       0 0 0
-SCALE       3 3 3
+SCALE       1 1 1
 
+// Sphere
+OBJECT 11
+sphere
+material 4
+TRANS       -3 5 -3
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Sphere
+OBJECT 12
+sphere
+material 4
+TRANS       -1 5 -1
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Sphere
+OBJECT 13
+sphere
+material 4
+TRANS       1 5 1
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Sphere
+OBJECT 14
+sphere
+material 4
+TRANS       3 5 3
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Sphere
+OBJECT 15
+sphere
+material 4
+TRANS       5 5 5
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Sphere
+OBJECT 16
+sphere
+material 4
+TRANS       7 5 7
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Sphere
+OBJECT 17
+sphere
+material 4
+TRANS       9 5 9
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Sphere
+OBJECT 18
+sphere
+material 4
+TRANS       -8 5 -8
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Sphere
+OBJECT 19
+sphere
+material 4
+TRANS       -6 5 -6
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Sphere
+OBJECT 20
+sphere
+material 4
+TRANS       -4 5 -4
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Sphere
+OBJECT 21
+sphere
+material 4
+TRANS       -2 5 -2
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Sphere
+OBJECT 22
+sphere
+material 4
+TRANS       0 5 0
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Sphere
+OBJECT 23
+sphere
+material 4
+TRANS       2 5 2
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Sphere
+OBJECT 24
+sphere
+material 4
+TRANS       4 5 4
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Sphere
+OBJECT 25
+sphere
+material 4
+TRANS       6 5 6
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Sphere
+OBJECT 26
+sphere
+material 4
+TRANS       8 5 8
+ROTAT       0 0 0
+SCALE       1 1 1

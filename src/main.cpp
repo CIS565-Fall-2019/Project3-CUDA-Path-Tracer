@@ -67,6 +67,9 @@ int main(int argc, char** argv) {
 	ogLookAt = cam.lookAt;
 	zoom = glm::length(cam.position - ogLookAt);
 
+	// JOHN: Change here to limit runs
+	//renderState->iterations = 200;
+
 	// Initialize CUDA and GL components
 	init();
 

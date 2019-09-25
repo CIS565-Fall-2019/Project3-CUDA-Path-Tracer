@@ -120,6 +120,35 @@ void pathtraceFree() {
 	checkCUDAError("pathtraceFree");
 }
 
+__device__ glm::vec3 concentricSampleDisc(const float u, const float v) {
+	// Map random inputs to [-1, 1]^2
+	glm::vec2 point = glm::vec2(u, v);
+	glm::vec2 offset = (2.0f * point) - glm::vec2(1, 1);
+
+	// Handle origin case
+	if (offset.x == 0 && offset.y == 0) {
+		return glm::vec3(0, 0, 0);
+	}
+
+	// Apply concentric mapping
+	float theta;
+	float r;
+
+	if (fabsf(offset.x) > fabsf(offset.y)) {
+		r = offset.x;
+		theta = (PI / 4) * (offset.x / offset.y);
+	}
+	else {
+		r = offset.y;
+		theta = (PI / 2) - (PI / 4) * (offset.x / offset.y);
+	}
+
+	// Create the point, reuse our input holder.
+	point = r * glm::vec2(cosf(theta), sinf(theta));
+
+	return glm::vec3(point.x, point.y, 0);
+}
+
 /**
 * Generate PathSegments with rays from the camera through the screen into the
 * scene, which is the first bounce of rays.
@@ -138,7 +167,8 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		PathSegment & segment = pathSegments[index];
 
 		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, segment.remainingBounces);
-		thrust::uniform_real_distribution<float> u01(-0.5f, 0.5f);
+		thrust::uniform_real_distribution<float> u0_5(-0.5f, 0.5f);
+		thrust::uniform_real_distribution<float> u1_0(0, 1);
 
 		segment.ray.origin = cam.position;
 		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -147,15 +177,28 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		float yjitter = 0;
 
 		if (ANTIALIASING) {
-			xjitter = u01(rng);
-			yjitter = u01(rng);
+			xjitter = u0_5(rng);
+			yjitter = u0_5(rng);
 		}
 
-		// TODO: implement antialiasing by jittering the ray
 		segment.ray.direction = glm::normalize(cam.view
 			- cam.right * cam.pixelLength.x * ((float)x + xjitter - (float)cam.resolution.x * 0.5f)
 			- cam.up * cam.pixelLength.y * ((float)y + yjitter - (float)cam.resolution.y * 0.5f)
 		);
+
+		if (DEPTH_OF_FIELD) {
+			// Inspired by PBRT3 6.2.3
+			// Sample point on Lens
+			glm::vec3 lensPoint = DOF_LENS_RADIUS * concentricSampleDisc(u1_0(rng), u1_0(rng));
+
+			// Compute Point on plane of focus
+			float ft = glm::abs(DOF_FOCAL_DIST / segment.ray.direction.z);
+			glm::vec3 focusPoint = ft * segment.ray.direction;
+
+			// Update ray for effect of lens
+			segment.ray.origin += lensPoint;
+			segment.ray.direction = glm::normalize(focusPoint - lensPoint);
+		}
 
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
