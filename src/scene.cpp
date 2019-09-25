@@ -9,6 +9,8 @@
 
 #include <tiny_gltf.h>
 
+#define LOADINGOWNGLTF 0
+
 //#define SKIPFACES 4//skip all mesh faces save one out of this many
 
 Scene::Scene(string filename) {
@@ -246,6 +248,8 @@ int Scene::loadMaterial(string materialid) {
         return 1;
     }
 }
+
+#if LOADINGOWNGLTF
 
 Geom_v Scene::readGltfFromMesh(string filename, int materialid, gmat4 transform) {
 	Geom_v retval = Geom_v();
@@ -510,8 +514,120 @@ Geom_v Scene::readGltfFromMesh(string filename, int materialid, gmat4 transform)
 		}//for each primitive THIS WILL BECOME OUR GEOM
 	}//for each mesh DONT KNOW WHAT THIS SHOULD BE
 
+	
+	return retval;
+}
+
+#else
+
+Geom_v Scene::readGltfFromMesh(string filename, int materialid, gmat4 transform) {
+	Geom_v retval = Geom_v();
+
+	//bool LoadGLTF(const std::string & filename, float scale,
+	///	std::vector<Mesh<float> > * meshes,
+	//	std::vector<Material> * materials, std::vector<Texture> * textures);
+
+	std::vector<example::Material> materials;
+	std::vector<example::Mesh<float> > meshes;
+	std::vector<example::Texture> textures;
+
+	bool ret = example::LoadGLTF(filename, 1.0, &meshes, &materials, &textures);
+
+	if (!ret) {
+		printf("Failed to parse gltf!\n");
+		return retval;
+	}//if failure
+
+	for (int i = 0; i < meshes.size(); i++) {
+		retval.push_back(geomFromGltfMesh(meshes[i], materialid, transform));
+	}//for
 
 	return retval;
+}//readGltfFromMesh
+
+#endif
+
+Geom Scene::geomFromGltfMesh(example::Mesh<float> mesh, int materialid, gmat4 transform) {
+	Geom newGeom;
+	newGeom.type = MESH;
+	newGeom.triangleIndex = triangles.size();
+
+	gmat4 normTransform = glm::inverseTranspose(transform);
+	gvec3 maxVals = gvec3(-INFINITY, -INFINITY, -INFINITY);
+	gvec3 minVals = gvec3(INFINITY, INFINITY, INFINITY);
+
+	for (int i = 0; i < mesh.faces.size(); i += 3) {
+
+
+		Triangle nextTri = triangleFromGltfIndex(mesh, i, materialid, transform, normTransform, &maxVals, &minVals);
+
+		triangles.push_back(nextTri);
+
+	}//for each face
+
+	newGeom.triangleCount = triangles.size() - newGeom.triangleIndex;
+
+	float xWidth = maxVals.x - minVals.x;
+	float yWidth = maxVals.y - minVals.y;
+	float zWidth = maxVals.z - minVals.z;
+	float xCenter = xWidth / 2 + minVals.x;
+	float yCenter = yWidth / 2 + minVals.y;
+	float zCenter = zWidth / 2 + minVals.z;
+	newGeom.scale = gvec3(xWidth, yWidth, zWidth);
+	newGeom.translation = gvec3(xCenter, yCenter, zCenter);
+	newGeom.rotation = gvec3(0, 0, 0);
+
+	newGeom.transform = utilityCore::buildTransformationMatrix(
+		newGeom.translation, newGeom.rotation, newGeom.scale);
+	newGeom.inverseTransform = glm::inverse(newGeom.transform);
+	newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
+
+
+	return newGeom;
+}
+
+Triangle Scene::triangleFromGltfIndex(example::Mesh<float> mesh, unsigned int i, 
+						int materialid, gmat4 transform, gmat4 normTransform,
+						gvec3* maxVals, gvec3* minVals) {
+	Triangle newTri = Triangle();
+	newTri.materialid = materialid;
+
+	unsigned int vidx0 = mesh.faces[i + 0];
+	unsigned int vidx1 = mesh.faces[i + 1];
+	unsigned int vidx2 = mesh.faces[i + 2];
+
+	gvec3 vert0 = gvec3(mesh.vertices[3 * vidx0 + 0], mesh.vertices[3 * vidx0 + 1], mesh.vertices[3 * vidx0 + 2]);
+	gvec3 vert1 = gvec3(mesh.vertices[3 * vidx1 + 0], mesh.vertices[3 * vidx1 + 1], mesh.vertices[3 * vidx1 + 2]);
+	gvec3 vert2 = gvec3(mesh.vertices[3 * vidx2 + 0], mesh.vertices[3 * vidx2 + 1], mesh.vertices[3 * vidx2 + 2]);
+
+	gvec3 norm0 = gvec3(mesh.facevarying_normals[i + 0], mesh.facevarying_normals[i + 1], mesh.facevarying_normals[i + 2]);
+	gvec3 norm1 = gvec3(mesh.facevarying_normals[i + 3], mesh.facevarying_normals[i + 4], mesh.facevarying_normals[i + 5]);
+	gvec3 norm2 = gvec3(mesh.facevarying_normals[i + 6], mesh.facevarying_normals[i + 7], mesh.facevarying_normals[i + 8]);
+
+	//transform
+	newTri.vert0 = gvec3(transform * gvec4(vert0, 1.0));
+	newTri.vert1 = gvec3(transform * gvec4(vert1, 1.0));
+	newTri.vert2 = gvec3(transform * gvec4(vert2, 1.0));
+
+	updateMaxMin(maxVals, minVals, newTri.vert0);
+	updateMaxMin(maxVals, minVals, newTri.vert1);
+	updateMaxMin(maxVals, minVals, newTri.vert2);
+
+	newTri.norm0 = normalized(gvec3(normTransform * gvec4(norm0, 1.0)));
+	newTri.norm1 = normalized(gvec3(normTransform * gvec4(norm1, 1.0)));
+	newTri.norm2 = normalized(gvec3(normTransform * gvec4(norm2, 1.0)));
+
+
+	return newTri;
+}
+
+void Scene::updateMaxMin(gvec3* maxVal, gvec3* minVal, gvec3 val) {
+	if (val.x > maxVal->x) maxVal->x = val.x;
+	if (val.y > maxVal->y) maxVal->y = val.y;
+	if (val.z > maxVal->z) maxVal->z = val.z;
+	if (val.x < minVal->x) minVal->x = val.x;
+	if (val.y < minVal->y) minVal->y = val.y;
+	if (val.z < minVal->z) minVal->z = val.z;
 }
 
 Geom_v Scene::readObjFromMesh(string filename, int materialid, gmat4 transform) {
@@ -574,7 +690,7 @@ Geom Scene::geomFromShape(tinyobj::shape_t shape, tinyobj::attrib_t attrib,
 #ifdef SKIPFACES
 		if ((i / 3) % SKIPFACES != 0) continue;
 #endif
-		Triangle tri = triangleFromIndex(i / 3, indices, mesh.material_ids, attrib, materialid, transform);
+		Triangle tri = triangleFromObjIndex(i / 3, indices, mesh.material_ids, attrib, materialid, transform);
 
 		triangles.push_back(tri);
 
@@ -623,7 +739,7 @@ Geom Scene::geomFromShape(tinyobj::shape_t shape, tinyobj::attrib_t attrib,
 }//geomFromShape
 
 //TODO: connect better to materials
-Triangle Scene::triangleFromIndex(int index, vector<tinyobj::index_t> indices, vector<int> material_ids,
+Triangle Scene::triangleFromObjIndex(int index, vector<tinyobj::index_t> indices, vector<int> material_ids,
 						   tinyobj::attrib_t attrib, 
 						   int defaultMaterialId, gmat4 transform) {
 	Triangle retval;

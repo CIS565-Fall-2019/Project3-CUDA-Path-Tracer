@@ -63,6 +63,7 @@ find_package(GLM REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
 
 include_directories(external/tinyobjloader)
+include_directories(external/gltfraytracexample)
 
 set(headers
     src/main.h
@@ -75,6 +76,7 @@ set(headers
     src/sceneStructs.h
     src/preview.h
     src/utilities.h
+    external/gltfraytracexample/gltf-loader.h
     external/tinyobjloader/tiny_obj_loader.h
     )
 
@@ -87,6 +89,7 @@ set(sources
     src/scene.cpp
     src/preview.cpp
     src/utilities.cpp
+    external/gltfraytracexample/gltf-loader.cc
     external/tinyobjloader/tiny_obj_loader.cc
     )
 

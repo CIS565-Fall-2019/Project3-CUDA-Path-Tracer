@@ -105,7 +105,7 @@ SCALE       .01 10 20
 OBJECT 4
 sphere
 material 3
-TRANS       -4 1 1
+TRANS       -6 1 1
 ROTAT       0 0 0
 SCALE       2 2 2
 
@@ -113,7 +113,7 @@ SCALE       2 2 2
 OBJECT 5
 sphere
 material 3
-TRANS       4 1 1
+TRANS       6 1 1
 ROTAT       0 0 0
 SCALE       2 2 2
 
@@ -121,7 +121,7 @@ SCALE       2 2 2
 OBJECT 6
 mesh
 material 2
-TRANS       0 4.5 -2
-ROTAT       -90 0 0
-SCALE       .5 .5 .5 
-FILE        ../objects/zelda/scene.gltf
+TRANS       0 2.5 0
+ROTAT       0 0 0
+SCALE       5 5 5
+FILE        ../objects/altar/scene.gltf
