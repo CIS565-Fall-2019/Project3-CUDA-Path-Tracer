@@ -29,3 +29,15 @@ namespace utilityCore {
     extern std::string convertIntToString(int number);
     extern std::istream& safeGetline(std::istream& is, std::string& t); //Thanks to http://stackoverflow.com/a/6089413
 }
+
+inline int ilog2(int x) {
+    int lg = 0;
+    while (x >>= 1) {
+        ++lg;
+    }
+    return lg;
+}
+
+inline int ilog2ceil(int x) {
+    return x == 1 ? 0 : ilog2(x - 1) + 1;
+}
