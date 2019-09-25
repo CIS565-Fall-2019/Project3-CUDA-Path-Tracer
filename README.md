@@ -64,5 +64,6 @@ Additionally, I decided to compile this all with `C++17`, in case I decided to m
 ### Other Code
 * Used [TinyObjLoader](https://github.com/syoyo/tinyobjloader) library for loading `*.obj` files
 * Used [TinyGltf](https://github.com/syoyo/tinygltf) library for loading `*.gltf` files
+    * I also lifted their `gltf_loader` files from their raytrace examples. I did not use any other code from the example folder.
 * Formerly: Ray-triangle intersection algorithm stolen from the Wikipedia article for the [Moller-Trumbore Intersection Algorithm](https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm). Now, using glm.
    
