@@ -99,7 +99,13 @@ void scatterRay(
 			dir = glm::normalize(glm::refract(pathSegment.ray.direction, intersection.surfaceNormal, 1/m.indexOfRefraction));
 		else
 			dir = glm::normalize(glm::refract(pathSegment.ray.direction, -intersection.surfaceNormal, m.indexOfRefraction));
-		color = m.color;
+		// total internal reflection
+		if (!glm::length(dir)) {
+			dir = glm::normalize(glm::reflect(dir, intersection.surfaceNormal));
+			color = m.specular.color;
+		}
+		else
+			color = m.color;
 	}
 	else {
 		dir = glm::normalize(calculateRandomDirectionInHemisphere(intersection.surfaceNormal, rng));

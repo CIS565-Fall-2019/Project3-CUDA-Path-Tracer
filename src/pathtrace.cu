@@ -17,6 +17,7 @@
 #define STREAM_COMPACTION true
 #define SORT_MATERIAL false
 #define CACHE_BOUNCE true
+#define AA_enable false
 #define ERRORCHECK 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -133,19 +134,23 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 
 	if (x < cam.resolution.x && y < cam.resolution.y) {
 		int index = x + (y * cam.resolution.x);
-		//thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, pathSegments[index].remainingBounces);
-		//thrust::uniform_real_distribution<float> u01(0, 1);
+		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, pathSegments[index].remainingBounces);
+		thrust::uniform_real_distribution<float> u01(0, 1);
 		PathSegment & segment = pathSegments[index];
 
 		segment.ray.origin = cam.position;
 		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
-
-		// TODO: implement antialiasing by jittering the ray
-		segment.ray.direction = glm::normalize(cam.view
-			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f)
-			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f)
-		);
-
+		if (AA_enable)
+			// antialiasing by jittering the ray
+			segment.ray.direction = glm::normalize(cam.view
+				- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f + u01(rng))
+				- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f + u01(rng))
+				);
+		else
+			segment.ray.direction = glm::normalize(cam.view
+				- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f + u01(rng))
+				- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f + u01(rng))
+			);
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
 	}
