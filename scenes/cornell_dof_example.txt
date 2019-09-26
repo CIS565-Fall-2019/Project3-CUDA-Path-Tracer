@@ -43,7 +43,7 @@ MATERIAL 4
 RGB         .98 .98 .98
 SPECEX      500
 SPECRGB     .98 .98 .98
-REFL        0.0
+REFL        1.0
 REFR        1.0
 REFRIOR     3.0
 EMITTANCE   0
