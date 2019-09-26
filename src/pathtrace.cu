@@ -139,7 +139,7 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 
 		segment.ray.origin = cam.position;
     segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
-
+	
 		// TODO: implement antialiasing by jittering the ray
 		segment.ray.direction = glm::normalize(cam.view
 			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f)
@@ -447,13 +447,14 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
     dev_materials
   );
 
-  if (MATERIAL_SORT) {
-	  thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + num_paths, dev_paths, my_comp_functor());
-  }
   if (STREAM_COMPACT) {
 	  dev_path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, my_partition_functor());
 	  num_paths = dev_path_end - dev_paths;
   }
+  if (MATERIAL_SORT) {
+	  thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + num_paths, dev_paths, my_comp_functor());
+  }
+
 
   // TODO: should be based off stream compaction results.
   if (num_paths <= 0) {

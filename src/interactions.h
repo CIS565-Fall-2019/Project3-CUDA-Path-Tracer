@@ -81,17 +81,23 @@ void scatterRay(
 	glm::vec3 color(1.0f);
 	thrust::uniform_real_distribution<float> dist(0, 1);
 	float prob = dist(rng);
-	if (prob< m.hasReflective) {
+	if (prob < m.hasReflective) {
 		dir = glm::reflect(dir, normal);
 		color = m.specular.color;
 	}
 	else if (prob - m.hasReflective < m.hasRefractive) {
-		if (glm::dot(normal, dir) > 0) {
-			dir = glm::refract(dir, -normal, m.indexOfRefraction);
+		if (glm::dot(normal, dir) > 0.0f) {
+			dir = glm::refract(glm::normalize(dir), -1.0f*glm::normalize(normal), m.indexOfRefraction);
 		} else {
-			dir = glm::refract(dir, normal, 1.0f/m.indexOfRefraction);
+			dir = glm::refract(glm::normalize(dir), glm::normalize(normal), 1.0f/m.indexOfRefraction);
 		}
 		color = m.specular.color;
+		if (glm::length(dir) < 0.01f) {
+			color = glm::vec3(0.0f);
+			dir = glm::reflect(glm::normalize(dir), normal);
+		}
+
+		
 	}
 	else {
 		dir = calculateRandomDirectionInHemisphere(normal, rng);
@@ -99,5 +105,5 @@ void scatterRay(
 	}
 		pathSegment.color *= color;
 		pathSegment.ray.direction = glm::normalize(dir);
-		pathSegment.ray.origin = intersect + normal * EPSILON;
+		pathSegment.ray.origin = intersect + pathSegment.ray.direction * 0.01f;
 }
