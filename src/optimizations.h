@@ -22,24 +22,24 @@ POSTSHADER_PARTITION = true;
 // the most expensive. This optimization stores the first set of intersections so that
 // proceeding render samples are a little faster.
 constexpr bool
-CACHE_ENABLED = false;
+CACHE_ENABLED = true;
 
 // Not sure if the below is true, but I suspect it will be...
 constexpr bool
-ANTIALIASING = true;
+ANTIALIASING = false;
 static_assert(true != (CACHE_ENABLED && ANTIALIASING), "Cannot have cahcing and antialiasing enabled together!");
 
 //// GENERATE_TERRAIN
 // This option choses to ignore the scene file and instead generate a random
 // terrain based on noise.
 constexpr bool
-TERRAIN_GENERATION = true;
+TERRAIN_GENERATION = false;
 
 //// DEPTH_OF_FIELD
 // Simulates a depth of field effect by adjusting ray directions and origins
 // to fall on a thin-lens model concentric disk.
 constexpr bool
-DEPTH_OF_FIELD = true;
+DEPTH_OF_FIELD = false;
 // It seems that CUDA doesn't like constexpr for __device__variables
 #define DOF_LENS_RADIUS 0.1f  // millimeters, controls size of disk of confusion
 #define DOF_FOCAL_DIST 10.0f // millimeters, controls focal plane

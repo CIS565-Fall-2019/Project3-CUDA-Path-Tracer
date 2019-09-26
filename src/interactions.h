@@ -74,43 +74,79 @@ __host__ __device__ glm::vec3 getImperfectSpecularRay(
 }
 
 __host__ __device__ glm::vec3 getRefractedSpecularRay(
-	const PathSegment & pathSegment,
+	PathSegment & pathSegment,
 	const glm::vec3 intersect,
 	const glm::vec3 normal,
 	const Material &m,
 	thrust::default_random_engine &rng)
 {
 	thrust::uniform_real_distribution<float> u01(0, 1);
+	glm::vec3 new_normal = glm::vec3(0);
+	glm::vec3 old_dir = glm::vec3(0);
+	glm::vec3 new_dir = glm::vec3(0);
+
 	// Specular Refraction/Transmission
-	float etaA = 1; // Assume always go from material to air.
-					// Would be cool to break this assumption.
+	float etaA = 1; // Air
 	float etaB = m.indexOfRefraction;
 
 	// Determine which is incident and which is transmitted
-	// by looking at direction of normal.
-	// Vectors are facing same direction if dot product is positive
-	bool entering = glm::dot(pathSegment.ray.direction, normal) > 0;
-	float etaI = entering ? etaA : etaB;
-	float etaT = entering ? etaB : etaA;
-	float eta = etaT / etaI;
-
-	// Get the two possible rays
-	glm::vec3 reflectedRay = glm::normalize(glm::reflect(pathSegment.ray.direction, normal));
-
-	// Calculate R_Theta based on Schlick's approximation
-	// R_Theta tells us the ratio of the amplitude of the reflecrted wave
-	// to the incident wave.
-	// We only deal with one ray at a time, so we use it to pick either reflection
-	// or refraction at random.
-	float r0 = powf((1 - eta) / (1 + eta), 2);
-	float r_theta = r0 + (1 - r0)*powf((1 - glm::abs(glm::dot(pathSegment.ray.direction, normal))), 5.0f);
-	bool isRefracted = r_theta < u01(rng);
-	if (isRefracted) {
-		return glm::normalize(glm::refract(pathSegment.ray.direction, normal, eta));
+	// by looking at direction of neg normal.
+	// Vectors are facing same direction if dot product is positive'
+	float eta = 0.0f;
+	old_dir = pathSegment.ray.direction;
+	bool isLeaving = glm::dot(old_dir, normal) > 0;
+	if (isLeaving) {
+		new_normal = -normal;
+		eta = etaB / etaA;
 	}
 	else {
-		return getImperfectSpecularRay(pathSegment, intersect, normal, m, rng);
+		new_normal = normal;
+		eta = etaA / etaB;
 	}
+
+	new_dir = glm::refract(old_dir, new_normal, eta);
+
+	// glm::refract will return a zero vector for total internal reflection
+	if (glm::length(new_dir) < EPSILON) {
+		pathSegment.color = glm::vec3(0.0f);
+		new_dir = glm::reflect(old_dir, normal);
+	}
+
+	pathSegment.color *= m.specular.color;
+	pathSegment.ray.direction = new_dir;
+	pathSegment.ray.origin = intersect + (.001f) * pathSegment.ray.direction;
+
+
+
+	//// Now check against total internal reflection
+	//float sinTheta = eta * (sqrtf(1 - (cosTheta * cosTheta)));
+	//if (sinTheta >= 1) {
+	//	// Internel reflection means just reflect.
+	//	pathSegment.color = glm::vec3(0.0f);
+	//	//direction_out = getImperfectSpecularRay(pathSegment, intersect, new_normal, m, rng);
+	//	direction_out = glm::refract(pathSegment.ray.direction, new_normal, eta);
+	//}
+	//else {
+	//	// Not total internal reflection, so now we try Shlick's Approximation
+	//	// Calculate R_Theta based on Schlick's approximation
+	//	// R_Theta tells us the ratio of the amplitude of the reflecrted wave
+	//	// to the incident wave.
+	//	// We only deal with one ray at a time, so we use it to pick either reflection
+	//	// or refraction at random.
+	//	float r0 = powf((1 - eta) / (1 + eta), 2);
+	//	float r_theta = r0 + (1 - r0)*powf((1 - glm::abs(glm::dot(pathSegment.ray.direction, new_normal))), 5.0f);
+	//	bool isRefracted = 1;// r_theta < u01(rng);
+	//	if (isRefracted) {
+	//		direction_out = glm::normalize(glm::refract(pathSegment.ray.direction, new_normal, eta));
+	//	}
+	//	else {
+	//		//direction_out = getImperfectSpecularRay(pathSegment, intersect, new_normal, m, rng);
+	//		direction_out = glm::reflect(pathSegment.ray.direction, new_normal);
+	//	}
+	//	pathSegment.color *= m.specular.color;
+	//}
+
+	return new_dir;
 }
 
 /**
@@ -147,9 +183,6 @@ void scatterRay(
         thrust::default_random_engine &rng) {
 	thrust::uniform_real_distribution<float> u01(0, 1);
 
-	// No matter what, new origin is intersect point.
-	pathSegment.ray.origin = intersect;
-
 	float totalProb = fmaxf(m.hasReflective + m.hasRefractive, 1);
 	float reflectiveProb = m.hasReflective / totalProb;
 	float refractiveProb = m.hasRefractive / totalProb;
@@ -160,19 +193,20 @@ void scatterRay(
 	if (reflectiveProb > rand) {
 		pathSegment.ray.direction = getImperfectSpecularRay(pathSegment, intersect, normal, m, rng);
 		pathSegment.color *= m.specular.color;
-		pathSegment.remainingBounces--;
+		
 	}
 	else if (refractiveProb > rand) {
 		pathSegment.ray.direction = getRefractedSpecularRay(pathSegment, intersect, normal, m, rng);
-		pathSegment.color *= m.specular.color;
-		pathSegment.remainingBounces--;
+		//pathSegment.color *= m.specular.color; // Color is complicated, so we modify it in getRefractedSpecularRay(). Yikes!
+		//SpecularRefraction_BxDF(pathSegment, intersect, normal, m, rng);
 	}
 	// Ideal Diffuse
 	else {
-		// A basic implementation of pure-diffuse shading will just call the
-	    // calculateRandomDirectionInHemisphere defined above.
 		pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
 		pathSegment.color *= m.color;
-		pathSegment.remainingBounces--;
 	}
+
+	// No matter what, new origin is intersect point.
+	pathSegment.ray.origin = intersect + 0.001f * pathSegment.ray.direction;
+	pathSegment.remainingBounces--;
 }

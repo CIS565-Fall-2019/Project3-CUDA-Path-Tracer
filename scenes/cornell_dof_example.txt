@@ -38,14 +38,24 @@ REFR        0
 REFRIOR     0
 EMITTANCE   0
 
-// Specular white
+// Refractive Specular white
 MATERIAL 4
+RGB         .98 .98 .98
+SPECEX      500
+SPECRGB     .98 .98 .98
+REFL        0.0
+REFR        1.0
+REFRIOR     3.0
+EMITTANCE   0
+
+// Reflective Specular white
+MATERIAL 5
 RGB         .98 .98 .98
 SPECEX      500
 SPECRGB     .98 .98 .98
 REFL        1.0
 REFR        0.0
-REFRIOR     1.0
+REFRIOR     0.0
 EMITTANCE   0
 
 // Camera
@@ -207,7 +217,7 @@ SCALE       1 1 1
 // Sphere
 OBJECT 18
 sphere
-material 4
+material 5
 TRANS       -8 5 -8
 ROTAT       0 0 0
 SCALE       1 1 1
@@ -215,7 +225,7 @@ SCALE       1 1 1
 // Sphere
 OBJECT 19
 sphere
-material 4
+material 5
 TRANS       -6 5 -6
 ROTAT       0 0 0
 SCALE       1 1 1
@@ -223,7 +233,7 @@ SCALE       1 1 1
 // Sphere
 OBJECT 20
 sphere
-material 4
+material 5
 TRANS       -4 5 -4
 ROTAT       0 0 0
 SCALE       1 1 1
@@ -231,7 +241,7 @@ SCALE       1 1 1
 // Sphere
 OBJECT 21
 sphere
-material 4
+material 5
 TRANS       -2 5 -2
 ROTAT       0 0 0
 SCALE       1 1 1
@@ -239,7 +249,7 @@ SCALE       1 1 1
 // Sphere
 OBJECT 22
 sphere
-material 4
+material 5
 TRANS       0 5 0
 ROTAT       0 0 0
 SCALE       1 1 1
@@ -247,7 +257,7 @@ SCALE       1 1 1
 // Sphere
 OBJECT 23
 sphere
-material 4
+material 5
 TRANS       2 5 2
 ROTAT       0 0 0
 SCALE       1 1 1
@@ -255,7 +265,7 @@ SCALE       1 1 1
 // Sphere
 OBJECT 24
 sphere
-material 4
+material 5
 TRANS       4 5 4
 ROTAT       0 0 0
 SCALE       1 1 1
@@ -263,7 +273,7 @@ SCALE       1 1 1
 // Sphere
 OBJECT 25
 sphere
-material 4
+material 5
 TRANS       6 5 6
 ROTAT       0 0 0
 SCALE       1 1 1
@@ -271,7 +281,7 @@ SCALE       1 1 1
 // Sphere
 OBJECT 26
 sphere
-material 4
+material 5
 TRANS       8 5 8
 ROTAT       0 0 0
 SCALE       1 1 1
