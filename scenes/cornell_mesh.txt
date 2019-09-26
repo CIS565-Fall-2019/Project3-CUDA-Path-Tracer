@@ -58,8 +58,8 @@ FILE        cornell
 EYE         0.0 5 10.5
 LOOKAT      0 5 0
 UP          0 1 0
-FOCALDISTANCE 10
-LENSRADIUS 0
+FOCALDISTANCE 8
+LENSRADIUS 1
 
 
 // Ceiling light
@@ -112,8 +112,9 @@ SCALE       .01 10 10
 
 // Sphere
 OBJECT 6
-sphere
-material 4
-TRANS       -1 4 -1
-ROTAT       0 0 0
-SCALE       3 3 3
+mesh
+material 1
+TRANS       0 2 0
+ROTAT       0 90 0
+SCALE       9 9 9
+FILENAME ../meshes/BarramundiFish.gltf

@@ -101,7 +101,7 @@ __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
  */
 __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
         glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
-    float radius = .5;
+	float radius = .5;
 
     glm::vec3 ro = multiplyMV(sphere.inverseTransform, glm::vec4(r.origin, 1.0f));
     glm::vec3 rd = glm::normalize(multiplyMV(sphere.inverseTransform, glm::vec4(r.direction, 0.0f)));
@@ -141,4 +141,65 @@ __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
     }
 
     return glm::length(r.origin - intersectionPoint);
+}
+
+/**
+ * Test intersection between a ray and a transformed triangle. Untransformed,
+ * the sphere always has radius 0.5 and is centered at the origin.
+ *
+ * @param intersectionPoint  Output parameter for point of intersection.
+ * @param normal             Output parameter for surface normal.
+ * @param outside            Output param for whether the ray came from outside.
+ * @return                   Ray parameter `t` value. -1 if no intersection.
+ */
+__host__ __device__ float meshIntersectionTest(Geom mesh, Ray r,
+	glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside, 
+	Triangle *triangles) {
+
+	// transform ray into object space
+	glm::vec3 ro = multiplyMV(mesh.inverseTransform, glm::vec4(r.origin, 1.0f));
+	glm::vec3 rd = glm::normalize(multiplyMV(mesh.inverseTransform, glm::vec4(r.direction, 0.0f)));
+
+	Ray rt;
+	rt.origin = ro;
+	rt.direction = rd;
+
+#if BOUNDING_VOLUME
+	// TODO: compare ray with bounding volume
+	
+#endif // #if BOUNDING_VOLUME
+
+	float t_min = FLT_MAX;
+	glm::vec3 objSpaceIntersectionPoint(0.f);
+	glm::vec3 objSpaceNormal(0.f);
+	int triIndex = 0;
+
+	bool didIntersect = false;
+	for (int i = mesh.trianglesStart; i < mesh.trianglesEnd; i++) {
+		Triangle tri = triangles[i];
+		glm::vec3 barycentricPos(0.f);
+		float t;
+		if (glm::intersectRayTriangle(ro, rd, tri.positions[0], tri.positions[1], tri.positions[2], barycentricPos)) {
+			t = barycentricPos.z;
+			if (t > 0.0f && t_min > t)
+			{
+				didIntersect = true;
+				t_min = t;
+				triIndex = i;
+			}
+		}
+	}
+
+	if (!didIntersect) {
+		return -1;
+	}
+
+	outside = true; // TODO: hmmm
+	intersectionPoint = multiplyMV(mesh.transform, glm::vec4(getPointOnRay(rt, t_min), 1.f));
+	normal = glm::normalize(multiplyMV(mesh.invTranspose, glm::vec4(triangles[triIndex].normal, 0.f)));
+	if (!outside) {
+		normal = -normal;
+	}
+
+	return glm::length(r.origin - intersectionPoint);
 }

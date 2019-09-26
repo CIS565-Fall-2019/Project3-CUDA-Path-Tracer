@@ -6,15 +6,23 @@
 #include "glm/glm.hpp"
 
 #define BACKGROUND_COLOR (glm::vec3(0.0f))
+#define BOUNDING_VOLUME 1
 
 enum GeomType {
     SPHERE,
     CUBE,
+	MESH
 };
 
 struct Ray {
     glm::vec3 origin;
     glm::vec3 direction;
+};
+
+struct Triangle {
+	glm::vec3 positions[3];
+	//glm::vec3 normals[3];
+	glm::vec3 normal;
 };
 
 struct Geom {
@@ -26,6 +34,8 @@ struct Geom {
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
+	int trianglesStart;
+	int trianglesEnd;
 };
 
 struct Material {

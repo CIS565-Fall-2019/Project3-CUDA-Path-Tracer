@@ -102,7 +102,7 @@ __host__ __device__ void scatterRay(PathSegment & pathSegment, glm::vec3 interse
 
 	// update ray
 	pathSegment.ray.direction = glm::normalize(newDir);
-	pathSegment.ray.origin = intersect + (pathSegment.ray.direction * EPSILON);
+	pathSegment.ray.origin = intersect + (normal * EPSILON);
 }
 
 /*
