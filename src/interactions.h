@@ -45,7 +45,7 @@ glm::vec3 calculateRandomDirectionInHemisphere(
 * Refract pathSegment according to the material m and surface normal 
 * normal at the intersection point
 */
-__device__ glm::vec3 refract(
+__host__ __device__ glm::vec3 refract(
 	PathSegment & pathSegment,
 	glm::vec3 normal,
 	const Material &m,

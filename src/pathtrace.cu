@@ -22,6 +22,7 @@
 #define COMPACT_RAYS 1
 #define CACHE_FIRST_BOUNCE 0
 #define MATERIAL_BASED_SORT 0
+#define ANTI_ALIASING 1
 
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -144,9 +145,17 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
 
 		// TODO: implement antialiasing by jittering the ray
+		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, segment.remainingBounces);
+		float jittered_x = x;
+		float jittered_y = y;
+		#if ANTI_ALIASING
+				thrust::uniform_real_distribution<float> u01(-0.5f, 0.5f);
+				jittered_x += u01(rng);
+				jittered_y += u01(rng);
+		#endif
 		segment.ray.direction = glm::normalize(cam.view
-			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f)
-			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f)
+			- cam.right * cam.pixelLength.x * ((float)jittered_x - (float)cam.resolution.x * 0.5f)
+			- cam.up * cam.pixelLength.y * ((float)jittered_y - (float)cam.resolution.y * 0.5f)
 		);
 
 		segment.pixelIndex = index;
@@ -363,9 +372,6 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	bool iterationComplete = false;
 	//int* dev_leftover_indices_end = dev_leftover_indices + pixelcount;
 	while (!iterationComplete) {
-		//num_paths = dev_leftover_indices_end - dev_leftover_indices;
-		printf("Paths Left: %d\n", num_paths);
-
 		ShadeableIntersection* dev_cur_intersections = dev_intersections;
 		// clean shading chunks
 		cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
@@ -383,7 +389,6 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 					, dev_geoms
 					, hst_scene->geoms.size()
 					, dev_intersections
-					, dev_leftover_indices
 					);
 				if(depth == 0 && iter == 1){
 					cudaMemcpy(dev_cached_intersections, dev_intersections, pixelcount * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
