@@ -21,6 +21,7 @@
 #define ERRORCHECK 1
 #define TEST_RADIX 0
 #define SORT_MATERIAL 0
+#define CACHE_FIRST_BOUNCE 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -83,7 +84,7 @@ static ShadeableIntersection * dev_intersections = NULL;
 // ...
 //static first_bounce_intersection and flag -- need to turn false when we change camera
 static ShadeableIntersection * dev_first_bounce_intersections = NULL;
-static PathSegment * dev_temp_paths = NULL;
+static PathSegment * dev_first_bounce_paths = NULL;
 //for radix sort
 static int n_bit_material_bound = -1;
 void pathtraceInit(Scene *scene) {
@@ -110,7 +111,7 @@ void pathtraceInit(Scene *scene) {
     cudaMalloc(&dev_first_bounce_intersections, pixelcount * sizeof(ShadeableIntersection));
     cudaMemset(dev_first_bounce_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
-    cudaMalloc(&dev_temp_paths, pixelcount * sizeof(PathSegment));
+    cudaMalloc(&dev_first_bounce_paths, pixelcount * sizeof(PathSegment));
 
     //calculate the bit number we need to concern
     if (n_bit_material_bound == -1)
@@ -129,7 +130,7 @@ void pathtraceFree() {
   	cudaFree(dev_intersections);
     // TODO: clean up any extra device memory you created
     cudaFree(dev_first_bounce_intersections);
-    cudaFree(dev_temp_paths);
+    cudaFree(dev_first_bounce_paths);
     checkCUDAError("pathtraceFree");
 }
 
@@ -279,11 +280,6 @@ __global__ void shadeFakeMaterial (
 
       //basic implementation of bsdf
       else {
-          //if diffuse
-          if (material.hasReflective == 0 && material.hasRefractive == 0)
-          {
-              pathSegments[idx].color *= material.color;
-          }
           //if specular, completely depend on the reflected color
           glm::vec3 intersec_pos = pathSegments[idx].ray.direction * intersection.t + pathSegments[idx].ray.origin;
           scatterRay(pathSegments[idx], intersec_pos, intersection.surfaceNormal, material, rng);
@@ -331,161 +327,182 @@ struct have_more_bounce
 };
 
 
-//sort rays based on material id --utility
-__global__ void compute_b_e(int values_size, int* values, int* dev_b, int* dev_e, unsigned int bit)
+//sort rays based on material id -- failed..
+//__global__ void compute_b_e(int values_size, int* values, int* dev_b, int* dev_e, unsigned int bit)
+//{
+//    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//    if (idx < values_size)
+//    {
+//        int x_i = values[idx];          // value of integer at position i
+//        unsigned int p_i = (x_i >> bit) & 1;
+//
+//        if (p_i)
+//        {
+//            dev_b[idx] = 1;
+//        }
+//        else
+//        {
+//            dev_e[idx] = 1;
+//        }
+//    }
+//}
+//
+//__global__ void compute_t(int values_size, int* dev_e, int* dev_t, int* dev_f)
+//{
+//    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//    if (idx < values_size)
+//    {
+//        int total_false = dev_e[values_size - 1] + dev_f[values_size - 1];
+//        dev_t[idx] = idx - dev_f[idx] + total_false;
+//    }
+//}
+//
+//__global__ void compute_d(int values_size, int* dev_b, int* dev_t, int* dev_f, int* dev_d)
+//{
+//    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//    if (idx < values_size)
+//    {
+//        bool has_bit = dev_b[idx] == 1;
+//        int address;
+//        if (has_bit)
+//        {
+//            address = dev_t[idx];
+//            //dev_d[address] = dev_values[idx];  --test
+//        }
+//        else
+//        {
+//            address = dev_f[idx];
+//            //dev_d[address] = dev_values[idx];  --test
+//        }
+//        dev_d[idx] = address;
+//    }
+//}
+//
+//__global__ void apply_address(int values_size, PathSegment* dev_paths, PathSegment* dev_output_paths, ShadeableIntersection* dev_intersections, ShadeableIntersection* dev_output_intersections, int* dev_d)
+//{
+//    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//    if (idx < values_size)
+//    {
+//        int address = dev_d[idx]; //address to store to
+//        dev_output_paths[address] = dev_paths[idx];
+//        dev_output_intersections[address] = dev_intersections[idx];
+//    }
+//}
+//
+//__global__ void setup_material_array(int values_size, ShadeableIntersection* dev_input_intersections, int* dev_materialIds)
+//{
+//    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//    if (idx < values_size)
+//    {
+//        dev_materialIds[idx] = dev_input_intersections[idx].materialId;
+//    }
+//
+//
+//}
+//
+//void sort_by_materialID(int values_size)
+//{
+//    //first allocate 5 intermediate buffers  -- similar in slides
+//    int* dev_b;
+//    int* dev_e;
+//    int* dev_f;
+//    int* dev_t;
+//    int* dev_d;
+//    int* dev_materialIds;
+//
+//    //intermediate buffer
+//    PathSegment* dev_output_paths;
+//    PathSegment* dev_input_paths;
+//    ShadeableIntersection* dev_output_intersections;
+//    ShadeableIntersection* dev_input_intersections;
+//
+//    cudaMalloc(&dev_b, values_size * sizeof(int));
+//    cudaMalloc(&dev_e, values_size * sizeof(int));
+//    cudaMalloc(&dev_f, values_size * sizeof(int));
+//    cudaMalloc(&dev_t, values_size * sizeof(int));
+//    cudaMalloc(&dev_d, values_size * sizeof(int));
+//    cudaMalloc(&dev_materialIds, values_size * sizeof(int));
+//    cudaMalloc(&dev_output_paths, values_size * sizeof(PathSegment));
+//    cudaMalloc(&dev_output_intersections, values_size * sizeof(ShadeableIntersection));
+//    cudaMalloc(&dev_input_paths, values_size * sizeof(PathSegment));
+//    cudaMalloc(&dev_input_intersections, values_size * sizeof(ShadeableIntersection));
+//
+//    cudaMemcpy(dev_input_paths, dev_paths, values_size * sizeof(PathSegment), cudaMemcpyDeviceToDevice);
+//    cudaMemcpy(dev_input_intersections, dev_intersections, values_size * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+//
+//
+//    for (int bit = 0; bit < n_bit_material_bound; ++bit)
+//    {
+//        cudaMemset(dev_b, 0, values_size * sizeof(int));
+//        cudaMemset(dev_e, 0, values_size * sizeof(int));
+//        cudaMemset(dev_d, 0, values_size * sizeof(int));
+//        cudaMemset(dev_materialIds, 0, values_size * sizeof(int));
+//
+//        const int blockSize = 128;
+//        dim3 blocksPerGrid((values_size + blockSize - 1) / blockSize);
+//
+//        //store material id into the int array and use that to do radix sort
+//        setup_material_array << <blockSize, blocksPerGrid >> > (values_size, dev_input_intersections, dev_materialIds);
+//
+//        //compute array b and e
+//        compute_b_e<<<blockSize, blocksPerGrid>>>(values_size, dev_materialIds, dev_b, dev_e, bit);
+//
+//        //thrust to compute the scan of e -- if we input device data, then we should apply thrust::device, otherwise doesn't work
+//        thrust::device_ptr<int> dev_temp_e(dev_e);
+//        thrust::device_ptr<int> dev_temp_f(dev_f);
+//        thrust::exclusive_scan(thrust::device, dev_temp_e, dev_temp_e + values_size, dev_temp_f); //doesn't work, don't know why
+//        //compute total false by adding last element in dev_f and dev_e -- no, because need to cpy back, only for that number
+//        //directly add in in each kernel
+//        compute_t <<<blockSize, blocksPerGrid >> > (values_size, dev_e, dev_t, dev_f);
+//
+//        //compute the corresponding address of each element in new array and store in dev_d
+//        compute_d <<<blockSize, blocksPerGrid >> > (values_size, dev_b, dev_t, dev_f, dev_d);
+//
+//        //apply dev_d's address back to pathSegment and shaderIntersection for next round
+//        apply_address << <blockSize, blocksPerGrid >> > (values_size, dev_paths, dev_output_paths, dev_intersections, dev_output_intersections, dev_d);
+//        //apply the output_paths and output_intersections back to dev_paths and dev_intersections
+//        cudaMemcpy(dev_paths, dev_output_paths, values_size * sizeof(PathSegment), cudaMemcpyDeviceToDevice);
+//        cudaMemcpy(dev_intersections, dev_output_intersections, values_size * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+//    }
+//
+//    //no need to store another time because we have already done that in the last iteration in the loop
+//
+//    //Free all cuda stuff
+//
+//    cudaFree(dev_b);
+//    cudaFree(dev_e);
+//    cudaFree(dev_f);
+//    cudaFree(dev_t);
+//    cudaFree(dev_d);
+//    cudaFree(dev_materialIds);
+//
+//    cudaFree(dev_output_paths);
+//    cudaFree(dev_output_intersections);
+//    cudaFree(dev_input_paths);
+//    cudaFree(dev_input_intersections);
+//}
+
+
+
+
+//thanks for Jie Meng's help
+struct material_comparison
 {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < values_size)
+    __host__ __device__
+        bool operator()(const ShadeableIntersection& i1, const ShadeableIntersection& i2)
     {
-        int x_i = values[idx];          // value of integer at position i
-        unsigned int p_i = (x_i >> bit) & 1;
-
-        if (p_i)
-        {
-            dev_b[idx] = 1;
-        }
-        else
-        {
-            dev_e[idx] = 1;
-        }
+        return i1.materialId < i2.materialId;
     }
-}
+};
 
-__global__ void compute_t(int values_size, int* dev_e, int* dev_t, int* dev_f)
+void sort_by_material(int num_paths, PathSegment* dev_paths, ShadeableIntersection* dev_intersections)
 {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < values_size)
-    {
-        int total_false = dev_e[values_size - 1] + dev_f[values_size - 1];
-        dev_t[idx] = idx - dev_f[idx] + total_false;
-    }
+    //wrapped by device_ptr
+    thrust::device_ptr<PathSegment> dev_paths_ptr(dev_paths);
+    thrust::device_ptr<ShadeableIntersection> dev_intersections_ptr(dev_intersections);
+
+    thrust::sort_by_key(thrust::device, dev_intersections_ptr, dev_intersections_ptr + num_paths, dev_paths_ptr, material_comparison());
 }
-
-__global__ void compute_d(int values_size, int* dev_b, int* dev_t, int* dev_f, int* dev_d)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < values_size)
-    {
-        bool has_bit = dev_b[idx] == 1;
-        int address;
-        if (has_bit)
-        {
-            address = dev_t[idx];
-            //dev_d[address] = dev_values[idx];  --test
-        }
-        else
-        {
-            address = dev_f[idx];
-            //dev_d[address] = dev_values[idx];  --test
-        }
-        dev_d[idx] = address;
-    }
-}
-
-__global__ void apply_address(int values_size, PathSegment* dev_paths, PathSegment* dev_output_paths, ShadeableIntersection* dev_intersections, ShadeableIntersection* dev_output_intersections, int* dev_d)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < values_size)
-    {
-        int address = dev_d[idx]; //address to store to
-        dev_output_paths[address] = dev_paths[idx];
-        dev_output_intersections[address] = dev_intersections[idx];
-    }
-}
-
-__global__ void setup_material_array(int values_size, ShadeableIntersection* dev_input_intersections, int* dev_materialIds)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < values_size)
-    {
-        dev_materialIds[idx] = dev_input_intersections[idx].materialId;
-    }
-}
-
-void sort_by_materialID(int values_size)
-{
-    //first allocate 5 intermediate buffers  -- similar in slides
-    int* dev_b;
-    int* dev_e;
-    int* dev_f;
-    int* dev_t;
-    int* dev_d;
-    int* dev_materialIds;
-
-    //intermediate buffer
-    PathSegment* dev_output_paths;
-    PathSegment* dev_input_paths;
-    ShadeableIntersection* dev_output_intersections;
-    ShadeableIntersection* dev_input_intersections;
-
-    cudaMalloc(&dev_b, values_size * sizeof(int));
-    cudaMalloc(&dev_e, values_size * sizeof(int));
-    cudaMalloc(&dev_f, values_size * sizeof(int));
-    cudaMalloc(&dev_t, values_size * sizeof(int));
-    cudaMalloc(&dev_d, values_size * sizeof(int));
-    cudaMalloc(&dev_materialIds, values_size * sizeof(int));
-    cudaMalloc(&dev_output_paths, values_size * sizeof(PathSegment));
-    cudaMalloc(&dev_output_intersections, values_size * sizeof(ShadeableIntersection));
-    cudaMalloc(&dev_input_paths, values_size * sizeof(PathSegment));
-    cudaMalloc(&dev_input_intersections, values_size * sizeof(ShadeableIntersection));
-
-    cudaMemcpy(dev_input_paths, dev_paths, values_size * sizeof(PathSegment), cudaMemcpyDeviceToDevice);
-    cudaMemcpy(dev_input_intersections, dev_intersections, values_size * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
-
-
-    for (int bit = 0; bit < n_bit_material_bound; ++bit)
-    {
-        cudaMemset(dev_b, 0, values_size * sizeof(int));
-        cudaMemset(dev_e, 0, values_size * sizeof(int));
-        cudaMemset(dev_d, 0, values_size * sizeof(int));
-        cudaMemset(dev_materialIds, 0, values_size * sizeof(int));
-
-        const int blockSize = 128;
-        dim3 blocksPerGrid((values_size + blockSize - 1) / blockSize);
-
-        //store material id into the int array and use that to do radix sort
-        setup_material_array << <blockSize, blocksPerGrid >> > (values_size, dev_input_intersections, dev_materialIds);
-
-        //compute array b and e
-        compute_b_e<<<blockSize, blocksPerGrid>>>(values_size, dev_materialIds, dev_b, dev_e, bit);
-
-        //thrust to compute the scan of e -- if we input device data, then we should apply thrust::device, otherwise doesn't work
-        thrust::device_ptr<int> dev_temp_e(dev_e);
-        thrust::device_ptr<int> dev_temp_f(dev_f);
-        thrust::exclusive_scan(thrust::device, dev_temp_e, dev_temp_e + values_size, dev_temp_f); //doesn't work, don't know why
-        //compute total false by adding last element in dev_f and dev_e -- no, because need to cpy back, only for that number
-        //directly add in in each kernel
-        compute_t <<<blockSize, blocksPerGrid >> > (values_size, dev_e, dev_t, dev_f);
-
-        //compute the corresponding address of each element in new array and store in dev_d
-        compute_d <<<blockSize, blocksPerGrid >> > (values_size, dev_b, dev_t, dev_f, dev_d);
-
-        //apply dev_d's address back to pathSegment and shaderIntersection for next round
-        apply_address << <blockSize, blocksPerGrid >> > (values_size, dev_paths, dev_output_paths, dev_intersections, dev_output_intersections, dev_d);
-        //apply the output_paths and output_intersections back to dev_paths and dev_intersections
-        cudaMemcpy(dev_paths, dev_output_paths, values_size * sizeof(PathSegment), cudaMemcpyDeviceToDevice);
-        cudaMemcpy(dev_intersections, dev_output_intersections, values_size * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
-    }
-
-    //no need to store another time because we have already done that in the last iteration in the loop
-
-    //Free all cuda stuff
-
-    cudaFree(dev_b);
-    cudaFree(dev_e);
-    cudaFree(dev_f);
-    cudaFree(dev_t);
-    cudaFree(dev_d);
-    cudaFree(dev_materialIds);
-
-    cudaFree(dev_output_paths);
-    cudaFree(dev_output_intersections);
-    cudaFree(dev_input_paths);
-    cudaFree(dev_input_intersections);
-}
-
-
-
 
 
 /**
@@ -555,7 +572,150 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
     //   for you.
 
     // TODO: perform one iteration of path tracing
+#if CACHE_FIRST_BOUNCE
+    //first iteration, we need to generate Ray and cache
+    if (iter == 1)
+    {
+        generateRayFromCamera << <blocksPerGrid2d, blockSize2d >> > (cam, iter, traceDepth, dev_paths);
+        checkCUDAError("generate camera ray");
 
+        //cache the ray
+        cudaMemcpy(dev_first_bounce_paths, dev_paths, pixelcount * sizeof(PathSegment), cudaMemcpyDeviceToDevice);
+
+        int depth = 0;
+        PathSegment* dev_path_end = dev_paths + pixelcount; //the tail of path segment array
+        int num_paths = dev_path_end - dev_paths; //is that the same as pixel count? -- no when antialiasing, do we need to change?
+
+        // --- PathSegment Tracing Stage ---
+        // Shoot ray into scene, bounce between objects, push shading chunks
+
+        bool iterationComplete = false;
+        //create a intermediate buffer
+        while (!iterationComplete) {
+
+            // clean shading chunks
+            cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
+            // tracing
+            dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
+            computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
+                depth
+                , num_paths
+                , dev_paths
+                , dev_geoms
+                , hst_scene->geoms.size()
+                , dev_intersections
+                );
+            checkCUDAError("trace one bounce");
+            cudaDeviceSynchronize();
+            //cache the intersection
+            if (depth == 0)
+            {
+                cudaMemcpy(dev_first_bounce_intersections, dev_intersections, pixelcount * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+            }
+            depth++;
+
+
+            // TODO:
+            // --- Shading Stage ---
+            // Shade path segments based on intersections and generate new rays by
+          // evaluating the BSDF.
+          // Start off with just a big kernel that handles all the different
+          // materials you have in the scenefile.
+
+          // TODO: compare between directly shading the path segments and shading
+          // path segments that have been reshuffled to be contiguous in memory.
+
+#if SORT_MATERIAL
+    //reshuffle the pathSegments
+            sort_by_material(num_paths, dev_paths, dev_intersections);
+#endif
+
+            shadeFakeMaterial << <numblocksPathSegmentTracing, blockSize1d >> > (
+                iter,
+                num_paths,
+                dev_intersections,
+                dev_paths,
+                dev_materials
+                );
+            // TODO: should be based off stream compaction results, and even shot more rays
+            // update the dev_path and num_paths -- if determine no_more_bounce by remainingBounce == -1, then our ray will be termianted and no longer take account
+            PathSegment* dev_paths_end_result = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, have_more_bounce());
+            num_paths = dev_paths_end_result - dev_paths;
+            if (depth >= traceDepth || num_paths <= 0)
+            {
+                iterationComplete = true;
+            }
+        }
+
+        //remember to recover its num_paths
+        num_paths = dev_path_end - dev_paths;
+        // Assemble this iteration and apply it to the image
+
+        dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
+        finalGather << <numBlocksPixels, blockSize1d >> > (num_paths, dev_image, dev_paths);
+    }
+    else
+    {
+
+        //copy dev_first_bounce_paths and dev_first_bounce_intersections to dev_paths and dev_intersections
+        cudaMemcpy(dev_paths, dev_first_bounce_paths, pixelcount * sizeof(PathSegment), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(dev_intersections, dev_first_bounce_intersections, pixelcount * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+        //set the initial depth to 1
+        int depth = 1;
+        PathSegment* dev_path_end = dev_paths + pixelcount; //the tail of path segment array
+        int num_paths = dev_path_end - dev_paths;
+
+        bool iterationComplete = false;
+        //no need to generate ray, directly go into the while loop
+        while (!iterationComplete) {
+            //first go shading and then update the depth
+#if SORT_MATERIAL
+    //reshuffle the pathSegments
+            sort_by_material(num_paths, dev_paths, dev_intersections);
+#endif
+            dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
+            shadeFakeMaterial << <numblocksPathSegmentTracing, blockSize1d >> > (
+                iter,
+                num_paths,
+                dev_intersections,
+                dev_paths,
+                dev_materials
+                );
+            // TODO: should be based off stream compaction results, and even shot more rays
+            // update the dev_path and num_paths -- if determine no_more_bounce by remainingBounce == -1, then our ray will be termianted and no longer take account
+            PathSegment* dev_paths_end_result = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, have_more_bounce());
+            num_paths = dev_paths_end_result - dev_paths;
+            if (depth >= traceDepth || num_paths <= 0)
+            {
+                iterationComplete = true;
+                continue;
+            }
+
+
+            // reset dev_intersections
+            cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
+            // tracing
+            computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
+                depth
+                , num_paths
+                , dev_paths
+                , dev_geoms
+                , hst_scene->geoms.size()
+                , dev_intersections
+                );
+            checkCUDAError("trace one bounce");
+            cudaDeviceSynchronize();
+            depth++;
+        }
+
+        //remember to recover its num_paths
+        num_paths = dev_path_end - dev_paths;
+        // Assemble this iteration and apply it to the image
+
+        dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
+        finalGather << <numBlocksPixels, blockSize1d >> > (num_paths, dev_image, dev_paths);
+    }
+#else
 	generateRayFromCamera <<<blocksPerGrid2d, blockSize2d >>>(cam, iter, traceDepth, dev_paths);
 	checkCUDAError("generate camera ray");
 
@@ -600,7 +760,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 #if SORT_MATERIAL
     //reshuffle the pathSegments
-    sort_by_materialID(num_paths);
+    sort_by_material(num_paths,dev_paths,dev_intersections);
 #endif
 
   shadeFakeMaterial<<<numblocksPathSegmentTracing, blockSize1d>>> (
@@ -619,12 +779,14 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
       iterationComplete = true;
   }
 	}
-
-    //turn back to original number
+    //remember to recover its num_paths
     num_paths = dev_path_end - dev_paths;
-  // Assemble this iteration and apply it to the image
-  dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
-	finalGather<<<numBlocksPixels, blockSize1d>>>(num_paths, dev_image, dev_paths);
+    // Assemble this iteration and apply it to the image
+
+    dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
+    finalGather << <numBlocksPixels, blockSize1d >> > (num_paths, dev_image, dev_paths);
+#endif
+
 
     ///////////////////////////////////////////////////////////////////////////
 
