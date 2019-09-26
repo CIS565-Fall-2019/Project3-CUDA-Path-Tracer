@@ -95,10 +95,10 @@ void scatterRay(
 		color = m.specular.color;
 	}
 	else if (pdf  - m.hasReflective < m.hasRefractive) {
-		if (!intersection.is_inside)
+		if (dot(intersection.surfaceNormal, dir) <= 0) //intersection.is_inside
 			dir = glm::normalize(glm::refract(pathSegment.ray.direction, intersection.surfaceNormal, 1/m.indexOfRefraction));
 		else
-			dir = glm::normalize(glm::refract(pathSegment.ray.direction, intersection.surfaceNormal, m.indexOfRefraction));
+			dir = glm::normalize(glm::refract(pathSegment.ray.direction, -intersection.surfaceNormal, m.indexOfRefraction));
 		color = m.color;
 	}
 	else {
@@ -106,6 +106,6 @@ void scatterRay(
 		color = m.color;
 	}
 	pathSegment.ray.direction = dir;
-	pathSegment.ray.origin = intersection.intersect + dir * EPSILON;
-	pathSegment.color = pathSegment.color * color;// glm::clamp(pathSegment.color * color, glm::vec3(0.0f), glm::vec3(1.0f));
+	pathSegment.ray.origin = intersection.intersect + dir * 0.01f;
+	pathSegment.color = pathSegment.color * color; // glm::clamp(pathSegment.color * color, glm::vec3(0.0f), glm::vec3(1.0f));
 }

@@ -78,7 +78,6 @@ static Material * dev_materials = NULL;
 static PathSegment * dev_paths = NULL;
 static ShadeableIntersection * dev_intersections = NULL;
 static ShadeableIntersection * dev_intersections_cache = NULL;
-static bool copied_flag = false;
 void pathtraceInit(Scene *scene) {
 	hst_scene = scene;
 	const Camera &cam = hst_scene->state.camera;
@@ -134,6 +133,8 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 
 	if (x < cam.resolution.x && y < cam.resolution.y) {
 		int index = x + (y * cam.resolution.x);
+		//thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, pathSegments[index].remainingBounces);
+		//thrust::uniform_real_distribution<float> u01(0, 1);
 		PathSegment & segment = pathSegments[index];
 
 		segment.ray.origin = cam.position;
@@ -215,7 +216,7 @@ __global__ void computeIntersections(
 			//The ray hits something
 			intersections[path_index].t = t_min;
 			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
-			intersections[path_index].surfaceNormal = normal;
+			intersections[path_index].surfaceNormal = glm::normalize(normal);
 			intersections[path_index].is_inside = !outside;
 			intersections[path_index].intersect = intersect_point;
 		}
@@ -370,16 +371,14 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 		// tracing
 		dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
-		if (depth == 0 && CACHE_BOUNCE && !copied_flag) {
+		if (depth == 0 && CACHE_BOUNCE && iter == 1) {
 			cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 			computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (depth,
 				num_paths, dev_paths, dev_geoms, hst_scene->geoms.size(), dev_intersections);
 			// cache
 			cudaMemcpy(dev_intersections_cache, dev_intersections, pixelcount * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
-			// set flag to done 
-			copied_flag = true;
 		}
-		else if (depth == 0 && CACHE_BOUNCE && copied_flag) {
+		else if (depth == 0 && CACHE_BOUNCE) {
 			// use cache
 			cudaMemcpy(dev_intersections, dev_intersections_cache, pixelcount * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
 		}

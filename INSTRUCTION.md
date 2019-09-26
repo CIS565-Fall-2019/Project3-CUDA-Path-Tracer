@@ -86,7 +86,7 @@ by material type. This should be easily toggleable.
   are contiguous in memory before shading. How does this impact performance? Why?
 * A toggleable option to cache the first bounce intersections for re-use across all
 subsequent iterations. Provide performance benefit analysis across different
-max ray depths. ???
+max ray depths. 
 
 ##### Part 2 - Make Your Pathtracer Unique!
 
