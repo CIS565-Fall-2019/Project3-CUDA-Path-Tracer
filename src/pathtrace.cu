@@ -4,6 +4,8 @@
 #include <thrust/execution_policy.h>
 #include <thrust/random.h>
 #include <thrust/remove.h>
+#include <thrust/sort.h>
+#include <thrust\device_vector.h>
 #include <stream_compaction/efficient.h>
 
 #include "sceneStructs.h"
@@ -16,9 +18,10 @@
 #include "interactions.h"
 #include "device_launch_parameters.h"
 
+
 #define ERRORCHECK 1
-#define COMPACT_RAYS 1
-#define CACHE_FIRST_BOUNCE 1
+#define COMPACT_RAYS 0
+#define CACHE_FIRST_BOUNCE 0
 #define MATERIAL_BASED_SORT 0
 
 
@@ -240,11 +243,11 @@ __global__ void shadeFakeMaterial(
 	, int* dev_leftover_indices
 )
 {
-	int id = blockIdx.x * blockDim.x + threadIdx.x;
-	//if (id < num_paths && pathSegments[pathSegments[id].pixelIndex].remainingBounces > 0)
-	if (id < num_paths)
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	//if (id < num_paths && pathSegments[dev_leftover_indices[id]].remainingBounces > 0)
+	if (idx < num_paths)
 		{
-		int idx = dev_leftover_indices[id];
+		//int idx = dev_kkkleftover_indices[id];
 		ShadeableIntersection intersection = shadeableIntersections[idx];
 		if (intersection.t > 0.0f) { // if the intersection exists...
 		  // Set up the RNG
@@ -265,26 +268,23 @@ __global__ void shadeFakeMaterial(
 			// like what you would expect from shading in a rasterizer like OpenGL.
 			// TODO: replace this! you should be able to start with basically a one-liner
 			else {
-				scatterRay(pathSegments[idx], intersection.t, intersection.surfaceNormal, material, rng);
-				pathSegments[idx].remainingBounces--;
+				scatterRay(pathSegments[idx], getPointOnRay(pathSegments[idx].ray, intersection.t), intersection.surfaceNormal, material, rng);
+				pathSegments[idx].remainingBounces -= 1;
 				//float lightterm = glm::dot(intersection.surfacenormal, glm::vec3(0.0f, 1.0f, 0.0f));
 				//pathsegments[idx].color *= (materialcolor * lightterm) * 0.3f + ((1.0f - intersection.t * 0.02f) * materialcolor) * 0.7f;
 				//pathsegments[idx].color *= u01(rng); // apply some noise because why not
 			}
-			// If there was no intersection, color the ray black.
-			// Lots of renderers use 4 channel color, RGBA, where A = alpha, often
-			// used for opacity, in which case they can indicate "no opacity".
-			// This can be useful for post-processing and image compositing.
+		// If there was no intersection, color the ray black.
 		}
 		else {
 			pathSegments[idx].color = glm::vec3(0.0f);
 			pathSegments[idx].remainingBounces = 0;
 		}
 		// Need to remove this for next iteration
-#if COMPACT_RAYS
-		if (pathSegments[idx].remainingBounces <= 0)
-			dev_leftover_indices[id] = -1;
-#endif
+		#if COMPACT_RAYS
+			if (pathSegments[idx].remainingBounces <= 0)
+				dev_leftover_indices[id] = -1;
+		#endif
 	}
 }
 
@@ -381,7 +381,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		// tracing
 		dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
 		#if CACHE_FIRST_BOUNCE
-			if(depth == 0 and iter != 1) {
+			if(depth == 0 && iter != 1) {
 				dev_cur_intersections = dev_cached_intersections;
 			}else {
 				computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
@@ -393,7 +393,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 					, dev_intersections
 					, dev_leftover_indices
 					);
-				if(depth == 0 and iter == 1){
+				if(depth == 0 && iter == 1){
 					cudaMemcpy(dev_cached_intersections, dev_intersections, pixelcount * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
 				}
 			}
@@ -421,7 +421,17 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		// materials you have in the scenefile.
 		// TODO: compare between directly shading the path segments and shading
 		// path segments that have been reshuffled to be contiguous in memory.
+		//thrust::device_vector<ShadeableIntersection> thrust_dev_intersections = dev_intersections;
+		#if MATERIAL_BASED_SORT 
+			//thrust::device_vector<ShadeableIntersection> thrust_dev_intersections(dev_intersections, dev_intersections + pixelcount);
+			//thrust::device_vector<ShadeableIntersection> thrust_dev_intersections(dev_intersections, dev_intersections + pixelcount);
+			//thrust::device_ptr<ShadeableIntersection> thrust_dev_intersections = thrust::device_ptr<ShadeableIntersection>(dev_intersections);
+			//thrust::device_ptr<PathSegment> thrust_dev_paths = thrust::device_ptr<PathSegment>(dev_paths);
+			thrust::device_ptr<ShadeableIntersection> thrust_dev_intersections(dev_intersections);
+			thrust::device_ptr<PathSegment> thrust_dev_paths(dev_paths);
 
+			thrust::sort_by_key(thrust::device, thrust_dev_intersections, thrust_dev_intersections + num_paths, thrust_dev_paths);
+		#endif
 		shadeFakeMaterial << <numblocksPathSegmentTracing, blockSize1d >> > (
 			iter,
 			num_paths,
@@ -434,10 +444,11 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		#if COMPACT_RAYS
 			dev_leftover_indices_end = thrust::remove_if(thrust::device, dev_leftover_indices, dev_leftover_indices + num_paths, is_complete());
 		#endif
-		if (depth == 5)
+		if((depth == traceDepth) || num_paths == 0)
 			iterationComplete = true;
 
 	}
+	num_paths = pixelcount;
 
 	// Assemble this iteration and apply it to the image
 	dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
