@@ -4,10 +4,12 @@
 #include <thrust/execution_policy.h>
 #include <thrust/random.h>
 #include <thrust/remove.h>
+
 #include <thrust/partition.h>
 #include <thrust/device_ptr.h>
 #include <cuda_runtime_api.h>
 #include <device_functions.h>
+
 
 #include "sceneStructs.h"
 #include "scene.h"
@@ -18,9 +20,13 @@
 #include "intersections.h"
 #include "interactions.h"
 
+
 #include "device_launch_parameters.h"
 
+
 #define ERRORCHECK 1
+#define MATERIAL_SORT 0
+#define COMPACT 0
 
 const int STREAM_COMPACT = 0;
 const int SORT_BY_MATERIAL = 0;
@@ -84,6 +90,17 @@ __global__ void sendImageToPBO(uchar4* pbo, glm::ivec2 resolution,
     }
 }
 
+struct is_dead
+{
+	__host__ __device__
+		bool operator()(const PathSegment& x)
+	{
+		if (x.remainingBounces > 0) {
+			return true;
+		}
+	}
+};
+
 static Scene * hst_scene = NULL;
 static glm::vec3 * dev_image = NULL;
 static Geom * dev_geoms = NULL;
@@ -93,6 +110,12 @@ static ShadeableIntersection * dev_intersections = NULL;
 // TODO: static variables for device memory, any extra info you need, etc
 // ...
 static ShadeableIntersection * dev_intersections_cached = NULL;
+
+
+static bool is_cached = false;
+
+//Comparator for sorting by material
+inline __host__ __device__ bool operator<(const ShadeableIntersection &left, const ShadeableIntersection &right) { return (left.materialId < right.materialId);  };
 
 void pathtraceInit(Scene *scene) {
     hst_scene = scene;
@@ -114,6 +137,8 @@ void pathtraceInit(Scene *scene) {
   	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
     // TODO: initialize any extra device memeory you need
+	cudaMalloc(&dev_intersections_cached, pixelcount * sizeof(ShadeableIntersection));
+
 	cudaMalloc(&dev_intersections_cached, pixelcount * sizeof(ShadeableIntersection));
 
     checkCUDAError("pathtraceInit");
@@ -262,9 +287,12 @@ __global__ void shadeFakeMaterial (
       Material material = materials[intersection.materialId];
       glm::vec3 materialColor = material.color;
 
+	  if (pathSegments[idx].remainingBounces <= 0) return;
+
       // If the material indicates that the object was a light, "light" the ray
       if (material.emittance > 0.0f) {
         pathSegments[idx].color *= (materialColor * material.emittance);
+
 		//pathSegments[idx].remainingBounces = 0;
       }
       // Otherwise, do some pseudo-lighting computation. This is actually more
@@ -280,7 +308,9 @@ __global__ void shadeFakeMaterial (
     } else {
       pathSegments[idx].color = glm::vec3(0.0f);
 	  //pathSegments[idx].remainingBounces = 0;
+
     }
+	
   }
   //__syncthreads();
 }
@@ -394,7 +424,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
     // TODO: perform one iteration of path tracing
 
-	generateRayFromCamera <<<blocksPerGrid2d, blockSize2d >>>(cam, iter, traceDepth, dev_paths);
+	generateRayFromCamera << <blocksPerGrid2d, blockSize2d >> > (cam, iter, traceDepth, dev_paths);
 	checkCUDAError("generate camera ray");
 
 	int depth = 0;
@@ -438,9 +468,16 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			);
 		checkCUDAError("trace one bounce");
 	}
+
 	cudaDeviceSynchronize();
 	depth++;
 
+	#if MATERIAL_SORT
+		thrust::device_ptr<ShadeableIntersection> thrust_dev_intersections(dev_intersections);
+		thrust::device_ptr<PathSegment> thrust_dev_paths(dev_paths);
+
+		thrust::sort_by_key(thrust::device, thrust_dev_intersections, thrust_dev_intersections + num_paths, thrust_dev_paths);
+	#endif
 
 	// TODO:
 	// --- Shading Stage ---
@@ -466,12 +503,14 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
     dev_paths,
     dev_materials
   );
+
   if (STREAM_COMPACT) {
 	  dev_path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, is_alive());
 	  num_paths = dev_path_end - dev_paths;
   }
   
   if (depth > traceDepth || num_paths == 0) {
+
 	  iterationComplete = true; // TODO: should be based off stream compaction results.
   }
 }
