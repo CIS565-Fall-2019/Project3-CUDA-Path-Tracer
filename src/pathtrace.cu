@@ -239,6 +239,7 @@ __global__ void shadeFakeMaterial(
 	, ShadeableIntersection * shadeableIntersections
 	, PathSegment * pathSegments
 	, Material * materials
+	, int depth
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -249,7 +250,7 @@ __global__ void shadeFakeMaterial(
 		  // Set up the RNG
 		  // LOOK: this is how you use thrust's RNG! Please look at
 		  // makeSeededRandomEngine as well.
-			thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, 0);
+			thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, depth);
 			thrust::uniform_real_distribution<float> u01(0, 1);
 
 			Material material = materials[intersection.materialId];
@@ -412,7 +413,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			num_paths,
 			dev_cur_intersections,
 			dev_paths,
-			dev_materials
+			dev_materials,
+			depth
 		);
 		// TODO: should be based off stream compaction results.
 		#if COMPACT_RAYS

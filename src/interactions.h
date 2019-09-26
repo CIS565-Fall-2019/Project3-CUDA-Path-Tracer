@@ -41,6 +41,54 @@ glm::vec3 calculateRandomDirectionInHemisphere(
         + sin(around) * over * perpendicularDirection2;
 }
 
+/*
+* Refract pathSegment according to the material m and surface normal 
+* normal at the intersection point
+*/
+__device__ glm::vec3 refract(
+	PathSegment & pathSegment,
+	glm::vec3 normal,
+	const Material &m,
+	thrust::default_random_engine &rng) {
+	// Check if ray is coming from inside or outside of the material it struck
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	float R = 1.0f; // Refraction Probability
+	float ior;
+	glm::vec3 sur_normal;
+
+	float cosi = glm::dot(pathSegment.ray.direction, normal);
+	if (cosi > 0.0f) {
+		ior = m.indexOfRefraction;
+		sur_normal = normal * -1.0f;
+	}
+	else {
+		ior = 1.0f / m.indexOfRefraction;
+		sur_normal = normal;
+	}
+	// Check for Total Internal Reflection
+	float sinr = (1.0f / m.indexOfRefraction) * sqrtf(1 - powf(cosi, 2));
+
+	// Ray is coming from inside and TIR
+	if (cosi > 0.0f && sinr > 1.0f) {
+		R = 0.0f;
+		pathSegment.color *= 0;
+	}
+	else {
+		// Schlick's Approximation for fresnel's effects
+		float r0 = powf((1.0f - ior) / (1.0f + ior), 2.0f);
+		//printf("Schlick screwing up!! r0: %f R: %f\n", r0, fmaxf(0.0f, cosi));
+		R = r0 + ((1 - r0) * powf((1 - fmaxf(0.0f, cosi)), 5));
+		pathSegment.color *= m.specular.color;
+	}
+	float r_num = u01(rng);
+	if (r_num < R) {
+		return glm::refract(pathSegment.ray.direction, sur_normal, ior);
+	}
+	else {
+		return glm::reflect(pathSegment.ray.direction, normal);
+	}
+}
+
 /**
  * Scatter a ray with some probabilities according to the material properties.
  * For example, a diffuse surface scatters in a cosine-weighted hemisphere.
@@ -79,34 +127,12 @@ void scatterRay(
 	float rand_num = u01(rng);
 	// Reflection
 	if (rand_num < m.hasReflective) {
-		//TODO: approximate Fresnel effects using Schlick’s approximation
 		scattered_ray_direction = glm::reflect(pathSegment.ray.direction, normal);
 		pathSegment.color *= m.specular.color;
 	}
 	// Refraction
 	else if (rand_num < m.hasReflective + m.hasRefractive) {
-		//TODO: Snell’s law plus fresnel effects
-
-		bool pointing_inwards = glm::dot(pathSegment.ray.direction, normal) > 0.f;
-		glm::vec3 fixedNormal = normal * (pointing_inwards ? -1.0f : 1.0f);
-		float fixed_ior = pointing_inwards ? m.indexOfRefraction : (1.0f / m.indexOfRefraction);
-		scattered_ray_direction = glm::normalize(glm::refract(pathSegment.ray.direction, fixedNormal, fixed_ior));
-
-		if (glm::length(scattered_ray_direction) < 0.01f) {
-			pathSegment.color *= 0;
-			scattered_ray_direction = glm::reflect(pathSegment.ray.direction, normal);
-		}
-
-		// use schlick's approx
-		float schlick_0 = powf((pointing_inwards ? m.indexOfRefraction - 1.0f : 1.0f - m.indexOfRefraction) /
-			(1.0f + m.indexOfRefraction), 2.0f);
-		float schlick_coef = schlick_0 +
-			(1 - schlick_0) * powf(1 - max(0.0f, glm::dot(pathSegment.ray.direction, normal)), 5);
-
-		// based on coef, pick either a refraction or reflection
-		scattered_ray_direction = schlick_coef < u01(rng) ? glm::reflect(pathSegment.ray.direction, normal) : scattered_ray_direction;
-		pathSegment.color *= m.specular.color;
-		// Refraction
+		scattered_ray_direction = refract(pathSegment, normal, m, rng);
 	}
 	// Diffusion
 	else {

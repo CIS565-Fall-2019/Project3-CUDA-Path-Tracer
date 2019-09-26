@@ -43,7 +43,17 @@ MATERIAL 4
 RGB         .98 .98 .98
 SPECEX      0
 SPECRGB     .98 .98 .98
-REFL        1
+REFL        0
+REFR        1
+REFRIOR     1.33
+EMITTANCE   0
+
+// Diffuse black
+MATERIAL 5
+RGB         .1 .1 .1
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
 REFR        0
 REFRIOR     0
 EMITTANCE   0
