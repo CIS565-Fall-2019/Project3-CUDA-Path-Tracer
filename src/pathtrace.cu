@@ -25,8 +25,6 @@
 
 
 #define ERRORCHECK 1
-#define MATERIAL_SORT 0
-#define COMPACT 0
 
 const int STREAM_COMPACT = 0;
 const int SORT_BY_MATERIAL = 0;
@@ -113,9 +111,6 @@ static ShadeableIntersection * dev_intersections_cached = NULL;
 
 
 static bool is_cached = false;
-
-//Comparator for sorting by material
-inline __host__ __device__ bool operator<(const ShadeableIntersection &left, const ShadeableIntersection &right) { return (left.materialId < right.materialId);  };
 
 void pathtraceInit(Scene *scene) {
     hst_scene = scene;
@@ -316,6 +311,7 @@ __global__ void shadeFakeMaterial (
 }
 
 __global__ void shadeRealMaterial(
+	int depth,
 	int iter
 	, int num_paths
 	, ShadeableIntersection * shadeableIntersections
@@ -332,7 +328,7 @@ __global__ void shadeRealMaterial(
 		  // Set up the RNG
 		  // LOOK: this is how you use thrust's RNG! Please look at
 		  // makeSeededRandomEngine as well.
-			thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, 0);
+			thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, depth);
 			thrust::uniform_real_distribution<float> u01(0, 1);
 
 			Material material = materials[intersection.materialId];
@@ -497,6 +493,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 
   shadeRealMaterial<<<numblocksPathSegmentTracing, blockSize1d>>> (
+	  depth,
     iter,
     num_paths,
     dev_intersections,

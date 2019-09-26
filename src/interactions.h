@@ -72,8 +72,7 @@ void scatterRay(
         glm::vec3 intersect,
         glm::vec3 normal,
         const Material &m,
-        thrust::default_random_engine &rng,
-		const int idx) {
+        thrust::default_random_engine &rng) {
     // TODO: implement this.
     // A basic implementation of pure-diffuse shading will just call the
     // calculateRandomDirectionInHemisphere defined above.
@@ -90,8 +89,46 @@ void scatterRay(
 		materialColor = m.specular.color;
 	}
 	else if (prob <= (m.hasRefractive + m.hasReflective)) {
-		new_ray = glm::refract(pathSegment.ray.direction, normal, m.indexOfRefraction);
+		
+		float ior = m.indexOfRefraction;
+		float r;
+		//Check if ray is from inside to outside object or other direction
+		float cosi = glm::dot(pathSegment.ray.direction, normal);
+		if (cosi >= 0) {
+			//Inside to outside
+			//printf("HERE\n");
+			//Check total internal reflection
+			float sinr = (1.0f / ior) * sqrtf(1 - pow(cosi, 2));
+			if (sinr > 1) {
+				printf("AAAAA/n");
+				//Total internal reflection
+				r = 1;
+			}
+			else {
+				//Calculate Reflectance (r) using Fresnel's law
+				float r0 = pow((ior - 1.0f)/(ior + 1.0f), 2);
+				r = r0 + (1 - r0) * pow((1 - glm::max(0.0f, cosi)),5);
+			}
+		}
+		else {
+			//Outside to inside
+			//Calculate Reflectance (r) using Fresnel's law
+			float r0 = pow((1.0f - ior) / (1.0f + ior), 2);
+			r = r0 + (1 - r0) * pow((1 - glm::max(0.0f, cosi)), 5);
+		}
 
+		//Reflect or refract randomnly based on reflectance ratio
+		thrust::uniform_real_distribution<float> u01(0, 1);
+		float prob_of_reflection = u01(rng);
+		//printf("REFL: %f\n", r);
+		if (prob_of_reflection <= r) {
+			//Reflect
+			new_ray = glm::reflect(pathSegment.ray.direction, normal);
+		}
+		else {
+			//Refract
+			new_ray = glm::refract(pathSegment.ray.direction, normal, m.indexOfRefraction);
+		}
 		materialColor = m.specular.color;
 	}
 	else {
