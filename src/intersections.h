@@ -142,3 +142,48 @@ __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
 
     return glm::length(r.origin - intersectionPoint);
 }
+
+
+
+
+__host__ __device__ float triangleIntersectionTest(Geom mesh, Triangle triangle, Ray r,
+	glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
+
+	glm::vec3 ro = multiplyMV(mesh.inverseTransform, glm::vec4(r.origin, 1.0f));
+	glm::vec3 rd = glm::normalize(multiplyMV(mesh.inverseTransform, glm::vec4(r.direction, 0.0f)));
+
+	Ray rt;
+	rt.origin = ro;
+	rt.direction = rd;
+
+
+	glm::vec3 planeNormal = glm::normalize(glm::cross(triangle.p2 - triangle.p1, triangle.p3 - triangle.p2));
+
+	float t = glm::dot(planeNormal, (triangle.p1 - ro)) / glm::dot(planeNormal, rd);
+	if (t < 0) {
+		return -1;
+	}
+
+	glm::vec3 P = ro + t * rd;
+
+	float S = 0.5f * glm::length(glm::cross(triangle.p1 - triangle.p2, triangle.p1 - triangle.p3));
+	float s1 = 0.5f * glm::length(glm::cross(P - triangle.p2, P - triangle.p3)) / S;
+	float s2 = 0.5f * glm::length(glm::cross(P - triangle.p3, P - triangle.p1)) / S;
+	float s3 = 0.5f * glm::length(glm::cross(P - triangle.p1, P - triangle.p2)) / S;
+	float sum = s1 + s2 + s3;
+
+	if (s1 >= 0 && s1 <= 1 && s2 >= 0 && s2 <= 1 && s3 >= 0 && s3 <= 1 && glm::abs(sum - 1.0f) < 0.01) {
+		glm::vec3 objspaceIntersection = getPointOnRay(rt, t);
+		intersectionPoint = multiplyMV(mesh.transform, glm::vec4(objspaceIntersection, 1.f));
+		normal = glm::normalize(multiplyMV(mesh.invTranspose, glm::vec4(planeNormal, 0.f)));
+		if (glm::dot(r.direction, normal) < 0) {
+			outside = true;
+		}
+		else {
+			outside = false;
+			normal = -normal;
+		}
+	}
+
+	return glm::length(r.origin - intersectionPoint);
+}
