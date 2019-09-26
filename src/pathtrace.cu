@@ -431,11 +431,12 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 				);
 			checkCUDAError("First trace bounce failed");
 			cudaDeviceSynchronize();
-			dev_intersections = dev_first_intersections;
+			cudaMemcpy(dev_intersections, dev_first_intersections, numPaths * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
 			cacheFirstBounce = false;
 		}
-		else if (depth == 0)
+		else if (depth == 0 && CACHEFIRSTBOUNCE) {
 			cudaMemcpy(dev_intersections, dev_first_intersections, numPaths * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+		}
 		else {
 			computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
 				depth
@@ -443,13 +444,13 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 				, dev_paths
 				, dev_geoms
 				, hst_scene->geoms.size()
-				, dev_first_intersections
+				, dev_intersections
 				);
 			checkCUDAError("First trace bounce failed");
 			cudaDeviceSynchronize();
-			cudaMemcpy(dev_intersections, dev_first_intersections, numPaths * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
-			printf("Hello World\n");
-			cout << "Boolean Value: " << cacheFirstBounce << endl;
+			//cudaMemcpy(dev_intersections, dev_first_intersections, numPaths * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+			//printf("Hello World\n");
+			//cout << "Boolean Value: " << cacheFirstBounce << endl;
 		}
 
 		depth++;
