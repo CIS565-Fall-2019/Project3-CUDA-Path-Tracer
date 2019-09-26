@@ -41,8 +41,8 @@ glm::vec3 calculateRandomDirectionInHemisphere(
         + sin(around) * over * perpendicularDirection2;
 }
 
-__host__ __device__ glm::vec3 getImperfectSpecularRay(
-	const PathSegment & pathSegment,
+__host__ __device__ void imperfectSpecularReflection(
+	PathSegment & pathSegment,
 	const glm::vec3 intersect,
 	const glm::vec3 normal,
 	const Material &m,
@@ -70,10 +70,12 @@ __host__ __device__ glm::vec3 getImperfectSpecularRay(
 	glm::mat3 transform = glm::mat3(transform_x, transform_y, transform_z);
 
 	// Transform the vector so that it aligns with the reflected vector as Z axis
-	return transform * sample;
+	pathSegment.ray.direction = transform * sample;
+	pathSegment.color *= m.specular.color;
+	pathSegment.ray.origin = intersect + (.001f) * pathSegment.ray.direction;
 }
 
-__host__ __device__ glm::vec3 getRefractedSpecularRay(
+__host__ __device__ void specularRefraction(
 	PathSegment & pathSegment,
 	const glm::vec3 intersect,
 	const glm::vec3 normal,
@@ -108,15 +110,13 @@ __host__ __device__ glm::vec3 getRefractedSpecularRay(
 
 	// glm::refract will return a zero vector for total internal reflection
 	if (glm::length(new_dir) < EPSILON) {
-		pathSegment.color = glm::vec3(0.0f);
+		pathSegment.color = glm::vec3(0.0f); // Set black for internal reflection (do was I was told)
 		new_dir = glm::reflect(old_dir, normal);
 	}
 
-	pathSegment.color *= m.specular.color;
 	pathSegment.ray.direction = new_dir;
+	pathSegment.color *= m.specular.color;
 	pathSegment.ray.origin = intersect + (.001f) * pathSegment.ray.direction;
-
-
 
 	//// Now check against total internal reflection
 	//float sinTheta = eta * (sqrtf(1 - (cosTheta * cosTheta)));
@@ -145,8 +145,17 @@ __host__ __device__ glm::vec3 getRefractedSpecularRay(
 	//	}
 	//	pathSegment.color *= m.specular.color;
 	//}
+}
 
-	return new_dir;
+__host__ __device__ void idealDiffuse(
+	PathSegment & pathSegment,
+	const glm::vec3 intersect,
+	const glm::vec3 normal,
+	const Material &m,
+	thrust::default_random_engine &rng)
+{
+	pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
+	pathSegment.color *= m.color;
 }
 
 /**
@@ -191,19 +200,14 @@ void scatterRay(
 
 	// Imperfect Specular Reflection
 	if (reflectiveProb > rand) {
-		pathSegment.ray.direction = getImperfectSpecularRay(pathSegment, intersect, normal, m, rng);
-		pathSegment.color *= m.specular.color;
-		
+		imperfectSpecularReflection(pathSegment, intersect, normal, m, rng);	
 	}
 	else if (refractiveProb > rand) {
-		pathSegment.ray.direction = getRefractedSpecularRay(pathSegment, intersect, normal, m, rng);
-		//pathSegment.color *= m.specular.color; // Color is complicated, so we modify it in getRefractedSpecularRay(). Yikes!
-		//SpecularRefraction_BxDF(pathSegment, intersect, normal, m, rng);
+		specularRefraction(pathSegment, intersect, normal, m, rng);
 	}
 	// Ideal Diffuse
 	else {
-		pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
-		pathSegment.color *= m.color;
+		idealDiffuse(pathSegment, intersect, normal, m, rng);
 	}
 
 	// No matter what, new origin is intersect point.
