@@ -74,45 +74,45 @@ void scatterRay(
         const Material &m,
         thrust::default_random_engine &rng) {
 	thrust::uniform_real_distribution<float> u01(0, 1);
-	glm::vec3 scattered_ray_direction(0);
+	glm::vec3 scattered_ray_direction;
 	// Split according to probability
 	float rand_num = u01(rng);
 	// Reflection
-	//if (rand_num < m.hasReflective) {
-	//	//TODO: approximate Fresnel effects using Schlick’s approximation
-	//	scattered_ray_direction = glm::reflect(pathSegment.ray.direction, normal);
-	//	pathSegment.color *= m.specular.color;
-	//}
-	//// Refraction
-	//else if (rand_num < m.hasReflective + m.hasRefractive) {
-	//	//TODO: Snell’s law plus fresnel effects
+	if (rand_num < m.hasReflective) {
+		//TODO: approximate Fresnel effects using Schlick’s approximation
+		scattered_ray_direction = glm::reflect(pathSegment.ray.direction, normal);
+		pathSegment.color *= m.specular.color;
+	}
+	// Refraction
+	else if (rand_num < m.hasReflective + m.hasRefractive) {
+		//TODO: Snell’s law plus fresnel effects
 
-	//	bool pointing_inwards = glm::dot(pathSegment.ray.direction, normal) > 0.f;
-	//	glm::vec3 fixedNormal = normal * (pointing_inwards ? -1.0f : 1.0f);
-	//	float fixed_ior = pointing_inwards ? m.indexOfRefraction : (1.0f / m.indexOfRefraction);
-	//	scattered_ray_direction = glm::normalize(glm::refract(pathSegment.ray.direction, fixedNormal, fixed_ior));
+		bool pointing_inwards = glm::dot(pathSegment.ray.direction, normal) > 0.f;
+		glm::vec3 fixedNormal = normal * (pointing_inwards ? -1.0f : 1.0f);
+		float fixed_ior = pointing_inwards ? m.indexOfRefraction : (1.0f / m.indexOfRefraction);
+		scattered_ray_direction = glm::normalize(glm::refract(pathSegment.ray.direction, fixedNormal, fixed_ior));
 
-	//	if (glm::length(scattered_ray_direction) < 0.01f) {
-	//		pathSegment.color *= 0;
-	//		scattered_ray_direction = glm::reflect(pathSegment.ray.direction, normal);
-	//	}
+		if (glm::length(scattered_ray_direction) < 0.01f) {
+			pathSegment.color *= 0;
+			scattered_ray_direction = glm::reflect(pathSegment.ray.direction, normal);
+		}
 
-	//	// use schlick's approx
-	//	float schlick_0 = powf((pointing_inwards ? m.indexOfRefraction - 1.0f : 1.0f - m.indexOfRefraction) /
-	//		(1.0f + m.indexOfRefraction), 2.0f);
-	//	float schlick_coef = schlick_0 +
-	//		(1 - schlick_0) * powf(1 - max(0.0f, glm::dot(pathSegment.ray.direction, normal)), 5);
+		// use schlick's approx
+		float schlick_0 = powf((pointing_inwards ? m.indexOfRefraction - 1.0f : 1.0f - m.indexOfRefraction) /
+			(1.0f + m.indexOfRefraction), 2.0f);
+		float schlick_coef = schlick_0 +
+			(1 - schlick_0) * powf(1 - max(0.0f, glm::dot(pathSegment.ray.direction, normal)), 5);
 
-	//	// based on coef, pick either a refraction or reflection
-	//	scattered_ray_direction = schlick_coef < u01(rng) ? glm::reflect(pathSegment.ray.direction, normal) : scattered_ray_direction;
-	//	pathSegment.color *= m.specular.color;
-	//	// Refraction
-	//}
+		// based on coef, pick either a refraction or reflection
+		scattered_ray_direction = schlick_coef < u01(rng) ? glm::reflect(pathSegment.ray.direction, normal) : scattered_ray_direction;
+		pathSegment.color *= m.specular.color;
+		// Refraction
+	}
 	// Diffusion
-	//else {
+	else {
 		scattered_ray_direction = calculateRandomDirectionInHemisphere(normal, rng);
 		pathSegment.color *= m.color;
-	//}
+	}
 	pathSegment.ray.origin = intersect + scattered_ray_direction *0.01f;
 	pathSegment.ray.direction = scattered_ray_direction;
 }
