@@ -7,7 +7,7 @@ CUDA Path Tracer
   * [LinkedIn](https://www.linkedin.com/in/taylor-k-7b2110191/), [twitter](https://twitter.com/nelms_taylor), etc.
 * Tested on: Windows 10, Intel i3 Coffee Lake 4-core 3.6GHz processor, 16GB RAM, NVidia GeForce GTX1650 4GB
 
-![Altar with multiple types of texture mapping](progressImages/day7AltarTexture3crop.pn
+![Altar with multiple types of texture mapping](progressImages/day7AltarTexture3crop.png)
 
 ![A Challenger Approaches!](progressImages/day6MetalZelda.png)
 
