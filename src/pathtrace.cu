@@ -16,13 +16,23 @@
 #include "interactions.h"
 #include "tiny_gltf.h"
 
+// for performance analysis
+#include <cuda_runtime.h>
+
+//
+#include <nvToolsExt.h>
+
+
 #define ERRORCHECK 1
 
 // toggleable part 1 macros
 #define CACHE_ME_OUTSIDE
 #define STREAM_COMPACTION
-#define MATERIAL_SORT
+//#define MATERIAL_SORT
 //#define ANTIALIASING
+//#define DEPTH_OF_FIELD
+#define LENS_RADIUS 0.3f
+#define FOCAL_DISTANCE 4.0f
 
 #ifdef CACHE_ME_OUTSIDE 
 #ifdef ANTIALIASING
@@ -38,7 +48,7 @@ void checkCUDAErrorFn(const char *msg, const char *file, int line) {
     cudaDeviceSynchronize();
     cudaError_t err = cudaGetLastError();
     if (cudaSuccess == err) {
-        return;
+        return;\
     }
 
     fprintf(stderr, "CUDA error");
@@ -51,6 +61,23 @@ void checkCUDAErrorFn(const char *msg, const char *file, int line) {
 #  endif
     exit(EXIT_FAILURE);
 #endif
+}
+
+// from performance lab 
+#define CUDA(call) do {                                 \
+    cudaError_t e = (call);                             \
+    if (e == cudaSuccess) break;                        \
+    fprintf(stderr, __FILE__":%d: %s (%d)\n",           \
+            __LINE__, cudaGetErrorString(e), e);        \
+    exit(1);                                            \
+} while (0)
+
+// also taken from performance lab
+void printResults(double timeInMilliseconds, int iterations)
+{
+	// print out the time required for the kernel to finish the transpose operation
+	double bandwidth = (iterations * 1e-9) / (timeInMilliseconds * 1e-3);
+	std::cout << "Elapsed Time for " << iterations << " runs = " << round(timeInMilliseconds) << "ms" << std::endl;
 }
 
 
@@ -193,6 +220,40 @@ void pathtraceFree() {
     checkCUDAError("pathtraceFree");
 }
 
+// this function was also taken/reworked from PBRT pg 667 section 13 
+__device__ void ConcentricSampleDisk(float rand1, float rand2, float* dx, float* dy)
+{
+	float r, theta;
+	// map uniform random numbers to -1,1
+	float sx = (2 * rand1) - 1;
+	float sy = (2 * rand2) - 1;
+
+	//map square to r, theta
+	if (sx == 0 && sy == 0)
+	{
+		// handle degeneracy at the origin
+		*dx = 0;
+		*dy = 0;
+		return;
+	}
+
+	if (fabsf(sx) > fabsf(sy))
+	{
+		r = sx;
+		theta = (PI / 4) * (sx / sy);
+	}
+	else
+	{
+		r = sy;
+		theta = ((PI / 2) - (PI / 4) * (sx / sy));
+	}
+
+	// assign
+	*dx = r * cosf(theta);
+	*dy = r * sinf(theta);
+}
+
+
 /**
 * Generate PathSegments with rays from the camera through the screen into the
 * scene, which is the first bounce of rays.
@@ -215,22 +276,49 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		segment.ray.origin = cam.position;
 		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
 
-#ifdef ANTIALIASING
 		// whats an appropriate range?-1,1? or more? 
 		thrust::default_random_engine rng = makeSeededRandomEngine(x, y, iter);
 		thrust::uniform_real_distribution<float> u01(-1, 1);
+		thrust::uniform_real_distribution<float> u02(0, 1);
+
+#ifdef ANTIALIASING
 		float x_alias = u01(rng);
 		float y_alias = u01(rng);
 		alias_x += x_alias;
 		alias_y += y_alias;
-
 #endif
+
+
 
 		// TODO: implement antialiasing by jittering the ray
 		segment.ray.direction = glm::normalize(cam.view
 			- cam.right * cam.pixelLength.x * (alias_x - (float)cam.resolution.x * 0.5f)
 			- cam.up * cam.pixelLength.y * (alias_y - (float)cam.resolution.y * 0.5f)
 			);
+
+#ifdef DEPTH_OF_FIELD
+		// algorithm from PBRT 6.2.3
+		// algorthm is as follows
+			//sample point on lens
+			//compute point on plane of focus
+			// update ray for effect of lens
+
+		// sample point on lens
+		float lensU, lensV;
+		ConcentricSampleDisk(u02(rng), u02(rng),&lensU, &lensV);
+		lensU *= LENS_RADIUS;
+		lensV *= LENS_RADIUS;
+
+
+		// compute point on plane of focus
+		float ft = glm::abs(FOCAL_DISTANCE / segment.ray.direction.z);
+		glm::vec3 Pfocus = (segment.ray.direction * ft);
+
+		// update ray for lens effect
+		segment.ray.origin += glm::vec3(lensU, lensV, 0.f);
+		segment.ray.direction = glm::normalize(Pfocus - glm::vec3(lensU, lensV, 0.f));
+
+#endif
 
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
@@ -265,7 +353,7 @@ __global__ void computeIntersections(
 
 		glm::vec3 tmp_intersect;
 		glm::vec3 tmp_normal;
-
+		glm::vec3 speed;
 		// naive parse through global geoms
 
 		for (int i = 0; i < geoms_size; i++)
@@ -292,6 +380,7 @@ __global__ void computeIntersections(
 				hit_geom_index = i;
 				intersect_point = tmp_intersect;
 				normal = tmp_normal;
+				speed = geom.speed; // store the speed of the object
 			}
 		}
 
@@ -305,6 +394,7 @@ __global__ void computeIntersections(
 			intersections[path_index].t = t_min;
 			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
 			intersections[path_index].surfaceNormal = normal;
+			intersections[path_index].speed = speed; // if the object has a speed
 			// store this?
 			//intersections[path_index].intersection_point = intersect_point;
 		}
@@ -328,6 +418,7 @@ __global__ void shadeFakeMaterial (
 	, ShadeableIntersection * shadeableIntersections
 	, PathSegment * pathSegments
 	, Material * materials
+	, int depth
 	)
 {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -342,17 +433,17 @@ __global__ void shadeFakeMaterial (
       // Set up the RNG
       // LOOK: this is how you use thrust's RNG! Please look at
       // makeSeededRandomEngine as well.
-      thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, 0);
+      thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, depth);
       thrust::uniform_real_distribution<float> u01(0, 1);
 
       Material material = materials[intersection.materialId];
       glm::vec3 materialColor = material.color;
 
-	/*  if (glm::length(pathSegments[idx].color) < EPSILON)
+	  if (glm::length(pathSegments[idx].color) < EPSILON)
 	  {
 		  pathSegments[idx].remainingBounces = 0;
 		  return;
-	  }*/
+	  }
 
       // If the material indicates that the object was a light, "light" the ray
       if (material.emittance > 0.0f) {
@@ -363,9 +454,11 @@ __global__ void shadeFakeMaterial (
       // like what you would expect from shading in a rasterizer like OpenGL.
       // TODO: replace this! you should be able to start with basically a one-liner
       else{
-		  scatterRay(pathSegments[idx], getPointOnRay(pathSegments[idx].ray,intersection.t),intersection.surfaceNormal, material,intersection.t, rng);
+		  scatterRay(pathSegments[idx], getPointOnRay(pathSegments[idx].ray,intersection.t),intersection.surfaceNormal, material,intersection.t, rng, intersection.speed);
 		  pathSegments[idx].remainingBounces--; // decrement our bounce
       }
+
+	  //pathSegments[idx].ray.origin += intersection.speed;
     // If there was no intersection, color the ray black.
     // Lots of renderers use 4 channel color, RGBA, where A = alpha, often
     // used for opacity, in which case they can indicate "no opacity".
@@ -416,6 +509,21 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	// 1D block for path tracing
 	const int blockSize1d = 128;
 
+	// Create CUDA events for timing
+	cudaEvent_t start, stop, c_start, c_stop, str_start, str_stop, m_start, m_stop;
+
+	float app_time_ms, c_time_ms, str_time_ms, m_time_ms;
+
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	cudaEventCreate(&str_start);
+	cudaEventCreate(&str_stop);
+	cudaEventCreate(&m_start);
+	cudaEventCreate(&m_stop);
+	cudaEventCreate(&c_start);
+	cudaEventCreate(&c_stop);
+
+
     ///////////////////////////////////////////////////////////////////////////
 
     // Recap:
@@ -456,10 +564,20 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	int active_paths = num_paths;
 
+	// start cuda event timer
+	//nvtxRangeId_t rangeBenchmark = nvtxRangeStart("full loop start");
+
 	// --- PathSegment Tracing Stage ---
 	// Shoot ray into scene, bounce between objects, push shading chunks
 	bool iterationComplete = false;
+
+	//Start Benchmark
+	CUDA(cudaEventRecord(start, 0));
+
 	while (!iterationComplete) {
+
+	// start cuda event timer
+	//nvtxRangeId_t loopBenchmark = nvtxRangeStart("loop start");
 
 	// clean shading chunks
 	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
@@ -469,7 +587,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 // enable disable first bounce cachine. 
 #ifdef CACHE_ME_OUTSIDE
-
+		//Start Benchmark
+		CUDA(cudaEventRecord(c_start, 0));
 		//Checking if intersection cached results should be used
 		if(iter == 1 && depth == 0)
 		{
@@ -494,6 +613,14 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			checkCUDAError("compute Intersections Failed");
 			cudaDeviceSynchronize();
 		}
+		//Start Benchmark
+		CUDA(cudaEventRecord(c_stop, 0));
+		CUDA(cudaEventSynchronize(c_stop));
+		// accumulate 
+		CUDA(cudaEventElapsedTime(&c_time_ms, c_start, c_stop));
+		printf("cache time %f : depth %d\n", c_time_ms,depth);
+		c_time_ms = 0;
+
 #else
 	
 	// tracing
@@ -513,6 +640,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	depth++;
 
 #ifdef MATERIAL_SORT
+
+	//Start Benchmark
+	CUDA(cudaEventRecord(m_start, 0));
 	//https://thrust.github.io/doc/group__sorting_gabe038d6107f7c824cf74120500ef45ea.html#gabe038d6107f7c824cf74120500ef45ea
 	// similar to the boids assignment where we sorted to have more contiguous grouped memory
 	// material sorting is also helpful to help avoid thread warps from diverging
@@ -528,6 +658,15 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	thrust::sort_by_key(thrust::device, dev_sort_material_path, dev_sort_material_path + active_paths, dev_paths);
 	thrust::sort_by_key(thrust::device, dev_sort_material_intersect, dev_sort_material_intersect + active_paths, dev_intersections);
 	checkCUDAError("key sort failed");
+
+	//Stop Benchmark
+	CUDA(cudaEventRecord(m_stop, 0));
+	CUDA(cudaEventSynchronize(m_stop));
+
+	CUDA(cudaEventElapsedTime(&m_time_ms, m_start, m_stop));
+	//printf("material time %f \n", m_time_ms);
+	m_time_ms = 0;
+
 #endif
 
 
@@ -545,7 +684,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	active_paths,
     dev_intersections,
     dev_paths,
-    dev_materials
+    dev_materials,
+	depth
   );
   checkCUDAError("shader failed");
   cudaDeviceSynchronize();
@@ -561,6 +701,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
   // we have an array of pixel count so... dev_paths[pixel_count] we want the pointer that is the last element then we know everything is done
   // partition acts similar to stream compaction. Again we want to group rays that are done and rays that still are bouncing.
   // by grouping we can perform less work by not checking rays that are already done
+  //Start Benchmark
+  CUDA(cudaEventRecord(str_start, 0));
+
   dev_path_end = thrust::partition(thrust::device, dev_paths, dev_path_end, RemainingBounces());
   active_paths = dev_path_end - dev_paths;
 
@@ -568,6 +711,15 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
   {
 	  iterationComplete = true;
   }
+
+  //Start Benchmark
+  CUDA(cudaEventRecord(str_stop, 0));
+  CUDA(cudaEventSynchronize(str_stop));
+  // accumulate 
+  CUDA(cudaEventElapsedTime(&str_time_ms, str_start, str_stop));
+  printf("compact time %f \n", str_time_ms);
+  str_time_ms = 0;
+
 #else
 if( depth >= traceDepth)
 {
@@ -575,7 +727,25 @@ if( depth >= traceDepth)
 }
 #endif
  // delete path;
-	}
+
+
+	// end the loop
+	//nvtxRangeEnd(loopBenchmark);
+
+
+	}// while depth
+	
+		// record end 
+	CUDA(cudaEventRecord(stop, 0));
+	CUDA(cudaEventSynchronize(stop));
+
+	// accumulate 
+	CUDA(cudaEventElapsedTime(&app_time_ms, start, stop));
+
+
+	printf("time %f \n", app_time_ms);
+
+	//printResults(time_ms, depth);
 
   // Assemble this iteration and apply it to the image
   dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
