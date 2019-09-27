@@ -23,6 +23,7 @@ struct Geom {
     glm::vec3 translation;
     glm::vec3 rotation;
     glm::vec3 scale;
+	glm::vec3 velocity;
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;

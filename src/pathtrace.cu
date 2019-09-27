@@ -13,11 +13,14 @@
 #include "pathtrace.h"
 #include "intersections.h"
 #include "interactions.h"
+#include <glm/gtc/matrix_inverse.hpp>
+#include<glm/gtc/matrix_transform.hpp>
 
 #define ERRORCHECK 1
 #define MATERIAL_SORT 0
 #define STREAM_COMPACT 1
 #define CACHE_BOUNCE 1
+#define MOTION_BLUR 0
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -293,6 +296,26 @@ __global__ void finalGather(int nPaths, glm::vec3 * image, PathSegment * iterati
 		image[iterationPath.pixelIndex] += iterationPath.color;
 	}
 }
+
+__device__ glm::mat4 buildTransformationMatrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
+	glm::mat4 translationMat = glm::translate(glm::mat4(), translation);
+	glm::mat4 rotationMat = glm::rotate(glm::mat4(), rotation.x * (float)PI / 180, glm::vec3(1, 0, 0));
+	rotationMat = rotationMat * glm::rotate(glm::mat4(), rotation.y * (float)PI / 180, glm::vec3(0, 1, 0));
+	rotationMat = rotationMat * glm::rotate(glm::mat4(), rotation.z * (float)PI / 180, glm::vec3(0, 0, 1));
+	glm::mat4 scaleMat = glm::scale(glm::mat4(), scale);
+	return translationMat * rotationMat * scaleMat;
+}
+
+__global__ void motionBlur(Geom geom[], int numGeoms, float dt) {
+	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+	if (index >= numGeoms)
+		return;
+	geom[index].translation += geom[index].velocity*dt;
+	geom[index].transform = buildTransformationMatrix(
+		geom[index].translation, geom[index].rotation, geom[index].scale);
+	geom[index].inverseTransform = glm::inverse(geom[index].transform);
+	geom[index].invTranspose = glm::inverseTranspose(geom[index].transform);
+}
 struct my_partition_functor
 {
 	__host__ __device__
@@ -376,6 +399,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
   bool iterationComplete = false;
   bool firstIteration = true;
+  dim3 numblocksPathSegmentTracing = (hst_scene->geoms.size() + blockSize1d - 1) / blockSize1d;
+  motionBlur << <numblocksPathSegmentTracing, blockSize1d >> > (dev_geoms, hst_scene->geoms.size(), 0.1);
 	while (!iterationComplete) {
 
 	// clean shading chunks
