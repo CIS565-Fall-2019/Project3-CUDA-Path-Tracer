@@ -17,6 +17,7 @@ enum GeomType {
 struct Ray {
     glm::vec3 origin;
     glm::vec3 direction;
+	float time;
 };
 
 struct Geom {
@@ -28,6 +29,8 @@ struct Geom {
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
+
+	glm::vec3 velocity;
 };
 
 struct Material {

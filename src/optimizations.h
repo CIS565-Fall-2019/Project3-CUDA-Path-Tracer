@@ -42,4 +42,10 @@ constexpr bool
 DEPTH_OF_FIELD = false;
 // It seems that CUDA doesn't like constexpr for __device__variables
 #define DOF_LENS_RADIUS 0.1f  // millimeters, controls size of disk of confusion
-#define DOF_FOCAL_DIST 10.0f // millimeters, controls focal plane
+#define DOF_FOCAL_DIST 5.0f // millimeters, controls focal plane
+
+//// MOTION_BLUR
+// Applies a motion blur effect to objects. Geoms will now accept a VELO field containing (x,y,z)
+// velocities. Each ray will contain a temporal jitter that is multiplies against VELO.
+constexpr bool
+MOTION_BLUR = true;

@@ -7,6 +7,8 @@
 #include <thrust/sort.h>
 #include <thrust/device_ptr.h>
 #include <thrust/partition.h>
+#include <glm/gtc/matrix_inverse.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "optimizations.h"
 #include "sceneStructs.h"
@@ -200,10 +202,24 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 			segment.ray.direction = glm::normalize(focusPoint - lensPoint);
 		}
 
+		if (MOTION_BLUR) {
+			segment.ray.time = u1_0(rng);
+		}
+
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
 	}
 }
+
+__device__ glm::mat4 buildTransformationMatrix(const glm::vec3 & translation, const glm::vec3 & rotation, const glm::vec3 & scale) {
+	glm::mat4 translationMat = glm::translate(glm::mat4(), translation);
+	glm::mat4 rotationMat = glm::rotate(glm::mat4(), rotation.x * (float)PI / 180, glm::vec3(1, 0, 0));
+	rotationMat = rotationMat * glm::rotate(glm::mat4(), rotation.y * (float)PI / 180, glm::vec3(0, 1, 0));
+	rotationMat = rotationMat * glm::rotate(glm::mat4(), rotation.z * (float)PI / 180, glm::vec3(0, 0, 1));
+	glm::mat4 scaleMat = glm::scale(glm::mat4(), scale);
+	return translationMat * rotationMat * scaleMat;
+}
+
 
 // TODO:
 // computeIntersections handles generating ray intersections ONLY.
@@ -239,6 +255,18 @@ __global__ void computeIntersections(
 		for (int i = 0; i < geoms_size; i++)
 		{
 			Geom & geom = geoms[i];
+			glm::mat4 oldInvTransform;
+			glm::mat4 oldInvTranspose;
+
+			if (MOTION_BLUR) {
+				// Apply transform to inverseTransform matrix to account for velocity
+				glm::vec3 newTranslate = geom.translation + (pathSegment.ray.time * geom.velocity);
+				glm::mat4 newTransform = buildTransformationMatrix(newTranslate, geom.rotation, geom.scale);
+				oldInvTransform = geom.inverseTransform;
+				oldInvTranspose = geom.invTranspose;
+				geom.inverseTransform = glm::inverse(newTransform);
+				geom.invTranspose = glm::inverseTranspose(newTransform);
+			}
 
 			if (geom.type == CUBE)
 			{
@@ -258,6 +286,11 @@ __global__ void computeIntersections(
 				hit_geom_index = i;
 				intersect_point = tmp_intersect;
 				normal = tmp_normal;
+			}
+
+			if (MOTION_BLUR) {
+				geom.inverseTransform = oldInvTransform;
+				geom.invTranspose = oldInvTranspose;
 			}
 		}
 
