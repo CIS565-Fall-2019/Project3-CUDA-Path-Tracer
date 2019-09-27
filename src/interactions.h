@@ -200,6 +200,34 @@ void scatterRay(
         pathSegment.color *= m.color;
     }
 
-    //glm::clamp(pathSegment.color, glm::vec3(0.0), glm::vec3(1.0));
     pathSegment.ray.origin = intersect + (.0005f * glm::normalize(pathSegment.ray.direction));
+}
+
+ __device__
+Geom* directRayToLight(
+    PathSegment &pathSegment,
+    glm::vec3 intersect,
+    Geom *lights,
+    int numLights,
+    thrust::default_random_engine &rng) 
+{
+    // choose a random light
+    thrust::uniform_real_distribution<float> lightsDist(0, numLights);
+    int L = floor(lightsDist(rng));
+    Geom *chosenLight = lights + L;
+
+    // sample a point on the area light
+    thrust::uniform_real_distribution<float> u01(0, 1);
+    glm::vec3 p(u01(rng) - 0.5f, 0.0f, u01(rng) - 0.5f);
+    // transform the point from object to world space
+    p = glm::vec3(chosenLight->transform * glm::vec4(p, 1.0f));
+    // set new ray direction
+    pathSegment.ray.direction = glm::normalize(p - intersect);
+
+    // counterbalance the illumination from multiple lights by multiplying the
+    // contribution of the light by the probability it was chosen
+    pathSegment.color /= numLights;
+
+    pathSegment.ray.origin = intersect + (.0005f * glm::normalize(pathSegment.ray.direction));
+    return chosenLight;
 }

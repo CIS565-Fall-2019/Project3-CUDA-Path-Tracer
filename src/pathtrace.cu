@@ -25,6 +25,8 @@
 #define SORT_BY_MATERIAL 0
 #define CACHE_FIRST_BOUNCE 1
 
+#define DIRECT_LIGHTING 1
+
 void checkCUDAErrorFn(const char *msg, const char *file, int line) {
 #if ERRORCHECK
     cudaDeviceSynchronize();
@@ -85,6 +87,8 @@ static ShadeableIntersection * dev_intersections = NULL;
 #if CACHE_FIRST_BOUNCE
 static ShadeableIntersection * dev_first_bounce = NULL;
 #endif
+static Geom * dev_lights = NULL;
+static int num_lights = 0;
 
 void pathtraceInit(Scene *scene) {
     hst_scene = scene;
@@ -111,6 +115,21 @@ void pathtraceInit(Scene *scene) {
     cudaMemset(dev_first_bounce, 0, pixelcount * sizeof(ShadeableIntersection));
     #endif
 
+    #if DIRECT_LIGHTING
+    std::vector<Geom> lights;
+    for (Geom g : scene->geoms)
+    {
+        if (scene->materials[g.materialid].emittance > 0.0f)
+        {
+            lights.push_back(g);
+        }
+    }
+    num_lights = lights.size();
+
+    cudaMalloc(&dev_lights, num_lights * sizeof(Geom));
+    cudaMemcpy(dev_lights, lights.data(), lights.size() * sizeof(Geom), cudaMemcpyHostToDevice);
+    #endif
+
     checkCUDAError("pathtraceInit");
 }
 
@@ -123,6 +142,10 @@ void pathtraceFree() {
     // TODO: clean up any extra device memory you created
     #if CACHE_FIRST_BOUNCE
     cudaFree(dev_first_bounce);
+    #endif
+
+    #if DIRECT_LIGHTING
+    cudaFree(dev_lights);
     #endif
 
     checkCUDAError("pathtraceFree");
@@ -332,6 +355,88 @@ __global__ void shadeScene(
     }
 }
 
+__global__ void shadeSceneDirectLighting(
+    int iter
+    , int num_paths
+    , ShadeableIntersection * shadeableIntersections
+    , PathSegment * pathSegments
+    , Material * materials
+    , Geom * lights
+    , int num_lights
+)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < num_paths)
+    {
+        ShadeableIntersection intersection = shadeableIntersections[idx];
+        if (pathSegments[idx].remainingBounces <= 0) { return; }
+
+        if (intersection.t > 0.0f) { // if the intersection exists...
+            thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, 0);
+
+            Material material = materials[intersection.materialId];
+            glm::vec3 materialColor = material.color;
+
+            Geom* chosenLight = nullptr;
+
+            // If the material indicates that the object was a light, "light" the ray
+            if (material.emittance > 0.0f) {
+                float dir = glm::dot(intersection.surfaceNormal, glm::vec3(0, -1, 0));
+                if (chosenLight)
+                {
+                    if (intersection.materialId == chosenLight->materialid && dir > 0) {
+                        pathSegments[idx].color *= (materialColor * material.emittance);
+                    }
+                    else {
+                        pathSegments[idx].color *= glm::vec3(0.0f);
+                    }
+                }
+                else {
+                    pathSegments[idx].color *= (materialColor * material.emittance);
+                }
+                pathSegments[idx].remainingBounces = 0;
+            }
+            else if (pathSegments[idx].remainingBounces == 1)
+            {
+                // this should be the ray to the light so if we didnt hit the light
+                // it means the pixel is in shadow
+                pathSegments[idx].color *= glm::vec3(0.0f);
+                pathSegments[idx].remainingBounces = 0;
+            }
+            else {
+                glm::vec3 intersecPoint = getPointOnRay(pathSegments[idx].ray, intersection.t);
+
+                // compute f for this material
+                if (material.hasReflective || material.hasRefractive){
+                    // in direct lighting we dont get reflective and refractive properties
+                    pathSegments[idx].color *= glm::vec3(0.0f);
+                }
+                else{
+                    // get the color of the diffuse surface
+                    pathSegments[idx].color *= materialColor;
+                }
+
+                // Sets ray direction toward some position on some light in the scene
+                chosenLight = directRayToLight(pathSegments[idx], intersecPoint, lights, num_lights, rng);
+
+                // add in absDot
+                pathSegments[idx].color *= glm::abs(glm::dot(pathSegments[idx].ray.direction, intersection.surfaceNormal));
+
+                // next ray will be to light
+                pathSegments[idx].remainingBounces = 1;
+            }
+        }
+        else {
+            // If there was no intersection, color the ray black.
+            // Lots of renderers use 4 channel color, RGBA, where A = alpha, often
+            // used for opacity, in which case they can indicate "no opacity".
+            // This can be useful for post-processing and image compositing.
+            pathSegments[idx].color = glm::vec3(0.0f);
+            pathSegments[idx].remainingBounces = 0;
+        }
+    }
+}
+
 // Add the current iteration's output to the overall image
 __global__ void finalGather(int nPaths, glm::vec3 * image, PathSegment * iterationPaths)
 {
@@ -481,6 +586,17 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
         // evaluating the BSDF.
         // Start off with just a big kernel that handles all the different
         // materials you have in the scenefile.
+        #if DIRECT_LIGHTING 
+        shadeSceneDirectLighting << <numblocksPathSegmentTracing, blockSize1d >> > (
+            iter,
+            num_paths,
+            dev_intersections,
+            dev_paths,
+            dev_materials,
+            dev_lights,
+            num_lights);
+        checkCUDAError("shadeScene");
+        #else
         shadeScene<<<numblocksPathSegmentTracing, blockSize1d>>> (
             iter,
             num_paths,
@@ -488,6 +604,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
             dev_paths,
             dev_materials);
         checkCUDAError("shadeScene");
+        #endif
 
         #if STREAM_COMPACTION 
         // Stream compaction
