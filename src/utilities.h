@@ -8,6 +8,10 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <cuda_runtime_api.h>
+
+#define NUM_TEX 64
+static cudaTextureObject_t texObjects[NUM_TEX];
 
 #define PI                3.1415926535897932384626422832795028841971f
 #define TWO_PI            6.2831853071795864769252867665590057683943f
@@ -38,6 +42,16 @@ struct DebugVector {
 	float y;
 	float z;
 };
+
+/**
+Will be useful for going through our textures
+*/
+typedef struct f4vec {
+	float r;
+	float g;
+	float b;
+	float a;
+} f4vec;
 
 
 //Preprocessor functions that you really shouldn't trust, but they might do what we want

@@ -9,6 +9,7 @@
 #include "glm/gtc/matrix_inverse.hpp"
 #include "utilities.h"
 #include "sceneStructs.h"
+#include "texture.h"
 #include "tiny_obj_loader.h"
 #include "tiny_gltf.h"
 #include "gltf-loader.h"
@@ -33,6 +34,7 @@ public:
 	Triangle_v triangles;
     Material_v materials;
     RenderState state;
+	Texture_v textures = Texture_v();
 
 	Geom_v readObjFromMesh(string filename, int materialid, gmat4 transform = MAT4I);//default to the identity matrix
 
@@ -64,5 +66,6 @@ public:
 	Pulls out the relevant information to make a triangle from the given face index
 	*/
 	Triangle triangleFromGltfIndex(example::Mesh<float> mesh, unsigned int i,
-		int materialid, gmat4 transform, gmat4 normTransform, gvec3* maxVals, gvec3* minVals);
+		int materialid, gmat4 transform, gmat4 normTransform, gvec3* maxVals, gvec3* minVals,
+		bool hasTexture);
 };

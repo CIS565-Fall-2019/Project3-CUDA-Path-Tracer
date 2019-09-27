@@ -42,6 +42,9 @@ struct Triangle {
 	gvec3 norm0;//for interpolation
 	gvec3 norm1;//for interpolation
 	gvec3 norm2;//for interpolation
+	float2 uv0;
+	float2 uv1;
+	float2 uv2;
 };
 
 struct Material {
@@ -54,7 +57,9 @@ struct Material {
     float hasRefractive;
     float indexOfRefraction;
     float emittance;
-	/* Eventually, may want to think in these terms
+	short textureId;//index of texture to draw from
+	uint8_t textureMask;//presence/absence of texture data to override other attributes
+	/* Eventually, may want to think in these terms?
 	gvec3 diffuse;
 	gvec3 specular;
 	gvec3 transmittance;

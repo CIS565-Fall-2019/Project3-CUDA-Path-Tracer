@@ -249,276 +249,6 @@ int Scene::loadMaterial(string materialid) {
     }
 }
 
-#if LOADINGOWNGLTF
-
-Geom_v Scene::readGltfFromMesh(string filename, int materialid, gmat4 transform) {
-	Geom_v retval = Geom_v();
-
-	gmat4 normTransform = glm::transpose(glm::inverse(transform));
-
-	fs::path destination = fs::path(filename);
-	fs::path parent = destination.parent_path();
-	std::string warn;
-	std::string err;
-
-	tinygltf::Model model;
-	tinygltf::TinyGLTF loader;
-
-	bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filename);
-
-	if (!warn.empty()) {
-		printf("Warn: %s\n", warn.c_str());
-	}
-
-	if (!err.empty()) {
-		printf("Err: %s\n", err.c_str());
-	}
-
-	if (!ret) {
-		printf("Failed to parse gltf!\n");
-		return retval;
-	}
-
-	for (const auto& gltfMesh : model.meshes) {
-		tinygltf::Mesh loadedMesh;
-
-		loadedMesh.name = gltfMesh.name;
-		for (const auto& meshPrimitive : gltfMesh.primitives) {
-
-			const auto& indicesAccessor = model.accessors[meshPrimitive.indices];
-			const auto& bufferView = model.bufferViews[indicesAccessor.bufferView];
-			const auto& buffer = model.buffers[bufferView.buffer];
-			const auto dataAddress = buffer.data.data() + bufferView.byteOffset +
-				indicesAccessor.byteOffset;
-			const auto byteStride = indicesAccessor.ByteStride(bufferView);
-			const auto count = indicesAccessor.count;
-
-			//hopefully, the indices accessor component type is UNSIGNED INT
-
-			int* indicesArrayPtr = (int*)dataAddress;//very unsafe, doing it anyway
-			const auto& indices = *indicesArrayPtr;
-
-			int_v faces = int_v();//indexes of all the faces?
-
-			//for each index
-			for (int i = 0; i < count; i++) {
-				const auto& index = *indicesArrayPtr + i;
-				faces.push_back(index);
-			}
-
-			gvec3_v positions = gvec3_v();
-			gvec3_v normals = gvec3_v();
-			gvec3 pMin;
-			gvec3 pMax;
-
-			//hopefully we're dealing with TINYGLTF_MODE_TRIANGLES
-			for (const auto& attribute : meshPrimitive.attributes) {
-				const auto attribAccessor = model.accessors[attribute.second];
-				const auto& bufferView =
-					model.bufferViews[attribAccessor.bufferView];
-				const auto& buffer = model.buffers[bufferView.buffer];
-				const auto dataPtr = buffer.data.data() + bufferView.byteOffset +
-					attribAccessor.byteOffset;
-				const auto byte_stride = attribAccessor.ByteStride(bufferView);
-				const auto count = attribAccessor.count;
-
-				//will later read these two into triangles
-
-				if (attribute.first == "POSITION") {
-					std::cout << "found position attribute\n";
-
-					// get the position min/max for computing the boundingbox
-					pMin.x = attribAccessor.minValues[0];
-					pMin.y = attribAccessor.minValues[1];
-					pMin.z = attribAccessor.minValues[2];
-					pMax.x = attribAccessor.maxValues[0];
-					pMax.y = attribAccessor.maxValues[1];
-					pMax.z = attribAccessor.maxValues[2];
-
-					switch (attribAccessor.type) {
-					case TINYGLTF_TYPE_VEC3: {
-
-						if (attribAccessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
-							std::cout << "Type is FLOAT\n";
-							float* rawpositionsF = (float*)dataPtr;//i hate me too, don't worry
-
-							for (long i = 0; i < count * 3; i += 3) {
-								positions.push_back(gvec3(*(rawpositionsF + i + 0),
-									*(rawpositionsF + i + 1),
-									*(rawpositionsF + i + 2)));
-							}
-						}
-						else if (attribAccessor.componentType == TINYGLTF_COMPONENT_TYPE_DOUBLE) {
-							std::cout << "Type is DOUBLE\n";
-							double* rawpositionsD = (double*)dataPtr;//i hate me too, don't worry
-
-							for (long i = 0; i < count * 3; i += 3) {
-								positions.push_back(gvec3(*(rawpositionsD + i + 0),
-									*(rawpositionsD + i + 1),
-									*(rawpositionsD + i + 2)));
-							}
-							break;
-						}
-
-					} break;//vec3 case
-					}//switch
-					}//if attribute is position
-				if (attribute.first == "NORMAL") {
-
-
-					switch (attribAccessor.type) {
-					case TINYGLTF_TYPE_VEC3: {
-
-
-						if (attribAccessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
-							std::cout << "Normal is FLOAT\n";
-							float* rawnormalsF = (float*)dataPtr;
-
-							for (int i = 0; i < count * 3; i += 3) {
-								normals.push_back(gvec3(*(rawnormalsF + i + 0),
-									*(rawnormalsF + i + 1),
-									*(rawnormalsF + i + 2)));
-							}//for each normal vector
-
-							// IMPORTANT: We need to reorder normals (and texture
-							// coordinates into "facevarying" order) for each face
-
-							/*
-							// For each triangle :
-							for (size_t i{ 0 }; i < indices.size() / 3; ++i) {
-								// get the i'th triange's indexes
-								auto f0 = indices[3 * i + 0];
-								auto f1 = indices[3 * i + 1];
-								auto f2 = indices[3 * i + 2];
-
-								// get the 3 normal vectors for that face
-								v3f n0, n1, n2;
-								n0 = normals[f0];
-								n1 = normals[f1];
-								n2 = normals[f2];
-
-								// Put them in the array in the correct order
-								loadedMesh.facevarying_normals.push_back(n0.x);
-								loadedMesh.facevarying_normals.push_back(n0.y);
-								loadedMesh.facevarying_normals.push_back(n0.z);
-
-								loadedMesh.facevarying_normals.push_back(n1.x);
-								loadedMesh.facevarying_normals.push_back(n1.y);
-								loadedMesh.facevarying_normals.push_back(n1.z);
-
-								loadedMesh.facevarying_normals.push_back(n2.x);
-								loadedMesh.facevarying_normals.push_back(n2.y);
-								loadedMesh.facevarying_normals.push_back(n2.z);
-							}
-							*/
-						}//if float
-						else if (attribAccessor.componentType == TINYGLTF_COMPONENT_TYPE_DOUBLE) {
-							std::cout << "Normal is DOUBLE\n";
-							double* rawnormalsD = (double*)dataPtr;
-
-							for (int i = 0; i < count * 3; i += 3) {
-								normals.push_back(gvec3(*(rawnormalsD + i + 0),
-									*(rawnormalsD + i + 1),
-									*(rawnormalsD + i + 2)));
-							}//for each normal vector
-
-							// IMPORTANT: We need to reorder normals (and texture
-							// coordinates into "facevarying" order) for each face
-
-							/*
-							// For each triangle :
-							for (size_t i{ 0 }; i < indices.size() / 3; ++i) {
-								// get the i'th triange's indexes
-								auto f0 = indices[3 * i + 0];
-								auto f1 = indices[3 * i + 1];
-								auto f2 = indices[3 * i + 2];
-
-								// get the 3 normal vectors for that face
-								v3d n0, n1, n2;
-								n0 = normals[f0];
-								n1 = normals[f1];
-								n2 = normals[f2];
-
-								// Put them in the array in the correct order
-								loadedMesh.facevarying_normals.push_back(n0.x);
-								loadedMesh.facevarying_normals.push_back(n0.y);
-								loadedMesh.facevarying_normals.push_back(n0.z);
-
-								loadedMesh.facevarying_normals.push_back(n1.x);
-								loadedMesh.facevarying_normals.push_back(n1.y);
-								loadedMesh.facevarying_normals.push_back(n1.z);
-
-								loadedMesh.facevarying_normals.push_back(n2.x);
-								loadedMesh.facevarying_normals.push_back(n2.y);
-								loadedMesh.facevarying_normals.push_back(n2.z);
-							}
-							*/
-						} //if double
-					}//if vec3
-					}//switch
-					}//if attribute is normals
-				}//for each attribute
-
-				Geom newGeom;
-				newGeom.type = MESH;
-				newGeom.triangleIndex = triangles.size();
-
-				for (int i = 0; i + 2 < positions.size(); i += 3) {
-					Triangle nextTri;
-					nextTri.materialid = materialid;//for now, use provided material
-					nextTri.vert0 = positions[i + 0];
-					nextTri.vert1 = positions[i + 1];
-					nextTri.vert2 = positions[i + 2];
-					nextTri.norm0 = normals[i + 0];
-					nextTri.norm1 = normals[i + 1];
-					nextTri.norm2 = normals[i + 2];
-
-					nextTri.vert0 = gvec3(transform * gvec4(nextTri.vert0, 1.0f));
-					nextTri.vert1 = gvec3(transform * gvec4(nextTri.vert1, 1.0f));
-					nextTri.vert2 = gvec3(transform * gvec4(nextTri.vert2, 1.0f));
-
-					nextTri.norm0 = normalized(gvec3(normTransform * gvec4(nextTri.norm0, 1.0)));
-					nextTri.norm1 = normalized(gvec3(normTransform * gvec4(nextTri.norm1, 1.0)));
-					nextTri.norm2 = normalized(gvec3(normTransform * gvec4(nextTri.norm2, 1.0)));
-
-					triangles.push_back(nextTri);
-				}//for each vertex-triple index
-
-				newGeom.triangleCount = triangles.size() - newGeom.triangleIndex;
-
-				pMax = gvec3(transform * gvec4(pMax, 1.0f));
-				pMin = gvec3(transform * gvec4(pMin, 1.0f));
-
-				float maxX = pMax.x; float maxY = pMax.y; float maxZ = pMax.z;
-				float minX = pMin.x; float minY = pMin.y; float minZ = pMin.z;
-
-				float xWidth = maxX - minX;
-				float yWidth = maxY - minY;
-				float zWidth = maxZ - minZ;
-				float xCenter = xWidth / 2 + minX;
-				float yCenter = yWidth / 2 + minY;
-				float zCenter = zWidth / 2 + minZ;
-				newGeom.scale = gvec3(xWidth, yWidth, zWidth);
-				newGeom.translation = gvec3(xCenter, yCenter, zCenter);
-				newGeom.rotation = gvec3(0, 0, 0);
-
-				newGeom.transform = utilityCore::buildTransformationMatrix(
-					newGeom.translation, newGeom.rotation, newGeom.scale);
-				newGeom.inverseTransform = glm::inverse(newGeom.transform);
-				newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
-
-				retval.push_back(newGeom);
-
-
-				//load the verts and normals in
-		}//for each primitive THIS WILL BECOME OUR GEOM
-	}//for each mesh DONT KNOW WHAT THIS SHOULD BE
-
-	
-	return retval;
-}
-
-#else
 
 Geom_v Scene::readGltfFromMesh(string filename, int materialid, gmat4 transform) {
 	Geom_v retval = Geom_v();
@@ -529,15 +259,25 @@ Geom_v Scene::readGltfFromMesh(string filename, int materialid, gmat4 transform)
 
 	std::vector<example::Material> materials;
 	std::vector<example::Mesh<float> > meshes;
-	std::vector<example::Texture> textures;
+	std::vector<example::Texture> gtextures;
 
-	bool ret = example::LoadGLTF(filename, 1.0, &meshes, &materials, &textures);
+	bool ret = example::LoadGLTF(filename, 1.0, &meshes, &materials, &gtextures);
 
 	if (!ret) {
 		printf("Failed to parse gltf!\n");
 		return retval;
 	}//if failure
 
+	//Take in the textures
+	if (gtextures.size() > 0) {
+		Texture newTexture = Texture();
+		uint8_t texturePresenceMask = newTexture.createFromGltfVector(gtextures);
+		newTexture.putOntoDevice(textures.size());
+
+		textures.push_back(newTexture);
+	}//if we have textures
+
+	//Make the meshes
 	for (int i = 0; i < meshes.size(); i++) {
 		retval.push_back(geomFromGltfMesh(meshes[i], materialid, transform));
 	}//for
@@ -545,7 +285,6 @@ Geom_v Scene::readGltfFromMesh(string filename, int materialid, gmat4 transform)
 	return retval;
 }//readGltfFromMesh
 
-#endif
 
 Geom Scene::geomFromGltfMesh(example::Mesh<float> mesh, int materialid, gmat4 transform) {
 	Geom newGeom;
@@ -558,8 +297,7 @@ Geom Scene::geomFromGltfMesh(example::Mesh<float> mesh, int materialid, gmat4 tr
 
 	for (int i = 0; i < mesh.faces.size(); i += 3) {
 
-
-		Triangle nextTri = triangleFromGltfIndex(mesh, i, materialid, transform, normTransform, &maxVals, &minVals);
+		Triangle nextTri = triangleFromGltfIndex(mesh, i, materialid, transform, normTransform, &maxVals, &minVals, (mesh.facevarying_uvs.size() > 0));
 
 		triangles.push_back(nextTri);
 
@@ -588,7 +326,7 @@ Geom Scene::geomFromGltfMesh(example::Mesh<float> mesh, int materialid, gmat4 tr
 
 Triangle Scene::triangleFromGltfIndex(example::Mesh<float> mesh, unsigned int i, 
 						int materialid, gmat4 transform, gmat4 normTransform,
-						gvec3* maxVals, gvec3* minVals) {
+						gvec3* maxVals, gvec3* minVals, bool hasTexture) {
 	Triangle newTri = Triangle();
 	newTri.materialid = materialid;
 
@@ -600,9 +338,17 @@ Triangle Scene::triangleFromGltfIndex(example::Mesh<float> mesh, unsigned int i,
 	gvec3 vert1 = gvec3(mesh.vertices[3 * vidx1 + 0], mesh.vertices[3 * vidx1 + 1], mesh.vertices[3 * vidx1 + 2]);
 	gvec3 vert2 = gvec3(mesh.vertices[3 * vidx2 + 0], mesh.vertices[3 * vidx2 + 1], mesh.vertices[3 * vidx2 + 2]);
 
-	gvec3 norm0 = gvec3(mesh.facevarying_normals[i + 0], mesh.facevarying_normals[i + 1], mesh.facevarying_normals[i + 2]);
-	gvec3 norm1 = gvec3(mesh.facevarying_normals[i + 3], mesh.facevarying_normals[i + 4], mesh.facevarying_normals[i + 5]);
-	gvec3 norm2 = gvec3(mesh.facevarying_normals[i + 6], mesh.facevarying_normals[i + 7], mesh.facevarying_normals[i + 8]);
+	gvec3 norm0 = gvec3(mesh.facevarying_normals[3 * i + 0], mesh.facevarying_normals[3 * i + 1], mesh.facevarying_normals[3 * i + 2]);
+	gvec3 norm1 = gvec3(mesh.facevarying_normals[3 * i + 3], mesh.facevarying_normals[3 * i + 4], mesh.facevarying_normals[3 * i + 5]);
+	gvec3 norm2 = gvec3(mesh.facevarying_normals[3 * i + 6], mesh.facevarying_normals[3 * i + 7], mesh.facevarying_normals[3 * i + 8]);
+
+	float2 uv0, uv1, uv2;
+
+	if (hasTexture) {
+		uv0 = { mesh.facevarying_uvs[2 * i + 0], mesh.facevarying_uvs[2 * i + 1] };
+		uv1 = { mesh.facevarying_uvs[2 * i + 2], mesh.facevarying_uvs[2 * i + 3] };
+		uv2 = { mesh.facevarying_uvs[2 * i + 4], mesh.facevarying_uvs[2 * i + 5] };
+	}
 
 	//transform
 	newTri.vert0 = gvec3(transform * gvec4(vert0, 1.0));
@@ -616,6 +362,10 @@ Triangle Scene::triangleFromGltfIndex(example::Mesh<float> mesh, unsigned int i,
 	newTri.norm0 = normalized(gvec3(normTransform * gvec4(norm0, 1.0)));
 	newTri.norm1 = normalized(gvec3(normTransform * gvec4(norm1, 1.0)));
 	newTri.norm2 = normalized(gvec3(normTransform * gvec4(norm2, 1.0)));
+
+	newTri.uv0 = uv0;
+	newTri.uv1 = uv1;
+	newTri.uv2 = uv2;
 
 
 	return newTri;

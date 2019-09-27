@@ -59,12 +59,14 @@ struct Texture {
   int height;
   int components;
   int _pad_;
+  std::string name;
   unsigned char* image;
 
   Texture() {
     width = -1;
     height = -1;
     components = -1;
+	name = std::string();
     image = NULL;
   }
 };
