@@ -27,7 +27,19 @@ Simple axis-aligned bounding box for each Shape/Primitive in the mesh file.
 
 TODO: performance analysis
 
-#### TODO: textures? (Maybe)
+#### Textures
+
+Using the CUDA texture memory, I was able to hook up `.gltf` files with their textures within the ray tracer. I worked almost entirely from files downloaded from [Sketchfab](https://sketchfab.com/), so their naming conventions may have ended up baked in to my implementation. (Specifically, the file naming for their texture image files is how I distinguish between different types of texture mappings.)
+
+Notably, these assets provide a few different attributes. In addition to base color, some models have normal (bump) maps, textures for metallic roughness, or emissivity. An example of an asset displaying both base color texture and emissivity textures is here:
+
+![Altar mesh with base color and emissivity implemented](progressImages/day7AltarTexture2.png)
+
+TODO: Show progression of adding more textures to an object (base, +color, +roughness, +normal, +emissivity)
+
+NOTE: the "metallicRoughness" channels are \[ambientOcclusion, roughness, metallic\]
+
+TODO: Performance analysis
 
 ### Specular Sampling with Exponent
 
