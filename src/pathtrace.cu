@@ -13,11 +13,12 @@
 #include "pathtrace.h"
 #include "intersections.h"
 #include "interactions.h"
+#include <assert.h>
 
 #define STREAM_COMPACTION true
 #define SORT_MATERIAL false
-#define CACHE_BOUNCE true
-#define AA_enable false
+#define CACHE_BOUNCE false
+#define AA_enable true
 #define ERRORCHECK 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -135,7 +136,7 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 	if (x < cam.resolution.x && y < cam.resolution.y) {
 		int index = x + (y * cam.resolution.x);
 		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, pathSegments[index].remainingBounces);
-		thrust::uniform_real_distribution<float> u01(0, 1);
+		thrust::uniform_real_distribution<float> u01(-0.5, 0.5);
 		PathSegment & segment = pathSegments[index];
 
 		segment.ray.origin = cam.position;
@@ -148,8 +149,8 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 				);
 		else
 			segment.ray.direction = glm::normalize(cam.view
-				- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f + u01(rng))
-				- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f + u01(rng))
+				- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f)
+				- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f)
 			);
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
@@ -327,7 +328,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	// 1D block for path tracing
 	const int blockSize1d = 128;
-
+	assert(((!CACHE_BOUNCE && AA_enable) || (!AA_enable)));
 	///////////////////////////////////////////////////////////////////////////
 
 	// Recap:
