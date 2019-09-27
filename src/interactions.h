@@ -82,11 +82,44 @@ void scatterRay(
 	glm::vec3 newDirection;
 	
 	// If type==1, then it is diffuse
-	//if (m.hasReflective) 
-	//	newDirection = glm::reflect(pathSegment.ray.direction, normal);
-	
-	//else
+	if (m.hasReflective) {
+		newDirection = glm::reflect(pathSegment.ray.direction, normal);
+		pathSegment.color *= m.specular.color;
+	}
+		
+	else if (m.hasRefractive) {
+
+		thrust::uniform_real_distribution<float> u01(0, 1);
+
+		glm::vec3 normalRefract = normal;
+		float eta = 1/m.indexOfRefraction;
+		float r0,r1;
+		bool mediaAirToMaterial = glm::dot(pathSegment.ray.direction, normal) > 0.0f;
+		r0 = 1.0f- m.indexOfRefraction;
+		if (mediaAirToMaterial) {
+			normalRefract = -1.0f * normalRefract;
+			eta = 1 / eta;
+			r0 = m.indexOfRefraction - 1.0f;
+		}
+		newDirection = glm::refract(pathSegment.ray.direction, normalRefract, eta);
+
+		if (glm::length(newDirection) < 0.01f) {
+			pathSegment.color *= 0;
+			newDirection = glm::reflect(pathSegment.ray.direction, normalRefract);
+		}
+		r0 = powf(r0 / (1 + m.indexOfRefraction), 2.0f);
+		r1 = r0 + (1 - r0)*powf(1-(glm::dot(glm::normalize(pathSegment.ray.direction), normalRefract)),5.0f);
+
+		if (r1 < u01(rng))
+			newDirection = glm::reflect(pathSegment.ray.direction, normalRefract);
+
+		pathSegment.color *= m.specular.color;
+	}
+	else {
 		newDirection = calculateRandomDirectionInHemisphere(normal, rng);
+		pathSegment.color = pathSegment.color * m.color;
+	}
+		
 
 	/*
 	// If the object is refractive
@@ -102,5 +135,5 @@ void scatterRay(
 	//newDirection = calculateRandomDirectionInHemisphere(normal, rng);
  	pathSegment.ray.direction = newDirection;
 	pathSegment.ray.origin = intersect + newDirection*0.01f;
-	pathSegment.color = pathSegment.color * m.color;
+	
 }

@@ -19,7 +19,7 @@
 
 #define ERRORCHECK 1
 #define CACHEFIRSTBOUNCE 1
-#define RAYSORT 1
+#define RAYSORT 0
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -141,10 +141,17 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		segment.ray.origin = cam.position;
 		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
 
+		thrust::default_random_engine rng1 = makeSeededRandomEngine(iter , x , y);
+		thrust::default_random_engine rng2 = makeSeededRandomEngine(iter, y, x);
+		thrust::uniform_real_distribution<float> u01(0, 1);
+
+		float jitX = u01(rng1);
+		float jitY = u01(rng2);
+
 		// TODO: implement antialiasing by jittering the ray
 		segment.ray.direction = glm::normalize(cam.view
-			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f)
-			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f)
+			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f + cam.right*cam.pixelLength.x*jitX)
+			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f + cam.up*cam.pixelLength.y*jitY)
 			);
 
 		segment.pixelIndex = index;
@@ -225,7 +232,7 @@ __global__ void computeIntersections(
 	}
 }
 
-__global__ void shaderKernel(int iter,int numPaths, ShadeableIntersection* shadeableIntersections, Material* materials, PathSegment* pathsegments) {
+__global__ void shaderKernel(int iter,int numPaths,int depth, ShadeableIntersection* shadeableIntersections, Material* materials, PathSegment* pathsegments) {
 	int idx = threadIdx.x + blockIdx.x * blockDim.x;
 	if (idx >= numPaths || pathsegments[idx].remainingBounces < 0)
 		return;
@@ -241,7 +248,7 @@ __global__ void shaderKernel(int iter,int numPaths, ShadeableIntersection* shade
 			pathsegment.remainingBounces =0;
 		}
 		else {
-			thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, 0);
+			thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, depth);
 				if (intersection.materialId == 4)
 					scatterRay(pathsegment, intersection.intersectionPoint, intersection.surfaceNormal, material, rng);
 				else
@@ -448,37 +455,25 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 				);
 			checkCUDAError("First trace bounce failed");
 			cudaDeviceSynchronize();
-			//cudaMemcpy(dev_intersections, dev_first_intersections, numPaths * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
-			//printf("Hello World\n");
-			//cout << "Boolean Value: " << cacheFirstBounce << endl;
 		}
 
 		depth++;
-		//printf("Hello World 3\n");
 		
-		//printf("Hello World 4\n");
-
-		shaderKernel << <numblocksPathSegmentTracing, blockSize1d >> > (iter, numPaths, dev_intersections, dev_materials, dev_paths);
+		shaderKernel << <numblocksPathSegmentTracing, blockSize1d >> > (iter, numPaths, depth, dev_intersections, dev_materials, dev_paths);
 		checkCUDAError("Gathering the final Image failed");
 		cudaDeviceSynchronize();
-		
 
-		//printf("Hello World 6\n");
 		dev_path_end = thrust::partition(thrust::device,dev_paths, dev_paths + numPaths, pathsDead());
-		//cudaDeviceSynchronize();
-		//printf("Hello World 7\n");
+
 		numPaths = dev_path_end - dev_paths;
 		#if RAYSORT
 			thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + numPaths, dev_paths, cmp());
 		#endif
-		//printf("Hello World 8\n");
+
 		if (depth >= traceDepth || numPaths<=0)
 			iterationComplete = true; // TODO: should be based off stream compaction results.
 
-		//printf("Number of Paths: %d\n", numPaths);
-
-		//cacheFirstBounce++;
-		//if (cacheFirstBounce)
+		
 		// TODO:
 		// --- Shading Stage ---
 		// Shade path segments based on intersections and generate new rays by
