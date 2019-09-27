@@ -45,7 +45,7 @@ public:
 
 	cudaArray* putOntoDevice(int textureIndex);
 
-	void freeFromDevice();
+	void freeFromDevice(int textureIndex);
 
 };//Texture
 

@@ -22,6 +22,7 @@
 #define SORTING_MATERIAL 1//pretty sure this fucks performance
 #define CACHING_FIRST 1
 
+
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
 void checkCUDAErrorFn(const char *msg, const char *file, int line) {
@@ -127,7 +128,7 @@ void pathtraceInit(Scene *scene) {
 
 }
 
-void pathtraceFree() {
+void pathtraceFree(Scene* scene) {
     cudaFree(dev_image);  // no-op if dev_image is null
   	cudaFree(dev_paths);
   	cudaFree(dev_geoms);
@@ -135,6 +136,10 @@ void pathtraceFree() {
   	cudaFree(dev_materials);
   	cudaFree(dev_intersections);
 	cudaFree(dev_intersections_first);
+
+	for (int i = 0; i < scene->textures.size(); i++) {
+		scene->textures[i].freeFromDevice(i);
+	}//for
 
 	//TODO: free textures off device?
 
@@ -292,15 +297,17 @@ __global__ void shadeRealMaterial(
 			incoming->remainingBounces = 0;//stop bouncing here!
 			return;
 		}
+#if TEX_EMISSIVE
 		if (material.textureMask & TEXTURE_EMISSIVE) {
 			float4 emissiveText = tex2DLayered<float4>(textureReference, intersection.uv.x, intersection.uv.y, TEXTURE_LAYER_EMISSIVE);
 			gvec3 emissiveColor = gvec3(emissiveText.x, emissiveText.y, emissiveText.z);
-			if (glm::length(emissiveColor) > 0.01) {
+			if (glm::length(emissiveColor) > 0.03) {
 				incoming->color *= emissiveColor;
 				incoming->remainingBounces = 0;//stop bouncing here!
 				return;
 			}//if we're emitting light
 		}//checking for emissive
+#endif
 
 		gvec3 reverseIncoming = incoming->ray.direction;
 		reverseIncoming *= -1;
@@ -520,3 +527,8 @@ cudaArray* Texture::putOntoDevice(int textureIndex) {
 
 	return cu_3darray;
 }//putOntoDevice
+
+void Texture::freeFromDevice(int textureIndex) {
+	cudaDestroyTextureObject(texObjects[textureIndex]);
+	cudaFreeArray(cu_3darray);
+}//freeFromDevice

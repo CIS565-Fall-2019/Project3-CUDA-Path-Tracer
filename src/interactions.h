@@ -4,6 +4,7 @@
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 #include <texture_types.h>
+#define ECONST 	2.71828182845904523536
 
 __host__ __device__ gvec3 reflectIncomingByNormal(const gvec3 incoming, const gvec3 normal) {
 	return incoming - 2 * DOTP(incoming, normal) * normal;
@@ -86,19 +87,66 @@ __host__ __device__ gvec3 calculateShinyDirection(gvec3 incoming, gvec3 normal, 
 
 }//calculateShinyDirection
 
+__device__ gvec3 modifyNormalWithMap(const gvec3 normal, float2 uv, cudaTextureObject_t myTexture) {
+
+	float4 normText = tex2DLayered<float4>(myTexture, uv.x, uv.y, TEXTURE_LAYER_NORMAL);
+
+	float costheta = normText.z;
+	float sintheta = sqrtf(1.0 - costheta * costheta);
+	//float phi = atan2f(normMap.y, normMap.x);
+
+	glm::vec3 directionNotNormal;
+	if (abs(normal.x) < SQRT_OF_ONE_THIRD) {
+		directionNotNormal = glm::vec3(1, 0, 0);
+	}
+	else if (abs(normal.y) < SQRT_OF_ONE_THIRD) {
+		directionNotNormal = glm::vec3(0, 1, 0);
+	}
+	else {
+		directionNotNormal = glm::vec3(0, 0, 1);
+	}
+	glm::vec3 perpendicularDirection1 =
+		glm::normalize(glm::cross(normal, directionNotNormal));
+	glm::vec3 perpendicularDirection2 =
+		glm::normalize(glm::cross(normal, perpendicularDirection1));
+
+	return costheta * normal
+		//+ cos(phi) * sintheta * perpendicularDirection1
+		+ normText.x * sintheta * perpendicularDirection1
+		//+ sin(phi) * sintheta * perpendicularDirection2;
+		+ normText.y * sintheta * perpendicularDirection2; 
+
+}//modifyNormalWithMap
+
 __device__
 gvec3 getMaterialColor(
 		const Material& m,
 		float2 uv,
 		cudaTextureObject_t myTexture) {
 	gvec3 color = m.color;
+#if TEX_COLOR
 	if (m.textureMask & TEXTURE_BASECOLOR) {
 		float4 colorText = tex2DLayered<float4>(myTexture, uv.x, uv.y, TEXTURE_LAYER_BASECOLOR);
 		color = gvec3(colorText.x, colorText.y, colorText.z);
 	}
+#endif
 	
 
 	return color;
+}
+
+/**
+Maps our "roughness" coefficients to something usable within our specular reflections
+This is ENTIRELY made up
+Goals:
+0 maps to some number of thousads
+0.5 maps to 32ish??
+1.0 maps to 1
+*/
+__device__ float roughnessToExponent(float roughness) {
+	float invRoughness = 1.0 - roughness;
+	float scaledInvRoughness = (expf(invRoughness) - 1) / (ECONST - 1);
+	return powf(2.0, scaledInvRoughness * 12);
 }
 
 /**
@@ -134,14 +182,14 @@ void scatterRay(
 	const Material& m,
 	float2 uv,
 	cudaTextureObject_t textureReference,
-	//float4 colorText,
 	thrust::default_random_engine& rng) {
 
-	float4 colorText = { -1.0, -1.0, -1.0, -1.0 };
-
-	if (uv.x > -1.0f) {
-		
+#if TEX_NORM
+	//modify normal if we have a normal map
+	if (m.textureMask & TEXTURE_NORMAL) {
+		normal = modifyNormalWithMap(normal, uv, textureReference);
 	}
+#endif
 
 	thrust::uniform_real_distribution<float> u01(0, 1);
 	float branchRandom = u01(rng);
@@ -162,25 +210,44 @@ void scatterRay(
 	probDiff /= totalProb;
 	probSpec /= totalProb;
 	probMirror /= totalProb;
+	float exponent = m.specular.exponent;
 	//these now sum to 1
+
+	gvec3 diffColor = getMaterialColor(m, uv, textureReference);
+	gvec3 specColor = m.specular.color;
+
+#if TEX_ROUGH
+	if (m.textureMask & TEXTURE_METALLICROUGHNESS) {
+		float4 roughText = tex2DLayered<float4>(textureReference, uv.x, uv.y, TEXTURE_LAYER_METALLICROUGHNESS);
+		float ambientOcclusion = roughText.x;
+		float roughness = roughText.y;
+		float metalness = roughText.z;
+
+		specColor = diffColor;
+		exponent = roughnessToExponent(roughness);
+
+		probMirror = 0;
+		probDiff = 1.0 - metalness;
+		probSpec = metalness;
+	}
+#endif
 
 	if (branchRandom < probDiff) {
 		gvec3 newDirection = calculateRandomDirectionInHemisphere(normal, rng);
 		pathSegment.ray = Ray{ intersect,  newDirection };
-		gvec3 color = getMaterialColor(m, uv, textureReference);
-		pathSegment.color *= color;
+		pathSegment.color *= diffColor;
 	}//if diffuse
 	else if (branchRandom < probDiff + probSpec) {
-		gvec3 newDirection = calculateShinyDirection(pathSegment.ray.direction, normal, m.specular.exponent, rng);
+		gvec3 newDirection = calculateShinyDirection(pathSegment.ray.direction, normal, exponent, rng);
 		pathSegment.ray = Ray{ intersect, newDirection };
-		pathSegment.color *= m.specular.color;
+		pathSegment.color *= specColor;
 	}//else if specular
 	else {
 		//gvec3 newDirection = REFLECT(pathSegment.ray.direction, normal);
 		gvec3 newDirection = glm::normalize(reflectIncomingByNormal(pathSegment.ray.direction, normal));
 		float newX = newDirection.x; float newY = newDirection.y; float newZ = newDirection.z;
 		pathSegment.ray = Ray{ intersect, gvec3(newX, newY, newZ) };
-		pathSegment.color *= m.specular.color;
+		pathSegment.color *= specColor;
 	}//else if mirror
 
 }//scatterRay

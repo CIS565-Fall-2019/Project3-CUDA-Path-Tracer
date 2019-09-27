@@ -56,7 +56,7 @@ SPECRGB     0 0 0
 REFL        0
 REFR        0
 REFRIOR     0
-EMITTANCE   20
+EMITTANCE   30
 
 // Camera
 CAMERA
@@ -65,7 +65,8 @@ FOVY        45
 ITERATIONS  5000
 DEPTH       12
 FILE        altar
-EYE         0.0 5 10.5
+//EYE         0.0 5 10.5
+EYE         10.5 5 2 //for the reflective bump map
 LOOKAT      0 5 0
 UP          0 1 0
 
@@ -106,6 +107,6 @@ OBJECT 4
 mesh
 material 2
 TRANS       0 1.25 0
-ROTAT       0 0 0
+ROTAT       0 45 0
 SCALE       5 5 5
 FILE        ../objects/altar/scene.gltf

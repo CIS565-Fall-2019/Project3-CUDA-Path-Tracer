@@ -83,7 +83,3 @@ void Texture::fillIntoF4Array(float4* dst) {
 	if (texturePresenceMask & TEXTURE_METALLICROUGHNESS) memcpy(&dst[2 * width * height], metallicRoughness.data(), width * height * sizeof(f4vec));
 	if (texturePresenceMask & TEXTURE_NORMAL) memcpy(&dst[3 * width * height], normal.data(), width * height * sizeof(f4vec));
 }
-
-void Texture::freeFromDevice() {
-	cudaFreeArray(cu_3darray);
-}//freeFromDevice
