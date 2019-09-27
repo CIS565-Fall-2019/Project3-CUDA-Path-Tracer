@@ -9,6 +9,8 @@
 #include "scene.h"
 #include "glm/glm.hpp"
 #include "glm/gtx/norm.hpp"
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
 #include "utilities.h"
 #include "pathtrace.h"
 #include "intersections.h"
@@ -18,7 +20,8 @@
 #define STREAM_COMPACTION true
 #define SORT_MATERIAL false
 #define CACHE_BOUNCE false
-#define AA_enable true
+#define AA false
+#define MOTION_BLUR true
 #define ERRORCHECK 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -141,7 +144,7 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 
 		segment.ray.origin = cam.position;
 		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
-		if (AA_enable)
+		if (AA)
 			// antialiasing by jittering the ray
 			segment.ray.direction = glm::normalize(cam.view
 				- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f + u01(rng))
@@ -229,15 +232,31 @@ __global__ void computeIntersections(
 	}
 }
 
-// LOOK: "fake" shader demonstrating what you might do with the info in
-// a ShadeableIntersection, as well as how to use thrust's random number
-// generator. Observe that since the thrust random number generator basically
-// adds "noise" to the iteration, the image should start off noisy and get
-// cleaner as more iterations are computed.
-//
-// Note that this shader does NOT do a BSDF evaluation!
-// Your shaders should handle that - this can allow techniques such as
-// bump mapping.
+__device__ __forceinline__
+glm::mat4 buildTransformationMatrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
+	glm::mat4 translationMat = glm::translate(glm::mat4(), translation);
+	glm::mat4 rotationMat = glm::rotate(glm::mat4(), rotation.x * (float)PI / 180, glm::vec3(1, 0, 0));
+	rotationMat = rotationMat * glm::rotate(glm::mat4(), rotation.y * (float)PI / 180, glm::vec3(0, 1, 0));
+	rotationMat = rotationMat * glm::rotate(glm::mat4(), rotation.z * (float)PI / 180, glm::vec3(0, 0, 1));
+	glm::mat4 scaleMat = glm::scale(glm::mat4(), scale);
+	return translationMat * rotationMat * scaleMat;
+}
+
+__global__ void moveGeom(Geom * geoms, int geoms_size, float dt)
+{
+		// naive parse through global geoms
+		int geom_index = blockIdx.x * blockDim.x + threadIdx.x;
+		if (geom_index >= geoms_size)
+			return;
+		Geom & geom = geoms[geom_index];
+		if (geom.vel == glm::vec3(0))
+			return;
+		geom.translation += geom.vel * dt;
+		geom.transform = buildTransformationMatrix(geom.translation, geom.rotation, geom.scale);
+		geom.inverseTransform = glm::inverse(geom.transform);
+		geom.invTranspose = glm::inverseTranspose(geom.transform);
+}
+
 __global__ void shadeMaterial(
 	int iter
 	, int num_paths
@@ -328,7 +347,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	// 1D block for path tracing
 	const int blockSize1d = 128;
-	assert(((!CACHE_BOUNCE && AA_enable) || (!AA_enable)));
+	assert(((!CACHE_BOUNCE && AA) || (!AA)));
+	assert(((!CACHE_BOUNCE && MOTION_BLUR) || (!MOTION_BLUR)));
+
 	///////////////////////////////////////////////////////////////////////////
 
 	// Recap:
@@ -358,8 +379,14 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	// * Finally, add this iteration's results to the image. This has been done
 	//   for you.
 
-	// TODO: perform one iteration of path tracing
+	if (MOTION_BLUR) {
+		// Move geoms 
+		int geom_size = hst_scene->geoms.size();
+		dim3 numblocksPathSegmentTracing = (geom_size + blockSize1d - 1) / blockSize1d;
+		moveGeom << <numblocksPathSegmentTracing, blockSize1d >> > (dev_geoms, geom_size, 0.10f);
+	}
 
+	// perform one iteration of path tracing
 	generateRayFromCamera << <blocksPerGrid2d, blockSize2d >> > (cam, iter, traceDepth, dev_paths);
 	checkCUDAError("generate camera ray");
 

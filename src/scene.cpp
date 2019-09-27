@@ -62,7 +62,7 @@ int Scene::loadGeom(string objectid) {
             cout << "Connecting Geom " << objectid << " to Material " << newGeom.materialid << "..." << endl;
         }
 
-        //load transformations
+        //load transformations & vel
         utilityCore::safeGetline(fp_in, line);
         while (!line.empty() && fp_in.good()) {
             vector<string> tokens = utilityCore::tokenizeString(line);
@@ -74,9 +74,10 @@ int Scene::loadGeom(string objectid) {
                 newGeom.rotation = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
             } else if (strcmp(tokens[0].c_str(), "SCALE") == 0) {
                 newGeom.scale = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
-            }
-
-            utilityCore::safeGetline(fp_in, line);
+            } else if (strcmp(tokens[0].c_str(), "VEL") == 0) {
+				newGeom.vel = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+			}
+			utilityCore::safeGetline(fp_in, line);
         }
 
         newGeom.transform = utilityCore::buildTransformationMatrix(
