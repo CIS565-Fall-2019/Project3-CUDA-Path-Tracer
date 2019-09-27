@@ -40,12 +40,12 @@ EMITTANCE   0
 
 // Specular white
 MATERIAL 4
-RGB         .98 .98 .98
+RGB         1 1 0
 SPECEX      0
 SPECRGB     .98 .98 .98
-REFL        0.5
-REFR        0.5
-REFRIOR     1.5
+REFL        0
+REFR        0
+REFRIOR     0
 EMITTANCE   0
 
 // Camera
@@ -112,13 +112,21 @@ SCALE       .01 10 10
 OBJECT 6
 sphere
 material 4
-TRANS       -1 4 -1
-ROTAT       0 0 0
-SCALE       3 3 3
+TRANS       -1 7 -1
+ROTAT       60 30 0
+SCALE       2 2 2
 
+// Small Cube
 OBJECT 7
 cube
-material 0
-TRANS       0 5 -5
-ROTAT       0 90 90
-SCALE       3 .3 3
+material 4
+TRANS       2 7 -1
+ROTAT       0 0 0
+SCALE       2 2 2
+
+//OBJECT 7
+//cube
+//material 0
+//TRANS       0 5 -5
+//ROTAT       0 90 90
+//SCALE       3 .3 3

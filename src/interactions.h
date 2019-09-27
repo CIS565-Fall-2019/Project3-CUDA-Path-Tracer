@@ -111,7 +111,8 @@ void scatterRay(
 				
 				//Total internal reflection
 				r = 1;
-				materialColor = glm::vec3(0.0f);
+				//materialColor = glm::vec3(0.0f);
+				materialColor = m.specular.color;
 			}
 			else {
 				//Calculate Reflectance (r) using Fresnel's law
@@ -154,7 +155,7 @@ void scatterRay(
 	}
 
 	//Update the new ray in place in pathSegment
-	pathSegment.ray.origin = intersect + new_ray * 0.01f;
+	pathSegment.ray.origin = intersect + new_ray * 0.0001f;
 	pathSegment.ray.direction = new_ray;
 
 	//Update the color in place

@@ -19,16 +19,14 @@
 #include "pathtrace.h"
 #include "intersections.h"
 #include "interactions.h"
-
-
 #include "device_launch_parameters.h"
-
 
 #define ERRORCHECK 1
 
-const int STREAM_COMPACT = 0;
-const int SORT_BY_MATERIAL = 0;
+const int STREAM_COMPACT = 1;
+const int SORT_BY_MATERIAL = 1;
 const int CACHE__FIRST_BOUNCE = 0;
+const int MOTION_BLUR = 1;
 
 const int ANTI_ALIASING = 1;
 
@@ -201,6 +199,7 @@ __global__ void computeIntersections(
 	, Geom * geoms
 	, int geoms_size
 	, ShadeableIntersection * intersections
+	, int iter
 	)
 {
 	int path_index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -227,10 +226,28 @@ __global__ void computeIntersections(
 
 			if (geom.type == CUBE)
 			{
+				if (MOTION_BLUR) {
+					float lerp_index = glm::sin(iter / 250.0f);
+					glm::mat4 start = geom.originalTransform;
+					glm::mat4 offset(1.f); offset[2] += glm::vec4(0.f, 1.0f, 0.f, 0.f);
+					geom.transform = start + lerp_index * offset;
+
+					geom.inverseTransform = glm::inverse(geom.transform);
+					geom.invTranspose = glm::transpose(glm::inverse(geom.transform));
+				}
 				t = boxIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
 			else if (geom.type == SPHERE)
 			{
+				if (MOTION_BLUR) {
+					float lerp_index = glm::sin(iter / 250.0f);
+					glm::mat4 start = geom.originalTransform;
+					glm::mat4 offset(1.f); offset[2] += glm::vec4(0.f, 1.0f, 0.f, 0.f);
+					geom.transform = start + lerp_index * offset;
+
+					geom.inverseTransform = glm::inverse(geom.transform);
+					geom.invTranspose = glm::transpose(glm::inverse(geom.transform));
+				}
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
 			// TODO: add more intersection tests here... triangle? metaball? CSG?
@@ -447,7 +464,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
 
 	// tracing
-	if (CACHE__FIRST_BOUNCE) {
+	if (CACHE__FIRST_BOUNCE && !ANTI_ALIASING) {
 		if (depth == 0) {
 			if (iter == 1) {
 				computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
@@ -457,6 +474,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 					, dev_geoms
 					, hst_scene->geoms.size()
 					, dev_intersections_cached
+					, iter
 					);
 				checkCUDAError("trace one bounce");
 			}
@@ -471,6 +489,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 				, dev_geoms
 				, hst_scene->geoms.size()
 				, dev_intersections
+				, iter
 				);
 			checkCUDAError("trace one bounce");
 		}
@@ -484,6 +503,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			, dev_geoms
 			, hst_scene->geoms.size()
 			, dev_intersections
+			, iter
 			);
 		checkCUDAError("trace one bounce");
 	}
