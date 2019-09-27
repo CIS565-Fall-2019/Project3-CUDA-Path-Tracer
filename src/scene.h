@@ -67,5 +67,7 @@ public:
 	*/
 	Triangle triangleFromGltfIndex(example::Mesh<float> mesh, unsigned int i,
 		int materialid, gmat4 transform, gmat4 normTransform, gvec3* maxVals, gvec3* minVals,
-		bool hasTexture);
+		bool hasTexture
+	);
+	Material materialFromTexture(uint8_t texturePresenceMask, int textureIndex, int copyMaterialId);
 };

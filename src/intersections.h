@@ -44,7 +44,7 @@ __host__ __device__ gvec3 multiplyMV(glm::mat4 m, glm::vec4 v) {
 Lifted nearly verbatim from Wikipedia article on Moller-Trumbore intersection algorithm
 */
 __host__ __device__ float triangleIntersectionTest(Triangle tri, Ray r,
-	gvec3& intersectionPoint, gvec3& normal) {
+	gvec3& intersectionPoint, gvec3& normal, float2& uv) {
 
 	gvec3 results;
 	bool didHit = glm::intersectRayTriangle(r.origin, r.direction, tri.vert0, tri.vert1, tri.vert2, results);
@@ -53,51 +53,12 @@ __host__ __device__ float triangleIntersectionTest(Triangle tri, Ray r,
 	float beta = results.y;
 	float t = results.z;
 
-	//WHY IS THE NORMAL WRONG??
 	normal = (tri.norm0 * (1.0f - alpha - beta)) + (tri.norm1 * alpha) + (tri.norm2 * beta);
+	uv.x = (tri.uv0.x * (1.0f - alpha - beta)) + (tri.uv1.x * alpha) + (tri.uv2.x * beta);
+	uv.y = (tri.uv0.y * (1.0f - alpha - beta)) + (tri.uv1.y * alpha) + (tri.uv2.y * beta);
 	intersectionPoint = getPointOnRay(r, t);
 
 	return t;
-
-	/*
-	//if (DOTP(tri.normal, r.direction) >= 0) return -1;//triangle facing the same way we are
-	float rdx = r.direction.x; float rdy = r.direction.y; float rdz = r.direction.z;
-	float tv0x = tri.vert0.x; float tv0y = tri.vert0.y; float tv0z = tri.vert0.z;
-	float tv1x = tri.vert1.x; float tv1y = tri.vert1.y; float tv1z = tri.vert1.z;
-	float tv2x = tri.vert2.x; float tv2y = tri.vert2.y; float tv2z = tri.vert2.z;
-	float tnx = tri.normal.x; float tny = tri.normal.y; float tnz = tri.normal.z;
-
-	//gvec3 edge1 = tri.vert1 - tri.vert0;
-	//gvec3 edge2 = tri.vert2 - tri.vert0;
-	gvec3 edge1 = gvec3(tv1x, tv1y, tv1z) - gvec3(tv0x, tv0y, tv0z);
-	gvec3 edge2 = gvec3(tv2x, tv2y, tv2z) - gvec3(tv0x, tv0y, tv0z);
-
-	gvec3 h = CROSSP(gvec3(rdx, rdy, rdz), edge2);
-	float a = DOTP(edge1, h);
-	if (a > -EPSILON && a < EPSILON) return -1;//ray parallel to triangle
-	float f = 1.0 / a;
-	gvec3 s = r.origin - tri.vert0;
-	float u = f * DOTP(s, h);
-	if (u < 0.0 || u > 1.0) return -1;
-	gvec3 q = CROSSP(s, edge1);
-	float v = f * DOTP(r.direction, q);
-	if (v < 0.0 || u + v > 1.0) return -1;
-
-	float share0 = 1.0 - u - v;
-
-	float t = f * DOTP(edge2, q);
-
-	if (t > EPSILON) {
-		intersectionPoint = getPointOnRay(r, t);
-		//normal = share0 * tri.norm0 + v * tri.norm1 + u * tri.norm2;
-		//normal = tri.normal; //BLOCKidx = 2271, 0, 0, THREADidx = 111, 0, 0
-		normal = gvec3(tnx, tny, tnz);
-		return t;
-	}//if intersection in front of us
-	else {
-		return -1;
-	}
-	*/
 
 }
 
@@ -114,7 +75,7 @@ __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
  * @return                   Ray parameter `t` value. -1 if no intersection.
  */
 __host__ __device__ float meshIntersectionTest(Geom mesh, Ray r,
-	gvec3& intersectionPoint, gvec3& normal, bool& outside, Triangle* tris, int* triIndex) {
+	gvec3& intersectionPoint, gvec3& normal, bool& outside, Triangle* tris, int* triIndex, float2* uv) {
 
 	float t = boxIntersectionTest(mesh, r, intersectionPoint, normal, outside);
 	if (t < 0) return -1;
@@ -122,19 +83,20 @@ __host__ __device__ float meshIntersectionTest(Geom mesh, Ray r,
 
 	gvec3 tmp_intersection, min_intersection;
 	gvec3 tmp_normal, min_normal;
+	float2 tmp_uv = { -1.0, -1.0 };
+	float2 min_uv = { -1.0, -1.0 };
 	float t_min = INFINITY;
 	for (int i = mesh.triangleIndex; i < mesh.triangleIndex + mesh.triangleCount; i++) {
 		Triangle tri = tris[i];
-		t = triangleIntersectionTest(tri, r, tmp_intersection, tmp_normal);
+		tmp_uv = { -1.0, -1.0 };
+		t = triangleIntersectionTest(tri, r, tmp_intersection, tmp_normal, tmp_uv);
 		if (t > 0.0 && t < t_min) {
 			*triIndex = i;
-			//float dinx = tmp_intersection.x; float diny = tmp_intersection.y; float dinz = tmp_intersection.z;
-			//float dnox = tmp_normal.x; float dnoy = tmp_normal.y; float dnoz = tmp_normal.z;
 
-			//min_intersection = gvec3(dinx, diny, dinz);
 			min_intersection = tmp_intersection;
 			//min_normal = gvec3(dnox, dnoy, dnoz);
 			min_normal = tmp_normal;
+			min_uv = tmp_uv;
 			t_min = t;
 		}//new minimum
 	}//for
@@ -142,6 +104,7 @@ __host__ __device__ float meshIntersectionTest(Geom mesh, Ray r,
 	if (t_min > 0.0 && t_min < INFINITY) {
 		intersectionPoint = min_intersection;
 		normal = min_normal;
+		*uv = min_uv;
 
 		return t_min;
 	}//if

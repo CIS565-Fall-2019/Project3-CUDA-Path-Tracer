@@ -220,6 +220,8 @@ int Scene::loadMaterial(string materialid) {
     } else {
         cout << "Loading Material " << id << "..." << endl;
         Material newMaterial;
+		newMaterial.textureId = -1;
+		newMaterial.textureMask = 0x00;
 
         //load static properties
         for (int i = 0; i < 7; i++) {
@@ -249,6 +251,14 @@ int Scene::loadMaterial(string materialid) {
     }
 }
 
+Material Scene::materialFromTexture(uint8_t texturePresenceMask, int textureIndex, int copyMaterialId) {
+	Material newMaterial = Material(materials[copyMaterialId]);
+
+	newMaterial.textureId = textureIndex;
+	newMaterial.textureMask = texturePresenceMask;
+
+	return newMaterial;
+}
 
 Geom_v Scene::readGltfFromMesh(string filename, int materialid, gmat4 transform) {
 	Geom_v retval = Geom_v();
@@ -257,11 +267,11 @@ Geom_v Scene::readGltfFromMesh(string filename, int materialid, gmat4 transform)
 	///	std::vector<Mesh<float> > * meshes,
 	//	std::vector<Material> * materials, std::vector<Texture> * textures);
 
-	std::vector<example::Material> materials;
+	std::vector<example::Material> gmaterials;
 	std::vector<example::Mesh<float> > meshes;
 	std::vector<example::Texture> gtextures;
 
-	bool ret = example::LoadGLTF(filename, 1.0, &meshes, &materials, &gtextures);
+	bool ret = example::LoadGLTF(filename, 1.0, &meshes, &gmaterials, &gtextures);
 
 	if (!ret) {
 		printf("Failed to parse gltf!\n");
@@ -272,9 +282,12 @@ Geom_v Scene::readGltfFromMesh(string filename, int materialid, gmat4 transform)
 	if (gtextures.size() > 0) {
 		Texture newTexture = Texture();
 		uint8_t texturePresenceMask = newTexture.createFromGltfVector(gtextures);
-		newTexture.putOntoDevice(textures.size());
 
 		textures.push_back(newTexture);
+
+		Material newMaterial = materialFromTexture(texturePresenceMask, textures.size() - 1, materialid);
+		materials.push_back(newMaterial);
+		materialid = materials.size() - 1;
 	}//if we have textures
 
 	//Make the meshes
@@ -342,7 +355,9 @@ Triangle Scene::triangleFromGltfIndex(example::Mesh<float> mesh, unsigned int i,
 	gvec3 norm1 = gvec3(mesh.facevarying_normals[3 * i + 3], mesh.facevarying_normals[3 * i + 4], mesh.facevarying_normals[3 * i + 5]);
 	gvec3 norm2 = gvec3(mesh.facevarying_normals[3 * i + 6], mesh.facevarying_normals[3 * i + 7], mesh.facevarying_normals[3 * i + 8]);
 
-	float2 uv0, uv1, uv2;
+	float2 uv0 = { -1.0, -1.0 };
+	float2 uv1 = { -1.0, -1.0 };
+	float2 uv2 = { -1.0, -1.0 };
 
 	if (hasTexture) {
 		uv0 = { mesh.facevarying_uvs[2 * i + 0], mesh.facevarying_uvs[2 * i + 1] };

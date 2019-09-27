@@ -1,6 +1,9 @@
 #pragma once
 
 #include "intersections.h"
+#include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
+#include <texture_types.h>
 
 __host__ __device__ gvec3 reflectIncomingByNormal(const gvec3 incoming, const gvec3 normal) {
 	return incoming - 2 * DOTP(incoming, normal) * normal;
@@ -83,6 +86,21 @@ __host__ __device__ gvec3 calculateShinyDirection(gvec3 incoming, gvec3 normal, 
 
 }//calculateShinyDirection
 
+__device__
+gvec3 getMaterialColor(
+		const Material& m,
+		float2 uv,
+		cudaTextureObject_t myTexture) {
+	gvec3 color = m.color;
+	if (m.textureMask & TEXTURE_BASECOLOR) {
+		float4 colorText = tex2DLayered<float4>(myTexture, uv.x, uv.y, TEXTURE_LAYER_BASECOLOR);
+		color = gvec3(colorText.x, colorText.y, colorText.z);
+	}
+	
+
+	return color;
+}
+
 /**
  * Scatter a ray with some probabilities according to the material properties.
  * For example, a diffuse surface scatters in a cosine-weighted hemisphere.
@@ -108,13 +126,22 @@ __host__ __device__ gvec3 calculateShinyDirection(gvec3 incoming, gvec3 normal, 
  *
  * You may need to change the parameter list for your purposes!
  */
-__host__ __device__
+__device__
 void scatterRay(
 	PathSegment& pathSegment,
 	gvec3 intersect,
 	gvec3 normal,
 	const Material& m,
+	float2 uv,
+	cudaTextureObject_t textureReference,
+	//float4 colorText,
 	thrust::default_random_engine& rng) {
+
+	float4 colorText = { -1.0, -1.0, -1.0, -1.0 };
+
+	if (uv.x > -1.0f) {
+		
+	}
 
 	thrust::uniform_real_distribution<float> u01(0, 1);
 	float branchRandom = u01(rng);
@@ -140,7 +167,8 @@ void scatterRay(
 	if (branchRandom < probDiff) {
 		gvec3 newDirection = calculateRandomDirectionInHemisphere(normal, rng);
 		pathSegment.ray = Ray{ intersect,  newDirection };
-		pathSegment.color *= m.color;
+		gvec3 color = getMaterialColor(m, uv, textureReference);
+		pathSegment.color *= color;
 	}//if diffuse
 	else if (branchRandom < probDiff + probSpec) {
 		gvec3 newDirection = calculateShinyDirection(pathSegment.ray.direction, normal, m.specular.exponent, rng);

@@ -15,6 +15,11 @@
 #define TEXTURE_EMISSIVE 0x02
 #define TEXTURE_METALLICROUGHNESS 0x04
 #define TEXTURE_NORMAL 0x08
+#define TEXTURE_ANY 0x0F
+#define TEXTURE_LAYER_BASECOLOR 0
+#define TEXTURE_LAYER_EMISSIVE 1
+#define TEXTURE_LAYER_METALLICROUGHNESS 2
+#define TEXTURE_LAYER_NORMAL 3
 
 class Texture {
 private:
@@ -23,7 +28,7 @@ private:
 	const static std::string metallicRoughnessString;
 	const static std::string normalString;
 
-	void fillIntoF4Array(f4vec* dst);
+	void fillIntoF4Array(float4* dst);
 
 public:
 	cudaArray* cu_3darray;

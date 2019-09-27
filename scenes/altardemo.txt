@@ -18,12 +18,12 @@ REFR        0
 REFRIOR     0
 EMITTANCE   0
 
-// Steel
+// Diffuse Texture
 MATERIAL 2
-RGB         .6 .6 .6
+RGB         1 1 1
 SPECEX      16
-SPECRGB     0.7 .9 1
-REFL        0.125
+SPECRGB     0 0 0
+REFL        0
 REFR        0
 REFRIOR     0
 EMITTANCE   0
@@ -46,7 +46,7 @@ SPECRGB     0 0 0
 REFL        0
 REFR        0
 REFRIOR     0
-EMITTANCE   40
+EMITTANCE   20
 
 // L201 Light
 MATERIAL 5
@@ -56,7 +56,7 @@ SPECRGB     0 0 0
 REFL        0
 REFR        0
 REFRIOR     0
-EMITTANCE   40
+EMITTANCE   20
 
 // Camera
 CAMERA
@@ -64,7 +64,7 @@ RES         800 800
 FOVY        45
 ITERATIONS  5000
 DEPTH       12
-FILE        zelda
+FILE        altar
 EYE         0.0 5 10.5
 LOOKAT      0 5 0
 UP          0 1 0
@@ -101,27 +101,11 @@ TRANS       0 5 -5
 ROTAT       0 90 0
 SCALE       .01 10 20
 
-//sphere 1
+// ALTAR
 OBJECT 4
-sphere
-material 3
-TRANS       -6 1 1
-ROTAT       0 0 0
-SCALE       2 2 2
-
-//sphere 1
-OBJECT 5
-sphere
-material 3
-TRANS       6 1 1
-ROTAT       0 0 0
-SCALE       2 2 2
-
-// METAL ZELDA
-OBJECT 6
 mesh
 material 2
-TRANS       0 2.5 0
+TRANS       0 1.25 0
 ROTAT       0 0 0
 SCALE       5 5 5
 FILE        ../objects/altar/scene.gltf

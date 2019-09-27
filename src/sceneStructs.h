@@ -57,7 +57,7 @@ struct Material {
     float hasRefractive;
     float indexOfRefraction;
     float emittance;
-	short textureId;//index of texture to draw from
+	int8_t textureId;//index of texture to draw from
 	uint8_t textureMask;//presence/absence of texture data to override other attributes
 	/* Eventually, may want to think in these terms?
 	gvec3 diffuse;
@@ -99,6 +99,7 @@ struct PathSegment {
 struct ShadeableIntersection {
   float t;
   gvec3 surfaceNormal;
+  float2 uv;
   int materialId;
 };
 
