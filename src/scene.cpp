@@ -83,6 +83,7 @@ int Scene::loadGeom(string objectid) {
                 newGeom.translation, newGeom.rotation, newGeom.scale);
         newGeom.inverseTransform = glm::inverse(newGeom.transform);
         newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
+		newGeom.initial_transform = newGeom.transform;
 
         geoms.push_back(newGeom);
         return 1;

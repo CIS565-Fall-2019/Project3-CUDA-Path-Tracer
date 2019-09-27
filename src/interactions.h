@@ -1,6 +1,7 @@
 #pragma once
 
 #include "intersections.h"
+#include "utilities.h"
 
 // CHECKITOUT
 /**
@@ -139,6 +140,6 @@ void scatterRay(
 		scattered_ray_direction = calculateRandomDirectionInHemisphere(normal, rng);
 		pathSegment.color *= m.color;
 	}
-	pathSegment.ray.origin = intersect + scattered_ray_direction *0.01f;
+	pathSegment.ray.origin = intersect + scattered_ray_direction * EPSILON;
 	pathSegment.ray.direction = scattered_ray_direction;
 }

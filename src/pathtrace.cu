@@ -17,12 +17,14 @@
 #include "intersections.h"
 #include "interactions.h"
 #include "device_launch_parameters.h"
+#include "utilities.h"
 
 #define ERRORCHECK 1
 #define COMPACT_RAYS 1
 #define CACHE_FIRST_BOUNCE 0
 #define MATERIAL_BASED_SORT 0
 #define ANTI_ALIASING 1
+#define MOTION_BLUR 1
 
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -174,6 +176,7 @@ __global__ void computeIntersections(
 	, Geom * geoms
 	, int geoms_size
 	, ShadeableIntersection * intersections
+	, int iter
 )
 {
 	int path_index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -203,6 +206,15 @@ __global__ void computeIntersections(
 			}
 			else if (geom.type == SPHERE)
 			{
+				#if MOTION_BLUR
+					float spherical_interpolation = glm::sin(iter / 250.f);
+					glm::mat4 start = geom.initial_transform;
+					glm::mat4 off(1.f); 
+					off[4] += glm::vec4(0.f, MOTION_BLUR_OFFSET, 0.f, 0.f);
+					geom.transform = start - off * spherical_interpolation;
+					geom.inverseTransform = glm::inverse(geom.transform);
+					geom.invTranspose = glm::transpose(glm::inverse(geom.transform));
+				#endif
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
 			// TODO: add more intersection tests here... triangle? metaball? CSG?
@@ -389,9 +401,10 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 					, dev_geoms
 					, hst_scene->geoms.size()
 					, dev_intersections
+					, iter
 					);
 				if(depth == 0 && iter == 1){
-					cudaMemcpy(dev_cached_intersections, dev_intersections, pixelcount * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+					cudaMemcpy(dev_cached_intersections, dev_intersections, pixelcount * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice, iter);
 				}
 			}
 		#else
@@ -402,6 +415,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 					, dev_geoms
 					, hst_scene->geoms.size()
 					, dev_intersections
+					, iter
 					);
 		#endif
 		checkCUDAError("trace one bounce");
@@ -411,7 +425,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		#if MATERIAL_BASED_SORT 
 			thrust::device_ptr<ShadeableIntersection> thrust_dev_intersections(dev_intersections);
 			thrust::device_ptr<PathSegment> thrust_dev_paths(dev_paths);
-			thrust::sort_by_key(thrust::device, thrust_dev_intersections, thrust_dev_intersections + num_paths, thrust_dev_paths);
+			thrust::sort_by_key(thrust::device, thrust_dev_intersections, thrust_dev_intersections + num_paths, thrust_dev_paths, iter);
 		#endif
 		shadeFakeMaterial << <numblocksPathSegmentTracing, blockSize1d >> > (
 			iter,
