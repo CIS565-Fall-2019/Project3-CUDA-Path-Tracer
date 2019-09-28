@@ -61,9 +61,7 @@ endif(UNIX)
 set(GLM_ROOT_DIR "external")
 find_package(GLM REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
-
-## tinyobjloader Library stuff
-include_directories(external/tinygltf/examples/raytrace)
+include_directories(external/tinygltf/examples/raytrace/)
 
 set(headers
     src/main.h
