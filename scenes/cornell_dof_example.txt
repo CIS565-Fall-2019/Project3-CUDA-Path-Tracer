@@ -40,19 +40,19 @@ EMITTANCE   0
 
 // Refractive Specular white
 MATERIAL 4
-RGB         .98 .98 .98
-SPECEX      500
-SPECRGB     .98 .98 .98
+RGB         .98 .35 .35
+SPECEX      50
+SPECRGB     .98 .35 .35
 REFL        1.0
-REFR        1.0
-REFRIOR     3.0
+REFR        0.0
+REFRIOR     0.0
 EMITTANCE   0
 
 // Reflective Specular white
 MATERIAL 5
-RGB         .98 .98 .98
-SPECEX      500
-SPECRGB     .98 .98 .98
+RGB         .98 .35 .35
+SPECEX      50
+SPECRGB     .98 .35 .35
 REFL        1.0
 REFR        0.0
 REFRIOR     0.0
@@ -121,7 +121,7 @@ SCALE       .01 20 20
 // Left wall
 OBJECT 6
 cube
-material 2
+material 1
 TRANS       -10 5 0
 ROTAT       0 0 0
 SCALE       .01 20 20
@@ -129,7 +129,7 @@ SCALE       .01 20 20
 // Right wall
 OBJECT 7
 cube
-material 3
+material 1
 TRANS       10 5 0
 ROTAT       0 0 0
 SCALE       .01 20 20

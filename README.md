@@ -46,23 +46,46 @@ In the following sections I'll discuss each objects implementation and its effec
 # Ideal Diffuse Scattering Function
 This was mostly a freebie so I will not go into it in too much detail. When a ray intersects a non-specular object, it will bounce the incoming ray in a random direction in a hemisphere about the normal. This is done by taking a random &theta; and &psi; around the normal and mapping it to cartesian coordinates.
 
+![](img/diffuse_annot.png)
+
 # Imperfect Specular Reflective Scattering Function
 Reflective materials have a 'shininess' property that changes how reflective they are. A mirror, for example, is nearly perfectly refelective. A chrome bumper on a car may be less reflective, and a small marbles even less so. This is represented in the pathtrace by using importance sampling. A perfectly reflective object (shininess &rarr; &infin;) will always bounce a ray at &theta;<sub>i</sub> = &theta;<sub>o</sub>. However, for smaller shininess values, the ray will bounce in some distribution centered on the perfectly reflected ray. My renderer detremines this by taking n = shininess, R = &Uscr;[0,1), and &psi;<sub>o</sub> = acos(R<sup>1 / n + 1</sup>) and &theta;<sub>o</sub> = 2&pi;R. I then take these values, transform them to the proper coordinates, and then transform it to be centered on the normal. Observe that for infinite n, &psi;<sub>o</sub> will be 0<sup>o</sup>, so there would be no change from the perfectly reflected angle.
 
+![](img/refl_annot.png)
+
 # Refractive Transmission Scattering Function
-Refraction is a bit trcikier from the above two because of a couple of unique properties. First of all, there is the case of total internal reflection. After a certain critical angle &theta;<sub>c</sub>, the ray will not transmit through the material and it will simply reflect off of the surface. This can be seen in the real world by looking out on the ocean during a sunset. Light from the sun will mostly bounce off the surface of the water to your eyes. Additionally, we must take Fresnel Effects into consideration. On a refractive surface, fresnel effects will cause reflections to appear stronger at narrower &theta; and weaker at wider &theta;. I use Shlick's Approximation to produce a good-enough estimation on when a ray will reflect back and when it will transmit through. Note this is a different check than the critical angle.
+Refraction is a bit trickier from the above two because of a couple of unique properties. First of all, there is the case of total internal reflection. After a certain critical angle &theta;<sub>c</sub>, the ray will not transmit through the material and it will simply reflect off of the surface (internal or external). This can be seen in the real world by looking out on the ocean during a sunset. Light from the sun will mostly bounce off the surface of the water to your eyes. High indicies of refraction &eta; will lead to greater distortion of the rays moving through the medium.
+
+![](img/refract_annot.png)
+
+# Fresnel Effect
+Additionally, we must take Fresnel Effects into consideration. On a reflective/refractive surface, fresnel effects will cause reflections to appear stronger at narrower &theta; and weaker at wider &theta;. I use Shlick's Approximation to produce a good-enough estimation on when a ray will reflect back and when it will transmit through. Note this is a different check than the critical angle.
+
+![](img/fres_annot.png)
 
 # Antialiasing
 Because the camera generates sample points in a regular pattern, rays will always strike the center of each pixel on the first bounce. This can lead to jagged edges on objects since the pixel is not entirely one color, but the point sampled is just one color. I implement anti-aliasing by applying a &PlusMinus;0.5f jitter to each ray when it is generated at the camera. This will allow our samples to randomly hit a position in the first pixel, and then these random points are samples over many iterations to produce an average of the colors in that pixel. This random sampling to produce a better average is known as stochastic sampling.
 
+![](img/aa_comp.png)
+
 # Depth of Field
-In the base pathetracer, the amera is treated as a pinhole-camera. That is, all the rays begin at the same point, minus some small jitter from the Antialiasing if enabled. In a realk world camera, there is a lens and a focal distance included. I simulate this in my pathtracer by projecting each sample onto a small cocentric disk with lens radius r a focal distance &fpartint; from the camera. This creates a depth-of-filed effect that can be controlled by modifying the two variables. 
+In the base pathetracer, the amera is treated as a pinhole-camera. That is, all the rays begin at the same point, minus some small jitter from the Antialiasing if enabled. In a realk world camera, there is a lens and a focal distance included. I simulate this in my pathtracer by projecting each sample onto a small cocentric disk with lens radius r a focal distance &fpartint; from the camera. This creates a depth-of-filed effect that can be controlled by modifying the two variables. Increasing the lens radius increases the blurring effect seen as objects move out of focus. Increasing the focal distance moves the focal plane back, increasing the depth of focus.
+
+| &fpartint; = 5, r = 0.01 | &fpartint; = 15, r = 0.01
+| --- | --- |
+| ![](img/dof/r0.1_f5.png) | ![](img/dof/r0.1_f15.png) |
+
+| &fpartint; = 5, r = 0.05 | &fpartint; = 15, r = 0.5
+| --- | --- |
+| ![](img/dof/r0.5_f5.png) | ![](img/dof/r0.5_f15.png) |
 
 # Motion Blur
 A normal camera has a shutter open and a shutter close time. The final image from the camera naturally integrates over that time frame, but my renderer does not take time into account. If an object was moving in the scene, the movement would not be perceptible. I added a motion blur feature to account for this. Each object can be defined with a velocity vector in the scene description file. Each ray is then assigned a random point in time from 0 to 1. When intersections are tested, the render transforms each object by adding the displacement caused by the object velocity at that point in time.  This creates a nice blurring effect, amplified by the velocity of the object.
 
+![](img/mb_annot.png)
+
 # glTF Objects
-I implemented the tools needed to load glTF files and conmvert them into the objects used by my renderer. However, I stopped short at implementing just the physical geometries of the object and not the textures. My renderer also has lots of trouble with any complicated geometry, likely due to my iontersection test having no current methods of culling objects. Overall it allows for some uninteresting objects to load, but I include it here as proof it works. Future work would include loading textures and adding performance optimizations to allow for more interesting objects to be loaded.
+I implemented the tools needed to load glTF files and conmvert them into the objects used by my renderer. However, I stopped short at implementing just the physical geometries of the object and not the textures. My renderer also has lots of trouble with any complicated geometry, likely due to my iontersection test having no current methods of culling objects. Overall it allows for some uninteresting objects to load. Future work would include loading textures and adding performance optimizations to allow for more interesting objects to be loaded.
 
 # Compaction of Terminated Rays
 The pathtracer will fire off one ray per pixel at first, but many of those rays will terminate by falling off the scene or hitting a light source. Computing on these rays is wasteful and would lead to wasted threads in our warps and blocks. After each shading step, the device data containing all arrays is partitioned into an alive side and a terminated side. The ray buffer length is then adjusted so subsequent kernels will only operate on the living rays. This reduces the number of wasted threads per loop.
