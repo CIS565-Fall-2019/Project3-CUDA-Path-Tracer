@@ -18,6 +18,7 @@
 #include "interactions.h"
 #include "device_launch_parameters.h"
 #include "utilities.h"
+#include "tiny_gltf.h"
 
 #define ERRORCHECK 1
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -56,6 +57,7 @@ __global__ void sendImageToPBO(uchar4* pbo, glm::ivec2 resolution,
 static Scene * hst_scene = NULL;
 static glm::vec3 * dev_image = NULL;
 static Geom * dev_geoms = NULL;
+static Triangle * dev_meshes = NULL;
 static Material * dev_materials = NULL;
 static PathSegment * dev_paths = NULL;
 static ShadeableIntersection * dev_intersections = NULL;
@@ -75,6 +77,9 @@ void pathtraceInit(Scene *scene) {
 	cudaMalloc(&dev_geoms, scene->geoms.size() * sizeof(Geom));
 	cudaMemcpy(dev_geoms, scene->geoms.data(), scene->geoms.size() * sizeof(Geom), cudaMemcpyHostToDevice);
 
+	cudaMalloc(&dev_meshes, scene->mesh.num_triangles * sizeof(Triangle));
+	cudaMemcpy(dev_meshes, scene->mesh.triangles.data(), scene->mesh.num_triangles * sizeof(Triangle), cudaMemcpyHostToDevice);
+
 	cudaMalloc(&dev_materials, scene->materials.size() * sizeof(Material));
 	cudaMemcpy(dev_materials, scene->materials.data(), scene->materials.size() * sizeof(Material), cudaMemcpyHostToDevice);
 
@@ -90,7 +95,8 @@ void pathtraceInit(Scene *scene) {
 void pathtraceFree() {
 	cudaFree(dev_image);  // no-op if dev_image is null
 	cudaFree(dev_paths);
-	cudaFree(dev_geoms);
+	cudaFree(dev_geoms); 
+	cudaFree(dev_meshes);
 	cudaFree(dev_materials);
 	cudaFree(dev_intersections);
 	cudaFree(dev_cached_intersections);
@@ -145,6 +151,8 @@ __global__ void computeIntersections(
 	, int num_paths
 	, PathSegment * pathSegments
 	, Geom * geoms
+	, Triangle * triangles
+	, int num_triangles
 	, int geoms_size
 	, ShadeableIntersection * intersections
 	, int iter
@@ -188,6 +196,9 @@ __global__ void computeIntersections(
 					geom.invTranspose = glm::transpose(glm::inverse(geom.transform));
 				#endif
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+			}
+			else if(geom.type == MESH){
+				t = meshIntersectionTest(triangles, num_triangles, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
 			// TODO: add more intersection tests here... triangle? metaball? CSG?
 
@@ -366,7 +377,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 					, num_paths
 					, dev_paths
 					, dev_geoms
+					, dev_meshes
 					, hst_scene->geoms.size()
+					, hst_scene->mesh.num_triangles
 					, dev_intersections
 					, iter
 					, dev_leftover_indices
@@ -381,6 +394,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 					, num_paths
 					, dev_paths
 					, dev_geoms
+					, dev_meshes
+					, hst_scene->mesh.num_triangles
 					, hst_scene->geoms.size()
 					, dev_intersections
 					, iter
@@ -407,7 +422,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		);
 		#if COMPACT_RAYS
 			num_paths = StreamCompaction::Shared::compactCUDA(num_paths, dev_leftover_indices);
-			printf("Leftover paths: %d\n", num_paths);
+			//printf("Leftover paths: %d\n", num_paths);
 		#endif
 		if((depth == traceDepth) || num_paths == 0)
 			iterationComplete = true;
