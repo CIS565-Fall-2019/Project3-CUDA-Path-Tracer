@@ -45,6 +45,37 @@ __host__ __device__ glm::vec3 multiplyMV(glm::mat4 m, glm::vec4 v) {
  * @param outside            Output param for whether the ray came from outside.
  * @return                   Ray parameter `t` value. -1 if no intersection.
  */
+__host__ __device__ float triangleIntersectionTest(Geom geom, Triangle triangle, Ray r,
+	glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
+	Ray q;
+	q.origin = multiplyMV(geom.inverseTransform, glm::vec4(r.origin, 1.0f));
+	q.direction = glm::normalize(multiplyMV(geom.inverseTransform, glm::vec4(r.direction, 0.0f)));
+
+	glm::vec3 barycenter;
+	bool hit = glm::intersectRayTriangle(r.origin, r.direction, triangle.v0, triangle.v1, triangle.v2, barycenter);
+	
+	float t = -1.0f;
+	if (hit) {
+		t = glm::length(barycenter - r.origin);
+	}
+	intersectionPoint = multiplyMV(geom.transform, glm::vec4(getPointOnRay(q, t), 1.0f));
+	normal = glm::normalize(multiplyMV(geom.inverseTransform, glm::vec4(getPointOnRay(q, t), 0.0f)));
+	//normal = glm::normalize(glm::cross(triangle.v0 - triangle.v2, triangle.v0 - triangle.v1));
+	outside = true;
+	if (glm::dot(r.origin, normal) < 0)outside = false;
+	return t;
+}
+
+// CHECKITOUT
+/**
+ * Test intersection between a ray and a transformed cube. Untransformed,
+ * the cube ranges from -0.5 to 0.5 in each axis and is centered at the origin.
+ *
+ * @param intersectionPoint  Output parameter for point of intersection.
+ * @param normal             Output parameter for surface normal.
+ * @param outside            Output param for whether the ray came from outside.
+ * @return                   Ray parameter `t` value. -1 if no intersection.
+ */
 __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
         glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
     Ray q;

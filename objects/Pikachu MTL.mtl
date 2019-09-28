@@ -1,0 +1,46 @@
+# Blender MTL File: 'Pikachu For Sketchfab.blend'
+# Material Count: 4
+
+newmtl Cheek
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.229953 0.000486 0.008264
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd C:\Blender EXE\Character\Pokedex3D_art_1.jpg
+
+newmtl Eye,_Ear
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.000000 0.000000 0.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd C:\Blender EXE\Character\Pokedex3D_art_1.jpg
+
+newmtl Eye_02
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd C:\Blender EXE\Character\Pokedex3D_art_1.jpg
+
+newmtl Skin
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.717674 0.513855 0.002238
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd C:\Blender EXE\Character\Pokedex3D_art_1.jpg

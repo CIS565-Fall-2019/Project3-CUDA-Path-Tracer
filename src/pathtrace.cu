@@ -23,12 +23,15 @@
 #include "interactions.h"
 #include "device_launch_parameters.h"
 
+#include "tiny_obj/tiny_obj_loader.h"
+
 #define ERRORCHECK 1
 
 const int STREAM_COMPACT = 1;
 const int SORT_BY_MATERIAL = 0;
 const int CACHE__FIRST_BOUNCE = 0;
-const int MOTION_BLUR = 1;
+const int MOTION_BLUR = 0;
+const int STREAM_COMPACT_SHARED = 0;
 
 const int ANTI_ALIASING = 1;
 
@@ -105,6 +108,7 @@ struct is_dead
 static Scene * hst_scene = NULL;
 static glm::vec3 * dev_image = NULL;
 static Geom * dev_geoms = NULL;
+static Triangle * dev_triangles = NULL;
 static Material * dev_materials = NULL;
 static PathSegment * dev_paths = NULL;
 static ShadeableIntersection * dev_intersections = NULL;
@@ -129,6 +133,9 @@ void pathtraceInit(Scene *scene) {
   	cudaMalloc(&dev_geoms, scene->geoms.size() * sizeof(Geom));
   	cudaMemcpy(dev_geoms, scene->geoms.data(), scene->geoms.size() * sizeof(Geom), cudaMemcpyHostToDevice);
 
+	cudaMalloc(&dev_triangles, scene->triangles.size() * sizeof(Triangle));
+	cudaMemcpy(dev_triangles, scene->triangles.data(), scene->triangles.size() * sizeof(Triangle), cudaMemcpyHostToDevice);
+
   	cudaMalloc(&dev_materials, scene->materials.size() * sizeof(Material));
   	cudaMemcpy(dev_materials, scene->materials.data(), scene->materials.size() * sizeof(Material), cudaMemcpyHostToDevice);
 
@@ -152,6 +159,8 @@ void pathtraceFree() {
   	cudaFree(dev_materials);
   	cudaFree(dev_intersections);
     // TODO: clean up any extra device memory you created
+	cudaFree(dev_intersections_cached);
+	cudaFree(dev_triangles);
 
     checkCUDAError("pathtraceFree");
 }
@@ -205,18 +214,26 @@ __global__ void computeIntersections(
 	, PathSegment * pathSegments
 	, Geom * geoms
 	, int geoms_size
+	, Triangle * triangles
+	, int triangles_size
 	, ShadeableIntersection * intersections
 	, int iter
 	, int * path_indices
 	)
 {
 	int path_id = blockIdx.x * blockDim.x + threadIdx.x;
-
+	int path_index;
 	if (path_id < num_paths)
 	{
-		int path_index = path_indices[path_id];
-		PathSegment pathSegment = pathSegments[path_index];
-
+		PathSegment pathSegment;
+		if (STREAM_COMPACT_SHARED) {
+			path_index = path_indices[path_id];
+			
+		}
+		else {
+			path_index = path_id;
+		}
+		pathSegment = pathSegments[path_index];
 		float t;
 		glm::vec3 intersect_point;
 		glm::vec3 normal;
@@ -249,6 +266,22 @@ __global__ void computeIntersections(
 					geom.invTranspose = glm::transpose(glm::inverse(geom.transform));
 				}
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+			}
+			else if (geom.type == MESH) {
+				//Loop over all triangles
+				glm::vec3 inter;
+				glm::vec3 nor;
+				for (int j = 0; j < triangles_size; j++) {
+					t = triangleIntersectionTest(geom, triangles[j], pathSegment.ray, inter, nor, outside);
+
+					if (t > 0.0f && t_min > t)
+					{
+						t_min = t;
+						hit_geom_index = i;
+						tmp_intersect = inter;
+						tmp_normal = nor;
+					}
+				}
 			}
 			// TODO: add more intersection tests here... triangle? metaball? CSG?
 
@@ -298,7 +331,14 @@ __global__ void shadeFakeMaterial (
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   if (id < num_paths)
   {
-	  int idx = path_indices[id];
+	  int idx;
+	  if (STREAM_COMPACT_SHARED) {
+		  idx = path_indices[id];
+	  }
+	  else {
+		  idx = id;
+	  }
+	  
     ShadeableIntersection intersection = shadeableIntersections[idx];
     if (intersection.t > 0.0f) { // if the intersection exists...
       // Set up the RNG
@@ -349,9 +389,16 @@ __global__ void shadeRealMaterial(
 )
 {
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
-	if (id < num_paths && pathSegments[path_indices[id]].remainingBounces > 0)
+	int idx;
+	if (STREAM_COMPACT_SHARED) {
+		idx = path_indices[id];
+	}
+	else {
+		idx = id;
+	}
+	if (idx < num_paths && pathSegments[idx].remainingBounces > 0)
 	{
-		int idx = path_indices[id];
+		
 		ShadeableIntersection intersection = shadeableIntersections[idx];
 		if (intersection.t > 0.0f) { // if the intersection exists...
 		  // Set up the RNG
@@ -385,7 +432,7 @@ __global__ void shadeRealMaterial(
 			pathSegments[idx].remainingBounces = 0;
 		}
 
-		if (STREAM_COMPACT) {
+		if (STREAM_COMPACT_SHARED) {
 			if (pathSegments[idx].remainingBounces == 0) {
 				path_indices[id] = -1;
 			}
@@ -483,6 +530,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 					, dev_paths
 					, dev_geoms
 					, hst_scene->geoms.size()
+					, dev_triangles
+					, hst_scene->triangles.size()
 					, dev_intersections_cached
 					, iter
 					, dev_path_indices
@@ -499,6 +548,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 				, dev_paths
 				, dev_geoms
 				, hst_scene->geoms.size()
+				, dev_triangles
+				, hst_scene->triangles.size()
 				, dev_intersections
 				, iter
 				, dev_path_indices
@@ -514,6 +565,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			, dev_paths
 			, dev_geoms
 			, hst_scene->geoms.size()
+			, dev_triangles
+			, hst_scene->triangles.size()
 			, dev_intersections
 			, iter
 			, dev_path_indices
@@ -552,12 +605,10 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	dev_path_indices
   );
   printf("Shading done \n");
-  /*if (STREAM_COMPACT) {
+  if (STREAM_COMPACT) {
 	  dev_path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, is_alive());
 	  num_paths = dev_path_end - dev_paths;
-  }*/
-
-  if (STREAM_COMPACT) {
+  }else if (STREAM_COMPACT_SHARED) {
 	  printf("Compacting\n");
 	  num_paths = StreamCompaction::Shared::compact(num_paths, dev_path_indices, 1024);
 	  printf("num_paths: %d\n", num_paths);

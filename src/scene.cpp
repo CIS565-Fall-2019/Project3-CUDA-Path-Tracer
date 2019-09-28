@@ -4,6 +4,9 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
 
+#define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
+#include "tiny_obj/tiny_obj_loader.h"
+
 Scene::Scene(string filename) {
     cout << "Reading scene from " << filename << " ..." << endl;
     cout << " " << endl;
@@ -45,13 +48,24 @@ int Scene::loadGeom(string objectid) {
         //load object type
         utilityCore::safeGetline(fp_in, line);
         if (!line.empty() && fp_in.good()) {
-            if (strcmp(line.c_str(), "sphere") == 0) {
+			vector<string> tokens = utilityCore::tokenizeString(line);
+            if (strcmp(tokens[0].c_str(), "sphere") == 0) {
                 cout << "Creating new sphere..." << endl;
                 newGeom.type = SPHERE;
-            } else if (strcmp(line.c_str(), "cube") == 0) {
+            } else if (strcmp(tokens[0].c_str(), "cube") == 0) {
                 cout << "Creating new cube..." << endl;
                 newGeom.type = CUBE;
-            }
+            }else if (strcmp(tokens[0].c_str(), "mesh") == 0) {
+				cout << "Creating new mesh..." << endl;
+				
+				string obj_filename = tokens[1];
+				
+				//printf("Opening obj file %s\n", obj_filename);
+				if (loadMesh(obj_filename)) {
+					printf("Loaded Mesh\n");
+				}
+				newGeom.type = MESH;
+			}
         }
 
         //link material
@@ -187,4 +201,59 @@ int Scene::loadMaterial(string materialid) {
         materials.push_back(newMaterial);
         return 1;
     }
+}
+
+int Scene::loadMesh(string obj_filename) {
+
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+
+	std::string warn;
+	std::string err;
+	std::cout << "Opening file1 " << obj_filename << std::endl;
+	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, obj_filename.c_str());
+	std::cout << "Obj loaded ..." << std::endl;
+	if (!warn.empty()) {
+		std::cout << warn << std::endl;
+	}
+
+	if (!err.empty()) {
+		std::cerr << err << std::endl;
+	}
+
+	if (!ret) {
+		exit(1);
+	}
+
+	// Loop over shapes
+	std::cout << "Shapes " << shapes.size() << std::endl;
+	for (size_t s = 0; s < shapes.size(); s++) {
+		// Loop over faces(polygon)
+		size_t index_offset = 0;
+		std::cout << "f: " << shapes[s].mesh.num_face_vertices.size() << std::endl;
+		std::cout << "SS " << shapes[s].mesh.indices.size() << std::endl;
+		for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
+			int fv = shapes[s].mesh.num_face_vertices[f];
+			Triangle t;
+			//printf("fv: %d\n", fv);
+
+			tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + 0];
+			t.v0 = glm::vec3(attrib.vertices[3 * idx.vertex_index + 0], attrib.vertices[3 * idx.vertex_index + 1], attrib.vertices[3 * idx.vertex_index + 2]);
+
+			idx = shapes[s].mesh.indices[index_offset + 1];
+			t.v1 = glm::vec3(attrib.vertices[3 * idx.vertex_index + 0], attrib.vertices[3 * idx.vertex_index + 1], attrib.vertices[3 * idx.vertex_index + 2]);
+
+			idx = shapes[s].mesh.indices[index_offset + 2];
+			t.v2 = glm::vec3(attrib.vertices[3 * idx.vertex_index + 0], attrib.vertices[3 * idx.vertex_index + 1], attrib.vertices[3 * idx.vertex_index + 2]);
+
+			triangles.push_back(t);
+			index_offset += fv;
+
+			// per-face material
+			shapes[s].mesh.material_ids[f];
+		}
+	}
+	std::cout << "Loaded " << triangles.size() << " traingles" << std::endl;
+	return 1;
 }
