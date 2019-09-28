@@ -13,6 +13,7 @@
 #include "scene.h"
 #include "glm/glm.hpp"
 #include "glm/gtx/norm.hpp"
+#include "glm/gtc/matrix_inverse.hpp"
 #include "utilities.h"
 #include "pathtrace.h"
 #include "intersections.h"
@@ -21,7 +22,9 @@
 #define ERRORCHECK 1
 #define TEST_RADIX 0
 #define SORT_MATERIAL 0
-#define CACHE_FIRST_BOUNCE 1
+#define CACHE_FIRST_BOUNCE 0
+#define ANTI_ALIASING 0
+#define MOTION_BLUR 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -155,10 +158,24 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
         segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
 
 		// TODO: implement antialiasing by jittering the ray
+        #if ANTI_ALIASING
+        thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, 0);
+        thrust::uniform_real_distribution<float> u01(0, 1);
+        float rn_x = u01(rng);
+        float rn_y = u01(rng);
+        segment.ray.direction = glm::normalize(cam.view
+            - cam.right * cam.pixelLength.x * ((float)(x + rn_x) - (float)cam.resolution.x * 0.5f)
+            - cam.up * cam.pixelLength.y * ((float)(y + rn_y) - (float)cam.resolution.y * 0.5f)
+        );
+
+        #else
 		segment.ray.direction = glm::normalize(cam.view
 			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f)
 			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f)
 			);
+
+
+        #endif
 
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
@@ -233,6 +250,7 @@ __global__ void computeIntersections(
 			intersections[path_index].t = t_min;
 			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
 			intersections[path_index].surfaceNormal = normal;
+            intersections[path_index].outside = outside;
 		}
 	}
 }
@@ -282,7 +300,15 @@ __global__ void shadeFakeMaterial (
       else {
           //if specular, completely depend on the reflected color
           glm::vec3 intersec_pos = pathSegments[idx].ray.direction * intersection.t + pathSegments[idx].ray.origin;
-          scatterRay(pathSegments[idx], intersec_pos, intersection.surfaceNormal, material, rng);
+          if (material.hasRefractive)
+          {
+              //first determine whether it is inside the object or not by computing the cosTheta of output ray direction -- which is its z value, as it is normalized, I will add to utility though
+              scatterRay(pathSegments[idx], intersec_pos, intersection.surfaceNormal, material, rng, intersection.outside);
+          }
+          else
+          {
+              scatterRay(pathSegments[idx], intersec_pos, intersection.surfaceNormal, material, rng);
+          }
       }
 
       // fake implementation
@@ -510,25 +536,6 @@ void sort_by_material(int num_paths, PathSegment* dev_paths, ShadeableIntersecti
  * of memory management
  */
 void pathtrace(uchar4 *pbo, int frame, int iter) {
-    if (TEST_RADIX)
-    {
-        int array_size = 9;
-        int test_array[] = { 2,3,1,1,5,7,0,5,6 };
-        //int* dev_test_array;
-        //cudaMalloc(&dev_test_array, array_size * sizeof(int));
-        //cudaMemcpy(dev_test_array, test_array, array_size * sizeof(int), cudaMemcpyHostToDevice);
-        //const dim3 blockSize = array_size;
-        //const dim3 blocksPerGrid(1);
-        //radix_sort << <blocksPerGrid, blockSize >> > (n_bit_material_bound, array_size, dev_test_array);
-        //cudaMemcpy(test_array, dev_test_array, array_size * sizeof(int), cudaMemcpyDeviceToHost);
-        //my_radix_sort(n_bit_material_bound, array_size, test_array);
-        for (int i = 0; i < array_size; ++i)
-        {
-            std::cout << test_array[i] << " ";
-        }
-        std::cout << std::endl;
-        return;
-    }
     const int traceDepth = hst_scene->state.traceDepth;
     const Camera &cam = hst_scene->state.camera;
     const int pixelcount = cam.resolution.x * cam.resolution.y;
@@ -572,7 +579,26 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
     //   for you.
 
     // TODO: perform one iteration of path tracing
-#if CACHE_FIRST_BOUNCE
+
+    //if there is motion blur, we update the transformation of the geometry
+#if MOTION_BLUR
+    //actually, the velocity only determine how much we want to move the object
+    //float timeStep = iter; //wrong, fly out of scene
+    float timeStep = 1 / (hst_scene->state.iterations * 0.1f); // depend on how long you want the motion to arrive on your expected position -- here is 500 iteration
+    for (int i = 0; i < hst_scene->geoms.size(); i++)
+    {
+        hst_scene->geoms[i].translation += hst_scene->geoms[i].velocity * timeStep;
+        hst_scene->geoms[i].transform = utilityCore::buildTransformationMatrix(hst_scene->geoms[i].translation, hst_scene->geoms[i].rotation, hst_scene->geoms[i].scale);
+        hst_scene->geoms[i].inverseTransform = glm::inverse(hst_scene->geoms[i].transform);
+        hst_scene->geoms[i].invTranspose = glm::inverseTranspose(hst_scene->geoms[i].transform);
+    }
+
+    cudaMemcpy(dev_geoms, &(hst_scene->geoms)[0], hst_scene->geoms.size() * sizeof(Geom), cudaMemcpyHostToDevice);
+    checkCUDAError("motion blur error");
+
+#endif 
+
+#if CACHE_FIRST_BOUNCE && !ANTI_ALIASING && !MOTION_BLUR
     //first iteration, we need to generate Ray and cache
     if (iter == 1)
     {

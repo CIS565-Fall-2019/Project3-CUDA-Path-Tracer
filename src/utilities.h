@@ -41,3 +41,10 @@ inline int ilog2(int x) {
 inline int ilog2ceil(int x) {
     return x == 1 ? 0 : ilog2(x - 1) + 1;
 }
+//from 561 hw
+inline float CosTheta(const glm::vec3 &w) { return w.z; }
+inline float Cos2Theta(const glm::vec3 &w) { return w.z * w.z; }
+inline float AbsCosTheta(const glm::vec3 &w) { return std::abs(w.z); }
+inline float Sin2Theta(const glm::vec3 &w) {
+    return std::max((float)0, (float)1 - Cos2Theta(w));
+}
