@@ -20,12 +20,6 @@
 #include "utilities.h"
 
 #define ERRORCHECK 1
-#define COMPACT_RAYS 1
-#define CACHE_FIRST_BOUNCE 0
-#define MATERIAL_BASED_SORT 0
-#define ANTI_ALIASING 1
-#define MOTION_BLUR 0
-
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 __host__ __device__

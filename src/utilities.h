@@ -15,6 +15,13 @@
 #define EPSILON           0.00001f
 #define MOTION_BLUR_OFFSET 0.01f
 
+// Features
+#define COMPACT_RAYS 1
+#define CACHE_FIRST_BOUNCE 0
+#define MATERIAL_BASED_SORT 0
+#define ANTI_ALIASING 1
+#define MOTION_BLUR 0
+
 namespace utilityCore {
     extern float clamp(float f, float min, float max);
     extern bool replaceString(std::string& str, const std::string& from, const std::string& to);
