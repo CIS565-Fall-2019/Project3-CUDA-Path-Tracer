@@ -3,6 +3,8 @@
 #include <cstring>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include "tiny_obj_loader.h"
+#include <limits>
 
 Scene::Scene(string filename) {
     cout << "Reading scene from " << filename << " ..." << endl;
@@ -13,6 +15,13 @@ Scene::Scene(string filename) {
         cout << "Error reading from file - aborting!" << endl;
         throw;
     }
+	// Set mesh bounding box values to min and max inf
+	mesh_box.lb.x = std::numeric_limits<float>::max();
+	mesh_box.lb.y = std::numeric_limits<float>::max();
+	mesh_box.lb.z = std::numeric_limits<float>::max();
+	mesh_box.ub.x = std::numeric_limits<float>::min();
+	mesh_box.ub.y = std::numeric_limits<float>::min();
+	mesh_box.ub.z = std::numeric_limits<float>::min();
     while (fp_in.good()) {
         string line;
         utilityCore::safeGetline(fp_in, line);
@@ -27,9 +36,13 @@ Scene::Scene(string filename) {
             } else if (strcmp(tokens[0].c_str(), "CAMERA") == 0) {
                 loadCamera();
                 cout << " " << endl;
-            }
+            } else if (strcmp(tokens[0].c_str(), "MESH") == 0) {
+				loadObj(tokens[1]);
+				cout << " " << endl;
+			}
         }
     }
+	int x;
 }
 
 int Scene::loadGeom(string objectid) {
@@ -186,4 +199,98 @@ int Scene::loadMaterial(string materialid) {
         materials.push_back(newMaterial);
         return 1;
     }
+}
+
+int Scene::loadObj(string objectid) {
+	int id = atoi(objectid.c_str());
+	if (id != 0) { // We can only load 1 mesh
+		cout << "ERROR: Max number of meshes == 1, merge them into 1 mesh!" << endl;
+		return -1;
+	}
+	// Figure out path
+	string line, path;
+	utilityCore::safeGetline(fp_in, line);
+	if (!line.empty() && fp_in.good()) {
+		vector<string> tokens = utilityCore::tokenizeString(line);
+		if (strcmp(tokens[0].c_str(), "PATH") == 0) {
+			path = tokens[1];
+		}
+	}
+	glm::vec3 translation, rotation, scale, vel;
+	//load transformations & vel
+	utilityCore::safeGetline(fp_in, line);
+	while (!line.empty() && fp_in.good()) {
+		vector<string> tokens = utilityCore::tokenizeString(line);
+
+		//load tranformations
+		if (strcmp(tokens[0].c_str(), "TRANS") == 0) {
+			translation = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+		}
+		else if (strcmp(tokens[0].c_str(), "ROTAT") == 0) {
+			rotation = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+		}
+		else if (strcmp(tokens[0].c_str(), "SCALE") == 0) {
+			scale = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+		}
+		else if (strcmp(tokens[0].c_str(), "VEL") == 0) {
+			vel = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+		}
+		utilityCore::safeGetline(fp_in, line);
+	}
+	glm::mat4 transform = utilityCore::buildTransformationMatrix(translation, rotation, scale);
+
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+
+	std::string warn;
+	std::string err;
+
+	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path.c_str());
+
+	if (!warn.empty()) {
+		std::cout << warn << std::endl;
+	}
+
+	if (!err.empty()) {
+		std::cerr << err << std::endl;
+	}
+
+	if (!ret) {
+		exit(1);
+	}
+	
+	// Loop over shapes
+	for (size_t s = 0; s < shapes.size(); s++) {
+		// Loop over faces(polygon)
+		size_t index_offset = 0;
+		for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
+			int fv = shapes[s].mesh.num_face_vertices[f];
+			// Loop over vertices in the face.
+			Face newFace;
+			assert(fv == 3);
+			for (size_t v = 0; v < fv; v++) {
+				// access to vertex
+				tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
+				newFace.v[v].x = attrib.vertices[3 * idx.vertex_index + 0];
+				newFace.v[v].y = attrib.vertices[3 * idx.vertex_index + 1];
+				newFace.v[v].z = attrib.vertices[3 * idx.vertex_index + 2];
+				// modify vectors using transformation matrix
+				auto tmp = transform * glm::vec4(newFace.v[v], 1);
+				newFace.v[v].x = tmp[0];
+				newFace.v[v].y = tmp[1];
+				newFace.v[v].z = tmp[2];
+				// Compute update bounding box
+				update_mesh_box(newFace.v[v]);
+				// Normals
+				newFace.n[v].x = attrib.normals[3 * idx.normal_index + 0];
+				newFace.n[v].y = attrib.normals[3 * idx.normal_index + 1];
+				newFace.n[v].z = attrib.normals[3 * idx.normal_index + 2];
+				newFace.n[v] = glm::normalize(newFace.n[v]);
+			}
+			index_offset += fv;
+			// Push back into scene
+			faces.push_back(newFace);
+		}
+	}
 }

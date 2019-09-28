@@ -1,6 +1,7 @@
 #pragma once
 
 #include "intersections.h"
+#define MESH_NORMAL_VIEW false
 
 // CHECKITOUT
 /**
@@ -92,7 +93,10 @@ void scatterRay(
 	float pdf = u01(rng);
 	if (pdf < m.hasReflective) {
 		dir = glm::normalize(glm::reflect(dir, intersection.surfaceNormal));
-		color = m.specular.color;
+		if (MESH_NORMAL_VIEW)
+			color = intersection.surfaceNormal;
+		else
+			color = m.specular.color;
 	}
 	else if (pdf  - m.hasReflective < m.hasRefractive) {
 		if (dot(intersection.surfaceNormal, dir) <= 0) //intersection.is_inside
@@ -102,16 +106,28 @@ void scatterRay(
 		// total internal reflection
 		if (!glm::length(dir)) {
 			dir = glm::normalize(glm::reflect(dir, intersection.surfaceNormal));
-			color = m.specular.color;
+			if (MESH_NORMAL_VIEW)
+				color = intersection.surfaceNormal;
+			else
+				color = m.specular.color;
 		}
 		else
-			color = m.color;
+			if (MESH_NORMAL_VIEW)
+				color = intersection.surfaceNormal;
+			else
+				color = m.color;
 	}
 	else {
 		dir = glm::normalize(calculateRandomDirectionInHemisphere(intersection.surfaceNormal, rng));
-		color = m.color;
+		if (MESH_NORMAL_VIEW)
+			color = intersection.surfaceNormal;
+		else
+			color = m.color;
 	}
 	pathSegment.ray.direction = dir;
 	pathSegment.ray.origin = intersection.intersect + dir * 0.01f;
-	pathSegment.color = pathSegment.color * color; // glm::clamp(pathSegment.color * color, glm::vec3(0.0f), glm::vec3(1.0f));
+	if (MESH_NORMAL_VIEW)
+		pathSegment.color *= glm::abs(color);
+	else
+		pathSegment.color *= color;//glm::clamp(pathSegment.color * color, glm::vec3(0.0f), glm::vec3(1.0f));
 }
