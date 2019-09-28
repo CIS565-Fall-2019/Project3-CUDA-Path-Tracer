@@ -17,9 +17,9 @@
 #include "interactions.h"
 #include <assert.h>
 
-#define STREAM_COMPACTION false
+#define STREAM_COMPACTION true
 #define SORT_MATERIAL false
-#define CACHE_BOUNCE false
+#define CACHE_BOUNCE true
 #define AA false
 #define MOTION_BLUR false
 #define ERRORCHECK 1
@@ -226,13 +226,13 @@ __global__ void computeIntersections(
 			}
 		}
 		// Check for mesh collision
-		if (RayAABBintersect(pathSegment.ray, mesh_box[0])) {
+		if (face_size && RayAABBintersect(pathSegment.ray, mesh_box[0])) {
 			for (int i = 0; i < face_size; i++) {
 				t = triangleIntersectionTest(face[i], pathSegment.ray, tmp_intersect, tmp_normal, outside);
 				if (t > 0.0f && t_min > t)
 				{
 					t_min = t;
-					materialid = 13;
+					materialid = face[i].materialid;
 					intersect_point = tmp_intersect;
 					normal = tmp_normal;
 				}

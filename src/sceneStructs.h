@@ -40,6 +40,7 @@ struct Mesh {
 struct Face {
 	glm::vec3 v[3];
 	glm::vec3 n[3];
+	int materialid;
 };
 
 struct Material {

@@ -67,20 +67,28 @@ glm::vec3 calculateRandomDirectionInHemisphere(
  *
  * You may need to change the parameter list for your purposes!
  */
-__host__ __device__
-glm::vec3 refract(const glm::vec3 &I, const glm::vec3 &N, float eta)
-{
-	/*float cosi = glm::clamp(glm::dot(I, N), -1.0f, 1.0f);
-	float etai = 1, etat = ior;
-	glm::vec3 n = N;
-	if (cosi < 0) { cosi = -cosi; }
-	else { std::swap(etai, etat); n = -N; }
-	float eta = etai / etat;
-	float k = 1 - eta * eta * (1 - cosi * cosi);
-	return k < 0 ? glm::vec3(0) : eta * I + (eta * cosi - sqrtf(k)) * n;*/
-	float cosi = glm::clamp(glm::dot(N, I), -1.0f, 1.0f);
-	return (I * eta - N * (-cosi + eta * cosi));
+
+__host__ __host__ __device__
+bool refract(const glm::vec3& v, const glm::vec3& n, float ni_over_nt, glm::vec3& refracted) {
+	glm::vec3 uv = glm::normalize(v);
+	float dt = glm::dot(uv, n);
+	float discriminat = 1.0 - ni_over_nt * ni_over_nt * (1 - dt * dt);
+	if (discriminat > 0) {
+		refracted = ni_over_nt * (uv - n * dt) - n * sqrt(discriminat);
+		return true;
+	}
+	else
+		return false; // no refracted ray
 }
+
+
+__host__ __device__ __inline__ float schlick(float cosine, float ref_idx) {
+	float r0 = (1 - ref_idx) / (1 + ref_idx); // ref_idx = n2/n1
+	r0 = r0 * r0;
+	return r0 + (1 - r0) * pow((1 - cosine), 5);
+}
+
+
 __host__ __device__
 void scatterRay(
 		PathSegment & pathSegment,
@@ -90,32 +98,51 @@ void scatterRay(
 	glm::vec3 dir = pathSegment.ray.direction;
 	glm::vec3 color(1.0f, 1.0f, 1.0f);
 	thrust::uniform_real_distribution<float> u01(0, 1);
-	float pdf = u01(rng);
-	if (pdf < m.hasReflective) {
-		dir = glm::normalize(glm::reflect(dir, intersection.surfaceNormal));
-		if (MESH_NORMAL_VIEW)
-			color = intersection.surfaceNormal;
+	float reflective_prob = m.hasReflective;
+	if (reflective_prob != 0 || m.hasRefractive != 0) {
+		float pdf = u01(rng), refrac_index_ratio, cosine;
+		glm::vec3 normal;
+		// Check if it is entry or exit of the object 
+		cosine = glm::dot(glm::normalize(dir), intersection.surfaceNormal);
+		if (cosine <= 0) { //intersection.is_inside
+			normal = intersection.surfaceNormal;
+			refrac_index_ratio = 1 / m.indexOfRefraction;
+			cosine = -cosine;
+		}
+		else {
+			normal = -intersection.surfaceNormal;
+			refrac_index_ratio = m.indexOfRefraction;
+		}
+		// Check if refraction can occure
+		if (refract(pathSegment.ray.direction, normal, refrac_index_ratio, dir))
+			// Call schlicks to update the probs
+			reflective_prob = schlick(cosine, refrac_index_ratio);
 		else
-			color = m.specular.color;
-	}
-	else if (pdf  - m.hasReflective < m.hasRefractive) {
-		if (dot(intersection.surfaceNormal, dir) <= 0) //intersection.is_inside
-			dir = glm::normalize(glm::refract(pathSegment.ray.direction, intersection.surfaceNormal, 1/m.indexOfRefraction));
-		else
-			dir = glm::normalize(glm::refract(pathSegment.ray.direction, -intersection.surfaceNormal, m.indexOfRefraction));
-		// total internal reflection
-		if (!glm::length(dir)) {
+			reflective_prob = 1.0f;
+		// Now check if we are going to reflect or refract
+		if (pdf < reflective_prob) { 
 			dir = glm::normalize(glm::reflect(dir, intersection.surfaceNormal));
 			if (MESH_NORMAL_VIEW)
 				color = intersection.surfaceNormal;
 			else
 				color = m.specular.color;
 		}
-		else
-			if (MESH_NORMAL_VIEW)
-				color = intersection.surfaceNormal;
+		else {
+			dir = glm::normalize(glm::refract(pathSegment.ray.direction, normal, refrac_index_ratio));
+			// total internal reflection
+			if (!glm::length(dir)) {
+				dir = glm::normalize(glm::reflect(dir, intersection.surfaceNormal));
+				if (MESH_NORMAL_VIEW)
+					color = intersection.surfaceNormal;
+				else
+					color = m.specular.color;
+			}
 			else
-				color = m.color;
+				if (MESH_NORMAL_VIEW)
+					color = intersection.surfaceNormal;
+				else
+					color = m.color;
+		}
 	}
 	else {
 		dir = glm::normalize(calculateRandomDirectionInHemisphere(intersection.surfaceNormal, rng));

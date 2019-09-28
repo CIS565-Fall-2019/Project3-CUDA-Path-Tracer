@@ -216,6 +216,13 @@ int Scene::loadObj(string objectid) {
 			path = tokens[1];
 		}
 	}
+	//link material
+	utilityCore::safeGetline(fp_in, line);
+	int materialid = 0;
+	if (!line.empty() && fp_in.good()) {
+		vector<string> tokens = utilityCore::tokenizeString(line);
+		materialid = atoi(tokens[1].c_str());
+	}
 	glm::vec3 translation, rotation, scale, vel;
 	//load transformations & vel
 	utilityCore::safeGetline(fp_in, line);
@@ -289,8 +296,11 @@ int Scene::loadObj(string objectid) {
 				newFace.n[v] = glm::normalize(newFace.n[v]);
 			}
 			index_offset += fv;
+			// Add material ID to mesh face
+			newFace.materialid = materialid;
 			// Push back into scene
 			faces.push_back(newFace);
 		}
 	}
+	cout << "Loaded Mesh" << endl;
 }
