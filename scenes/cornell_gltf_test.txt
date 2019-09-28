@@ -100,7 +100,7 @@ EMITTANCE   0
 
 // Camera
 CAMERA
-RES         2000 1200
+RES         600 600
 FOVY        45
 ITERATIONS  5000
 DEPTH       8
@@ -177,8 +177,8 @@ SCALE       .01 20 20
 // Mesh
 OBJECT 8
 mesh
-material 1
-TRANS       0 0 0
+material 2
+TRANS       0 5 0
 ROTAT       0 0 0
-SCALE       1 1 1
-FILE  C:\Users\John\git\Project3-CUDA-Path-Tracer\external\tinygltf\models\Cube\Cube.gltf
+SCALE       0.5 0.5 0.5
+FILE  C:\Users\John\git\glTF-Sample-Models\2.0\OrientationTest\glTF\OrientationTest.gltf

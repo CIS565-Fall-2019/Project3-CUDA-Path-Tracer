@@ -278,11 +278,7 @@ __global__ void computeIntersections(
 			}
 			else if (geom.type == TRIANGLE)
 			{
-				if (glm::intersectRayTriangle(pathSegment.ray.origin, pathSegment.ray.direction, geom.v1, geom.v2, geom.v3, tmp_intersect)) {
-					t = tmp_intersect.z;
-					tmp_normal = geom.norm;
-					tmp_intersect = getPointOnRay(pathSegment.ray, t);
-				}
+				t = triangleIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
 
 			// Compute the minimum t from the intersection tests to determine what

@@ -198,13 +198,16 @@ std::vector<Geom> Scene::readGltfFile(const Geom & parentGeom, const string & fi
 	vector<example::Material>    gltfMaterials;
 	vector<example::Texture>     gltfTextures;
 
+	cout << "JOHN: Loading file..." << endl;
 	if (!example::LoadGLTF(file, 1.0, &gltfMeshes, &gltfMaterials, &gltfTextures)) {
 		cout << "Failed to load GLTF! File was " << file << endl;
 		abort();
 	}
+	cout << "JOHN: Loaded!" << endl;
 
 	// OK, we parsed the file thanks to gltf. Now to make sense of the mesh.
 	for (const auto& mesh : gltfMeshes) {
+		cout << "JOHN: Parsing Mesh" << endl;
 		// Parse each mesh for all triangles.
 		vector<Geom> g = gltfMeshToTriangles(parentGeom, mesh);
 		out.insert(out.end(), g.begin(), g.end());

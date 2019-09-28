@@ -8,11 +8,7 @@
 #include "utilities.h"
 #include "sceneStructs.h"
 
-//#define TINYGLTF_IMPLEMENTATION
-//#define STB_IMAGE_IMPLEMENTATION
-//#define STB_IMAGE_WRITE_IMPLEMENTATION
-
-#include "tiny_gltf.h"
+//#include "tiny_gltf.h"
 #include "gltf-loader.h"
 
 using namespace std;
