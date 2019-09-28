@@ -73,6 +73,8 @@ set(headers
     src/sceneStructs.h
     src/preview.h
     src/utilities.h
+    stream_compaction/efficient.h
+    stream_compaction/common.h
     )
 
 set(sources
