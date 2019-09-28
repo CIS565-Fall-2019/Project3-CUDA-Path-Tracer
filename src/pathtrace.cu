@@ -276,7 +276,14 @@ __global__ void computeIntersections(
 			{
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
-			// TODO: add more intersection tests here... triangle? metaball? CSG?
+			else if (geom.type == TRIANGLE)
+			{
+				if (glm::intersectRayTriangle(pathSegment.ray.origin, pathSegment.ray.direction, geom.v1, geom.v2, geom.v3, tmp_intersect)) {
+					t = tmp_intersect.z;
+					tmp_normal = geom.norm;
+					tmp_intersect = getPointOnRay(pathSegment.ray, t);
+				}
+			}
 
 			// Compute the minimum t from the intersection tests to determine what
 			// scene geometry object was hit first.

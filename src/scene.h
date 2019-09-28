@@ -8,6 +8,13 @@
 #include "utilities.h"
 #include "sceneStructs.h"
 
+//#define TINYGLTF_IMPLEMENTATION
+//#define STB_IMAGE_IMPLEMENTATION
+//#define STB_IMAGE_WRITE_IMPLEMENTATION
+
+#include "tiny_gltf.h"
+#include "gltf-loader.h"
+
 using namespace std;
 
 class Scene {
@@ -16,7 +23,11 @@ private:
     int loadMaterial(string materialid);
     int loadGeom(string objectid);
     int loadCamera();
-	void loadMeshes();
+
+	// GLTF Parsing Functions
+	std::vector<Geom> readGltfFile(const Geom & meshGeom, const string & file);
+	vector<Geom> gltfMeshToTriangles(const Geom & parentMesh, const example::Mesh<float> & mesh);
+
 public:
     Scene(string filename);
     ~Scene();

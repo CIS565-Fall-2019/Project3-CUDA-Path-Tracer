@@ -3,6 +3,8 @@
 #include <cstring>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <glm/gtx/normal.hpp>
+
 
 Scene::Scene(string filename) {
 	cout << "Reading scene from " << filename << " ..." << endl;
@@ -44,6 +46,7 @@ int Scene::loadGeom(string objectid) {
 		cout << "Loading Geom " << id << "..." << endl;
 		Geom newGeom;
 		string line;
+		string meshFile = "";
 
 		//load object type
 		utilityCore::safeGetline(fp_in, line);
@@ -55,6 +58,14 @@ int Scene::loadGeom(string objectid) {
 			else if (strcmp(line.c_str(), "cube") == 0) {
 				cout << "Creating new cube..." << endl;
 				newGeom.type = CUBE;
+			}
+			else if (strcmp(line.c_str(), "triangle") == 0) {
+				cout << "Creating new cube..." << endl;
+				newGeom.type = TRIANGLE;
+			}
+			else if (strcmp(line.c_str(), "mesh") == 0) {
+				cout << "Creating new cube..." << endl;
+				newGeom.type = MESH;
 			}
 		}
 
@@ -84,6 +95,9 @@ int Scene::loadGeom(string objectid) {
 			else if (strcmp(tokens[0].c_str(), "VELO") == 0) {
 				newGeom.velocity = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
 			}
+			else if (strcmp(tokens[0].c_str(), "FILE") == 0) {
+				meshFile = tokens[1];
+			}
 
 			utilityCore::safeGetline(fp_in, line);
 		}
@@ -92,7 +106,18 @@ int Scene::loadGeom(string objectid) {
 		newGeom.inverseTransform = glm::inverse(newGeom.transform);
 		newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
 
-		geoms.push_back(newGeom);
+		if (newGeom.type == MESH) {
+			assert(meshFile != "", "Missing Mesh file argument for object id " + objectId);
+			
+			// Read from the gltf file.
+			std::vector<Geom> meshTriangles = readGltfFile(newGeom, meshFile);
+			geoms.insert(geoms.end(), meshTriangles.begin(), meshTriangles.end());
+		}
+		else {
+			// If a primitive shape, take it onto the end.
+			geoms.push_back(newGeom);
+		}
+		
 		return 1;
 	}
 }
@@ -162,6 +187,88 @@ int Scene::loadCamera() {
 
 	cout << "Loaded camera!" << endl;
 	return 1;
+}
+
+std::vector<Geom> Scene::readGltfFile(const Geom & parentGeom, const string & file)
+{
+	bool status = false;
+	vector<Geom> out;
+
+	vector<example::Mesh<float>> gltfMeshes;
+	vector<example::Material>    gltfMaterials;
+	vector<example::Texture>     gltfTextures;
+
+	if (!example::LoadGLTF(file, 1.0, &gltfMeshes, &gltfMaterials, &gltfTextures)) {
+		cout << "Failed to load GLTF! File was " << file << endl;
+		abort();
+	}
+
+	// OK, we parsed the file thanks to gltf. Now to make sense of the mesh.
+	for (const auto& mesh : gltfMeshes) {
+		// Parse each mesh for all triangles.
+		vector<Geom> g = gltfMeshToTriangles(parentGeom, mesh);
+		out.insert(out.end(), g.begin(), g.end());
+	}
+	
+	// TODO: Care about materials. For now, use the material from the config file.
+
+	return out;
+}
+
+vector<Geom> Scene::gltfMeshToTriangles(const Geom & parentGeom, const example::Mesh<float>& mesh)
+{
+	// Get a mesh from gltf and turn it into a mesh of triangles we can parse
+	vector<Geom> triangles;
+
+	for (int i = 0; i < mesh.faces.size() / 3; i++) {
+		Geom tri;
+		tri.type = TRIANGLE;
+
+		int v1idx = i * 3 + 0;
+		int v2idx = i * 3 + 1;
+		int v3idx = i * 3 + 2;
+
+		// Convert our idexes into faces into vertex indicies
+		v1idx = mesh.faces[v1idx];
+		v2idx = mesh.faces[v2idx];
+		v3idx = mesh.faces[v3idx];
+
+		// Now get the real vertex info
+		tri.v1 = glm::vec3(
+			mesh.vertices[3 * v1idx + 0],
+			mesh.vertices[3 * v1idx + 1],
+			mesh.vertices[3 * v1idx + 2]
+		);
+
+		tri.v2 = glm::vec3(
+			mesh.vertices[3 * v2idx + 0],
+			mesh.vertices[3 * v2idx + 1],
+			mesh.vertices[3 * v2idx + 2]
+		);
+
+		tri.v3 = glm::vec3(
+			mesh.vertices[3 * v3idx + 0],
+			mesh.vertices[3 * v3idx + 1],
+			mesh.vertices[3 * v3idx + 2]
+		);
+
+		tri.norm = glm::triangleNormal(tri.v1, tri.v2, tri.v3);
+
+		// Inherit properties of parent
+		tri.translation = parentGeom.translation;
+		tri.transform = parentGeom.transform;
+		tri.scale = parentGeom.scale;
+		tri.rotation = parentGeom.rotation;
+		tri.invTranspose = parentGeom.invTranspose;
+		tri.inverseTransform = parentGeom.inverseTransform;
+		tri.velocity = parentGeom.velocity;
+
+		tri.materialid = parentGeom.materialid;
+
+		triangles.push_back(tri);
+	}
+
+	return triangles;
 }
 
 int Scene::loadMaterial(string materialid) {
