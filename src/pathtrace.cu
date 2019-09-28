@@ -26,13 +26,14 @@
 #define ERRORCHECK 1
 
 // toggleable part 1 macros
-#define CACHE_ME_OUTSIDE
+//#define CACHE_ME_OUTSIDE
 #define STREAM_COMPACTION
 //#define MATERIAL_SORT
-//#define ANTIALIASING
+#define ANTIALIASING
 //#define DEPTH_OF_FIELD
-#define LENS_RADIUS 0.3f
-#define FOCAL_DISTANCE 4.0f
+#define LENS_RADIUS 0.4f
+#define FOCAL_DISTANCE 7.0f
+#define MOTION_BLUR
 
 #ifdef CACHE_ME_OUTSIDE 
 #ifdef ANTIALIASING
@@ -319,6 +320,8 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		segment.ray.direction = glm::normalize(Pfocus - glm::vec3(lensU, lensV, 0.f));
 
 #endif
+
+		segment.ray.rand_time = u01(rng);
 
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
