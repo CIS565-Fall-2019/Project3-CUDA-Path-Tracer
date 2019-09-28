@@ -100,22 +100,23 @@ void scatterRay(
 			// Inside sphere leaving
 			float theta = acos(glm::dot(normal, rayDir));
 			float critAngle = asin((float)1.f / eta);
-			offsetOrigin = intersect + EPSILON * normal;
+			offsetOrigin = intersect + 0.001f * glm::normalize(normal);
 			refractedDir = glm::normalize(glm::refract(rayDir, -normal, eta));
-			if ((float)1.f / eta > 1 && theta < critAngle) {
-				refractedDir = glm::normalize(glm::reflect(rayDir, normal));
+			if ((float)1.f / eta < 1 && theta > critAngle) {
+				refractedDir = glm::normalize(glm::reflect(rayDir, -normal));
+				offsetOrigin = intersect + 0.001f * glm::normalize(-normal);
+
 			}
-			/*refractedDir = glm::vec3(0.0, 1.0, 0.0);
-			offsetOrigin = glm::vec3(1.0);*/
 		}
 		else {
 			// outside sphere entering
 			float theta = acos(glm::dot(normal, -rayDir));
 			float critAngle = asin(eta);
-			offsetOrigin = intersect + EPSILON * (-normal);
-			refractedDir = glm::normalize(glm::refract(rayDir, -normal, 1.f/eta));
+			offsetOrigin = intersect + 0.001f * (-normal);
+			refractedDir = glm::normalize(glm::refract(rayDir, normal, eta));
 			if (eta < 1 && theta > critAngle) {
-				refractedDir = glm::normalize(glm::reflect(rayDir, normal));
+				refractedDir = glm::normalize(glm::reflect(rayDir, -normal));
+				offsetOrigin = intersect + 0.001f * (normal);
 			}
 		}
 		pathSegment.ray.origin = offsetOrigin;
