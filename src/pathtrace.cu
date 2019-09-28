@@ -15,12 +15,13 @@
 #include "intersections.h"
 #include "interactions.h"
 #include "tiny_gltf.h"
+#include <glm/gtc/matrix_inverse.hpp>
 
 // for performance analysis
 #include <cuda_runtime.h>
 
 //
-#include <nvToolsExt.h>
+//#include <nvToolsExt.h>
 
 
 #define ERRORCHECK 1
@@ -29,7 +30,7 @@
 //#define CACHE_ME_OUTSIDE
 #define STREAM_COMPACTION
 //#define MATERIAL_SORT
-#define ANTIALIASING
+//#define ANTIALIASING
 //#define DEPTH_OF_FIELD
 #define LENS_RADIUS 0.4f
 #define FOCAL_DISTANCE 7.0f
@@ -41,6 +42,17 @@
 #endif
 #endif
 
+#ifdef CACHE_ME_OUTSIDE 
+#ifdef MOTION_BLUR
+	static_assert(0, "motion blur and caching can not be combined");
+#endif
+#endif
+
+#ifdef CACHE_ME_OUTSIDE 
+#ifdef DEPTH_OF_FIELD
+	static_assert(0, "depth of field and caching can not be combined");
+#endif
+#endif
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -328,6 +340,31 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 	}
 }
 
+void update_geom(Geom * geoms, int geoms_size, int iter)
+{
+	glm::vec3 zero_vec(0.f);
+	for (int i = 0; i < geoms_size; i++)
+	{
+		Geom & geom = geoms[i];
+		if (geom.speed != zero_vec)
+		{
+			// add randomness so object does not run away out of the fr ame... hopefully
+			thrust::default_random_engine rng = makeSeededRandomEngine(i, iter, 5);
+			thrust::uniform_real_distribution<float> u01(-1, 1);
+
+			//printf("speed detected \n");
+			geom.translation = geom.translation + (geom.speed * .05f * u01(rng));
+
+			geom.transform = utilityCore::buildTransformationMatrix(
+				geom.translation, geom.rotation, geom.scale);
+
+			geom.inverseTransform = glm::inverse(geom.transform);
+			geom.invTranspose = glm::inverseTranspose(geom.transform);
+		}
+	} 
+	
+}
+
 // TODO:
 // computeIntersections handles generating ray intersections ONLY.
 // Generating new rays is handled in your shader(s).
@@ -577,6 +614,25 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	//Start Benchmark
 	CUDA(cudaEventRecord(start, 0));
 
+#ifdef MOTION_BLUR
+	// create new host space
+	Geom* host_geoms = new Geom[hst_scene->geoms.size()];
+	assert(host_geoms != NULL);
+	
+	// copy geoms from device to host
+	cudaMemcpy(host_geoms, dev_geoms, hst_scene->geoms.size() * sizeof(Geom), cudaMemcpyDeviceToHost);
+
+	// update geoms for speed
+	update_geom(host_geoms, hst_scene->geoms.size(),iter );
+
+	// copy back to device
+	cudaMemcpy(dev_geoms, host_geoms, hst_scene->geoms.size() * sizeof(Geom), cudaMemcpyHostToDevice);
+	
+	// delete space like a good boy
+	delete[] host_geoms;
+
+#endif
+
 	while (!iterationComplete) {
 
 	// start cuda event timer
@@ -626,8 +682,6 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 #else
 	
-	// tracing
-	//dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
 	computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (
 		depth
 		, active_paths

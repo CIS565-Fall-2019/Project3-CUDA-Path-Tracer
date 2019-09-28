@@ -125,6 +125,16 @@ And finally, this is what I see without my contacts
 
 ![](img/full_blur.png)
 
+## Motion Blur
+
+Similar to depth of field and anti aliasing motion blur is pretty much free. The drawbck is that again, we can not use the caching technique. This is so because we ever moving the object position justa bit every iteration.
+
+This algorithm has us update the position by a little bit every iteration. So, we just need to loop through however many objects are in the scene and update it based on the speed of the object. Unless there are 1000's of objects in a scene this can be done easily and quickly on the CPU.
+
+Below is an image with the lotf smaller spheres flying around the scene. Simulating something like electrons around a nucleus.
+
+![](img/motion_blur_sun.png)
+
 ## Refraction
 
 From our results above we see that refracion addded a bit of overhead but not too much. This is expected as adding refraction adds a bit more branch divergence. But the time spent computing refraction is not significantly more than computing a reflective or diffuse object so we only see a slight slow down.

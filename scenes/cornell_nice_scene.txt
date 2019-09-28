@@ -107,6 +107,7 @@ material 0
 TRANS       0 10 0
 ROTAT       0 0 0
 SCALE       3 .3 3
+SPEED       0 0 0
 
 // Floor
 OBJECT 1
@@ -169,7 +170,7 @@ material 7
 TRANS       0 2 0
 ROTAT       0 0 0
 SCALE       2 2 2
-SPEED       0 0 0
+SPEED       1 0 0
 
 // sphere
 OBJECT 8
@@ -178,7 +179,7 @@ material 6
 TRANS       -2 2 2
 ROTAT       0 0 0
 SCALE       2 2 2
-SPEED       0 0 0
+SPEED       1 1 0
 
 // Sphere in farright back
 OBJECT 9
@@ -187,7 +188,7 @@ material 7
 TRANS       -4 2 4
 ROTAT       0 0 0
 SCALE       2 2 2
-SPEED       0 0 0
+SPEED       0 1 0
 
 // Sphere in wall
 OBJECT 10
@@ -214,4 +215,4 @@ material 5
 TRANS       2 7 -3
 ROTAT       0 0 0
 SCALE       3 3 3
-SPEED       0 0 0
+SPEED       -1 -1 0
