@@ -61,9 +61,7 @@ endif(UNIX)
 set(GLM_ROOT_DIR "external")
 find_package(GLM REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
-
-## tinyobjloader Library stuff
-include_directories(external/tinyobjloader)
+include_directories(external/tinygltf/examples/raytrace/)
 
 set(headers
     src/main.h
@@ -76,7 +74,12 @@ set(headers
     src/sceneStructs.h
     src/preview.h
     src/utilities.h
-	external/tinyobjloader/tiny_obj_loader.h
+	src/tiny_gltf.h
+	src/stb_image.h
+	src/stb_image_write.h
+	src/json.hpp
+	external/tinygltf/examples/raytrace/gltf-loader.h
+	external/tinygltf/examples/raytrace/mesh.h
     )
 
 set(sources
@@ -88,7 +91,7 @@ set(sources
     src/scene.cpp
     src/preview.cpp
     src/utilities.cpp
-	external/tinyobjloader/tiny_obj_loader.cc
+	external/tinygltf/examples/raytrace/gltf-loader.cc
     )
 
 list(SORT headers)
