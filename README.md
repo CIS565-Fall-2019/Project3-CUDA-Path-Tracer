@@ -15,4 +15,5 @@ CUDA Path Tracer
 ### Graphics
 #### Refraction 
 #### Antialiasing
+## Bloopers
 
