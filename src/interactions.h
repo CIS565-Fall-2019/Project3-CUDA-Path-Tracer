@@ -108,7 +108,6 @@ void scatterRay(
         //update ray -- determine whether we should keep bouncing
         pathSegment.ray.origin = intersect + EPSILON_OFFSET * normal;
         pathSegment.ray.direction = diffuse_dir;
-        pathSegment.remainingBounces--;
 
 
     }
@@ -156,7 +155,6 @@ void scatterRay(
                 //pathSegment.color *= glm::abs(glm::dot(pathSegment.ray.direction, normal)) * m.color;
             }
         }
-        pathSegment.remainingBounces--;
 
     }
     else if (m.hasRefractive > 0)
@@ -165,8 +163,18 @@ void scatterRay(
         {
             return;
         }
+
         //the eta of air is always 1 we assume
-        float eta = outside ? 1 / m.indexOfRefraction : m.indexOfRefraction;
+        float eta_in = 1.0f;
+        float eta_out = m.indexOfRefraction;
+        if (!outside)
+        {
+            float temp = eta_in;
+            eta_in = eta_out;
+            eta_out = temp;
+        }
+
+        float eta = eta_in / eta_out;
 
         //then compute Schlick's_approximation
         float cos_theta = glm::dot(-pathSegment.ray.direction, normal);
@@ -194,7 +202,7 @@ void scatterRay(
             pathSegment.ray.origin = intersect + EPSILON_OFFSET * pathSegment.ray.direction;
             pathSegment.ray.direction = refract_dir;
         }
-        pathSegment.remainingBounces--;
     }
 
+    pathSegment.remainingBounces--;
 }
