@@ -89,6 +89,40 @@ void scatterRay(
 		pathSegment.ray.origin = intersect + EPSILON * normal;
 		pathSegment.color *= m.specular.color / m.hasReflective;
 	}
+	else if (p <= m.hasReflective + m.hasRefractive) {
+		//bool entering = pathSegment.ray.direction.z > 0;
+		glm::vec3 rayDir = glm::normalize(originalDirection);
+		glm::vec3 refractedDir = glm::vec3();
+		glm::vec3 offsetOrigin = glm::vec3();
+		float eta = 1.f / m.indexOfRefraction;
+
+		if (glm::dot(rayDir, glm::normalize(normal)) > 0.0) {
+			// Inside sphere leaving
+			float theta = acos(glm::dot(normal, rayDir));
+			float critAngle = asin((float)1.f / eta);
+			offsetOrigin = intersect + EPSILON * normal;
+			refractedDir = glm::normalize(glm::refract(rayDir, -normal, eta));
+			if ((float)1.f / eta > 1 && theta < critAngle) {
+				refractedDir = glm::normalize(glm::reflect(rayDir, normal));
+			}
+			/*refractedDir = glm::vec3(0.0, 1.0, 0.0);
+			offsetOrigin = glm::vec3(1.0);*/
+		}
+		else {
+			// outside sphere entering
+			float theta = acos(glm::dot(normal, -rayDir));
+			float critAngle = asin(eta);
+			offsetOrigin = intersect + EPSILON * (-normal);
+			refractedDir = glm::normalize(glm::refract(rayDir, -normal, 1.f/eta));
+			if (eta < 1 && theta > critAngle) {
+				refractedDir = glm::normalize(glm::reflect(rayDir, normal));
+			}
+		}
+		pathSegment.ray.origin = offsetOrigin;
+		pathSegment.ray.direction = refractedDir;
+		//pathSegment.color *= m.specular.color;
+
+	}
 	else {
 		pathSegment.ray.direction = glm::normalize(calculateRandomDirectionInHemisphere(normal, rng));
 		pathSegment.ray.origin = intersect + EPSILON * normal;

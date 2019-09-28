@@ -39,6 +39,8 @@ struct Geom {
     glm::mat4 invTranspose;
 	int firstTriangle;
 	int lastTriangle;
+	glm::vec3 minXYZ;
+	glm::vec3 maxXYZ;
 	//std::vector<Triangle> triangles;
 	/*Triangle *triangles;
 	int numTriangles;*/

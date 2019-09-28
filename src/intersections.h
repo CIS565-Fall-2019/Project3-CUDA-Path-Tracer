@@ -147,7 +147,7 @@ __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
 
 
 __host__ __device__ float triangleIntersectionTest(Geom mesh, Triangle triangle, Ray r,
-	glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
+	glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside, float prevt) {
 
 	glm::vec3 ro = multiplyMV(mesh.inverseTransform, glm::vec4(r.origin, 1.0f));
 	glm::vec3 rd = glm::normalize(multiplyMV(mesh.inverseTransform, glm::vec4(r.direction, 0.0f)));
@@ -161,7 +161,7 @@ __host__ __device__ float triangleIntersectionTest(Geom mesh, Triangle triangle,
 
 	float t = glm::dot(planeNormal, (triangle.p1 - ro)) / glm::dot(planeNormal, rd);
 	if (t < 0) {
-		return -1;
+		return prevt;
 	}
 
 	glm::vec3 P = ro + t * rd;
@@ -174,16 +174,63 @@ __host__ __device__ float triangleIntersectionTest(Geom mesh, Triangle triangle,
 
 	if (s1 >= 0 && s1 <= 1 && s2 >= 0 && s2 <= 1 && s3 >= 0 && s3 <= 1 && glm::abs(sum - 1.0f) < 0.01) {
 		glm::vec3 objspaceIntersection = getPointOnRay(rt, t);
-		intersectionPoint = multiplyMV(mesh.transform, glm::vec4(objspaceIntersection, 1.f));
-		normal = glm::normalize(multiplyMV(mesh.invTranspose, glm::vec4(planeNormal, 0.f)));
-		if (glm::dot(r.direction, normal) < 0) {
-			outside = true;
+		glm::vec3 tmp_intersectionPoint = multiplyMV(mesh.transform, glm::vec4(objspaceIntersection, 1.f));
+		float currt = glm::length(r.origin - tmp_intersectionPoint);
+
+		if (prevt < 0 || (currt > 0 && currt < prevt)) {
+			intersectionPoint = tmp_intersectionPoint;
+			normal = glm::normalize(multiplyMV(mesh.invTranspose, glm::vec4(planeNormal, 0.f)));
+			if (glm::dot(r.direction, normal) < 0) {
+				outside = true;
+			}
+			else {
+				outside = false;
+				normal = -normal;
+			}
+			return glm::length(r.origin - intersectionPoint);
 		}
-		else {
-			outside = false;
-			normal = -normal;
+	}
+	else {
+		return prevt;
+	}
+
+	//return glm::length(r.origin - intersectionPoint);
+}
+
+
+
+__host__ __device__ bool bboxIntersectionTest(Geom mesh, Ray r, glm::vec3 minXYZ, glm::vec3 maxXYZ) {
+	Ray q;
+	q.origin = multiplyMV(mesh.inverseTransform, glm::vec4(r.origin, 1.0f));
+	q.direction = glm::normalize(multiplyMV(mesh.inverseTransform, glm::vec4(r.direction, 0.0f)));
+
+	float tmin = -1e38f;
+	float tmax = 1e38f;
+	glm::vec3 tmin_n;
+	glm::vec3 tmax_n;
+	for (int xyz = 0; xyz < 3; ++xyz) {
+		float qdxyz = q.direction[xyz];
+		/*if (glm::abs(qdxyz) > 0.00001f)*/ {
+			float t1 = (minXYZ[xyz] - q.origin[xyz]) / qdxyz;
+			float t2 = (maxXYZ[xyz] - q.origin[xyz]) / qdxyz;
+			float ta = glm::min(t1, t2);
+			float tb = glm::max(t1, t2);
+			glm::vec3 n;
+			n[xyz] = t2 < t1 ? +1 : -1;
+			if (ta > 0 && ta > tmin) {
+				tmin = ta;
+				tmin_n = n;
+			}
+			if (tb < tmax) {
+				tmax = tb;
+				tmax_n = n;
+			}
 		}
 	}
 
-	return glm::length(r.origin - intersectionPoint);
+	if (tmax >= tmin && tmax > 0) {
+		
+		return true;
+	}
+	return false;
 }

@@ -248,10 +248,13 @@ __global__ void computeIntersections(
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
 			else if (geom.type == MESH) {
-				for (int i = geom.firstTriangle; i < geom.lastTriangle; ++i) {
-					Triangle currTriangle = triangles[i];
+				if (bboxIntersectionTest(geom, pathSegment.ray, geom.minXYZ, geom.maxXYZ)) {
+					t = -1;
+					for (int i = geom.firstTriangle; i < geom.lastTriangle; ++i) {
+						Triangle currTriangle = triangles[i];
 
-					t = triangleIntersectionTest(geom, currTriangle, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+						t = triangleIntersectionTest(geom, currTriangle, pathSegment.ray, tmp_intersect, tmp_normal, outside, t);
+					}
 				}
 			}
 				/*if bounding volume, check intersection with bounding box
