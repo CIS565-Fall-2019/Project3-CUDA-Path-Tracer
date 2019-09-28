@@ -83,3 +83,55 @@ void Texture::fillIntoF4Array(float4* dst) {
 	if (texturePresenceMask & TEXTURE_METALLICROUGHNESS) memcpy(&dst[2 * width * height], metallicRoughness.data(), width * height * sizeof(f4vec));
 	if (texturePresenceMask & TEXTURE_NORMAL) memcpy(&dst[3 * width * height], normal.data(), width * height * sizeof(f4vec));
 }
+
+void Texture::makeProdeduralTexture(gvec3 color1, gvec3 color2, float bumpiness) {
+	texturePresenceMask = TEXTURE_BASECOLOR | TEXTURE_NORMAL;//has color and normal elements
+
+	width = 256;
+	height = 256;
+
+	baseColor = std::vector<f4vec>();
+	normal = std::vector<f4vec>();
+
+	f4vec c1 = { color1.x, color1.y, color1.z, 1.0f };
+	f4vec c2 = { color2.x, color2.y, color2.z, 1.0f };
+	//Put in color data
+	for (int i = 0; i < height; i++) {
+		uint8_t doFlip = ((i / 32) % 2) == 1;
+		for (int j = 0; j < width; j++) {
+			uint8_t choose1 = ((j / 32) % 2) == 1;
+			uint8_t pickVal = (doFlip << 1) | choose1;
+			switch (pickVal) {
+			case 0x00:
+			case 0x03:
+				baseColor.push_back({c1.r, c1.g, c1.b, c1.a});
+				break;
+			case 0x02:
+			case 0x01:
+				baseColor.push_back({ c2.r, c2.g, c2.b, c2.a });
+				break;
+			}//switch
+		}//for j
+	}//for i
+
+
+
+	//put in bump data
+	for (int i = 0; i < height; i++) {
+		int heightval = (i % 64) - 31;//ranges from -31 to 32
+		float offsetY = sinf(heightval / 32.0 * PI);//from -1 to 1
+		offsetY *= bumpiness * 0.3f;
+		gvec3 yVec = gvec3(0, 1, 0) * offsetY;
+		for (int j = 0; j < width; j++) {
+			int widthval = (j % 64) - 31;//ranges from -31 to 32
+			float offsetX = sinf(widthval / 32.0 * PI);
+			offsetX *= bumpiness * 0.3f;
+			gvec3 xVec = gvec3(1, 0, 0) * offsetX;
+			gvec3 normalVec = glm::normalize(gvec3(0, 0, 1) + yVec + xVec);
+			f4vec bumpVal = { normalVec.x, normalVec.y, normalVec.z, 1.0f };
+			normal.push_back(bumpVal);
+		}//for j
+	}//for i
+
+
+}

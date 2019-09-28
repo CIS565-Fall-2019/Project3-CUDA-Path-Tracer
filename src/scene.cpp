@@ -224,10 +224,13 @@ int Scene::loadMaterial(string materialid) {
 		newMaterial.textureMask = 0x00;
 		newMaterial.indexOfRefraction = 1.0;//vacuum/air
 
+
+		string line;
         //load static properties
-        for (int i = 0; i < 7; i++) {
-            string line;
-            utilityCore::safeGetline(fp_in, line);
+		utilityCore::safeGetline(fp_in, line);
+		while (!line.empty() && fp_in.good()) {
+   
+           
             vector<string> tokens = utilityCore::tokenizeString(line);
             if (strcmp(tokens[0].c_str(), "RGB") == 0) {
                 glm::vec3 color( atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()) );
@@ -245,7 +248,17 @@ int Scene::loadMaterial(string materialid) {
                 newMaterial.indexOfRefraction = atof(tokens[1].c_str());
             } else if (strcmp(tokens[0].c_str(), "EMITTANCE") == 0) {
                 newMaterial.emittance = atof(tokens[1].c_str());
-            }
+			} else if (strcmp(tokens[0].c_str(), "TEXTURE") == 0) {
+				gvec3 color1 = gvec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+				gvec3 color2 = gvec3(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str()));
+				float bumpiness = atof(tokens[7].c_str());
+				Texture newText = Texture();
+				newText.makeProdeduralTexture(color1, color2, bumpiness);
+				textures.push_back(newText);
+				newMaterial.textureMask = newText.texturePresenceMask;
+				newMaterial.textureId = textures.size() - 1;
+			}
+			utilityCore::safeGetline(fp_in, line);
         }
         materials.push_back(newMaterial);
         return 1;

@@ -75,11 +75,14 @@ __global__ void sendImageToPBO(uchar4* pbo, glm::ivec2 resolution,
     }
 }
 
-static cudaTextureObject_t texobj0;
-static cudaTextureObject_t texobj1;
-static cudaTextureObject_t texobj2;
-static cudaTextureObject_t texobj3;
-static cudaTextureObject_t texObjects[] = { texobj0, texobj1, texobj2, texobj3 };
+static cudaTextureObject_t texobj0, texobj1, texobj2, texobj3, texobj4, texobj5, texobj6, texobj7;
+
+typedef struct textureWrapper {
+	cudaTextureObject_t contents[8];
+} TextureWrapper;
+
+static TextureWrapper texObjects = { texobj0, texobj1, texobj2, texobj3,
+									 texobj4, texobj5, texobj6, texobj7 };
 
 
 static Scene * hst_scene = NULL;
@@ -229,12 +232,13 @@ __global__ void computeIntersections(
 
 	for (int i = 0; i < geoms_size; i++) {
 		Geom& geom = geoms[i];
+		tmp_uv = { -1.0, -1.0 };
 
 		if (geom.type == CUBE) {
-			t = boxIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, tmp_outside);
+			t = boxIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, tmp_outside, &tmp_uv);
 		}
 		else if (geom.type == SPHERE) {
-			t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, tmp_outside);
+			t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, tmp_outside, &tmp_uv);
 		}
 		else if (geom.type == MESH) {
 			t = meshIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, tmp_outside, tris, &tmp_tri_index, &tmp_uv);
@@ -253,13 +257,12 @@ __global__ void computeIntersections(
 			intersect_point = tmp_intersect;
 			normal = tmp_normal;
 			outside = tmp_outside;
+			min_uv = tmp_uv;
 			if (geom.type == MESH) {
 				hit_tri_index = tmp_tri_index;
-				min_uv = tmp_uv;
 			}
 			else {
 				hit_tri_index = -1;
-				min_uv = { -1.0, -1.0 };
 			}
 		}
 	}//for each geom
@@ -272,15 +275,13 @@ __global__ void computeIntersections(
 		intersections[path_index].t = t_min;
 		intersections[path_index].surfaceNormal = normal;
 		intersections[path_index].leaving = !outside;
+		intersections[path_index].uv = min_uv;
 		if (hit_tri_index > -1) {
 			int myMaterial = tris[hit_tri_index].materialid;
 			intersections[path_index].materialId = myMaterial;
-			intersections[path_index].uv = min_uv;
 		}//if
 		else {
 			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
-			intersections[path_index].uv = { -1.0, -1.0 };
-			
 		}//else
 	}
 }
@@ -290,11 +291,12 @@ __global__ void shadeRealMaterial(
 	int num_paths,
 	ShadeableIntersection* shadeableIntersections,
 	PathSegment* pathSegments,
-	Material* materials, cudaTextureObject_t textureReference) {
+	Material* materials, TextureWrapper twrap) {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (idx >= num_paths) return;
+	cudaTextureObject_t textureReference;
 
+	if (idx >= num_paths) return;
 
 	ShadeableIntersection intersection = shadeableIntersections[idx];
 	PathSegment* incoming = &pathSegments[idx];
@@ -307,23 +309,34 @@ __global__ void shadeRealMaterial(
 		Material material = materials[intersection.materialId];
 		gvec3 materialColor = material.color;
 
-		// If the material indicates that the object was a light, "light" the ray
-		if (material.emittance > 0.0f) {
-			incoming->color *= (materialColor * material.emittance);
-			incoming->remainingBounces = 0;//stop bouncing here!
-			return;
+		if (material.textureId >= 0) {
+			textureReference = twrap.contents[material.textureId];
 		}
+
+		// If the material indicates that the object was a light, "light" the ray
+
+		if (material.emittance > 0.0f) {
+
 #if TEX_EMISSIVE
-		if (material.textureMask & TEXTURE_EMISSIVE) {
-			float4 emissiveText = tex2DLayered<float4>(textureReference, intersection.uv.x, intersection.uv.y, TEXTURE_LAYER_EMISSIVE);
-			gvec3 emissiveColor = gvec3(emissiveText.x, emissiveText.y, emissiveText.z);
-			if (glm::length(emissiveColor) > 0.03) {
-				incoming->color *= emissiveColor;
+			if (material.textureMask & TEXTURE_EMISSIVE) {
+				float4 emissiveText = tex2DLayered<float4>(textureReference, intersection.uv.x, intersection.uv.y, TEXTURE_LAYER_EMISSIVE);
+				gvec3 emissiveColor = gvec3(emissiveText.x, emissiveText.y, emissiveText.z);
+				if (glm::length(emissiveColor) > 0.04) {
+					incoming->color *= emissiveColor * material.emittance;
+					incoming->remainingBounces = 0;//stop bouncing here!
+					return;
+				}//if we're emitting light
+			}//checking for emissive
+			else {
+#endif
+				incoming->color *= (materialColor * material.emittance);
 				incoming->remainingBounces = 0;//stop bouncing here!
 				return;
-			}//if we're emitting light
-		}//checking for emissive
+#if TEX_EMISSIVE
+			}
 #endif
+		}
+
 		incoming->remainingBounces--;
 
 		scatterRay(*incoming, 
@@ -465,7 +478,7 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 			dev_intersections,
 			dev_paths,
 			dev_materials,
-			texObjects[0]);
+			texObjects);
 		checkCUDAError("shadeRealMaterial");
 		cudaDeviceSynchronize();
 
@@ -531,7 +544,7 @@ cudaArray* Texture::putOntoDevice(int textureIndex) {
 	texDescr.addressMode[2] = cudaAddressModeClamp;
 	texDescr.readMode = cudaReadModeElementType;
 
-	cudaCreateTextureObject(&texObjects[textureIndex], &texRes, &texDescr, NULL);
+	cudaCreateTextureObject(&(texObjects.contents[textureIndex]), &texRes, &texDescr, NULL);
 	//cudaCreateTextureObject(&texobj0, &texRes, &texDescr, NULL);
 	err = cudaGetLastError();
 	if (err != cudaSuccess) {
@@ -545,6 +558,6 @@ cudaArray* Texture::putOntoDevice(int textureIndex) {
 }//putOntoDevice
 
 void Texture::freeFromDevice(int textureIndex) {
-	cudaDestroyTextureObject(texObjects[textureIndex]);
+	cudaDestroyTextureObject(texObjects.contents[textureIndex]);
 	cudaFreeArray(cu_3darray);
 }//freeFromDevice

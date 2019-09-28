@@ -80,7 +80,7 @@ __host__ __device__ float triangleIntersectionTest(Triangle tri, Ray r,
 }
 
 __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
-	gvec3& intersectionPoint, gvec3& normal, bool& outside);
+	gvec3& intersectionPoint, gvec3& normal, bool& outside, float2* uv);
 
 /**
  * Test intersection between a ray and a transformed bounding box. Untransformed,
@@ -95,8 +95,9 @@ __host__ __device__ float meshIntersectionTest(Geom mesh, Ray r,
 	gvec3& intersectionPoint, gvec3& normal, bool& outside, Triangle* tris, int* triIndex, float2* uv) {
 
 	bool boundingBoxOutside = true;
+	float2 garbageuv;
 
-	float t = boxIntersectionTest(mesh, r, intersectionPoint, normal, boundingBoxOutside);
+	float t = boxIntersectionTest(mesh, r, intersectionPoint, normal, boundingBoxOutside, &garbageuv);
 	if (t < 0) return -1;
 	//if we hit inside the box, THEN check against our triangles
 
@@ -147,7 +148,7 @@ __host__ __device__ float meshIntersectionTest(Geom mesh, Ray r,
  * @return                   Ray parameter `t` value. -1 if no intersection.
  */
 __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
-        gvec3 &intersectionPoint, gvec3 &normal, bool &outside) {
+        gvec3 &intersectionPoint, gvec3 &normal, bool &outside, float2* uv) {
     Ray q;
     q.origin    =                multiplyMV(box.inverseTransform, gvec4(r.origin   , 1.0f));
     q.direction = glm::normalize(multiplyMV(box.inverseTransform, gvec4(r.direction, 0.0f)));
@@ -183,6 +184,20 @@ __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
             tmin_n = tmax_n;
             outside = false;
         }
+		gvec3 utInt = getPointOnRay(q, tmin);
+		if (utInt.x * utInt.x - 0.25f < EPSILON) {
+			uv->x = (utInt.y + 0.5f);
+			uv->y = (utInt.z + 0.5f);
+		}//if x close to -.5 or .5
+		else if (utInt.y * utInt.y - 0.25f < EPSILON) {
+			uv->x = (utInt.x + 0.5f);
+			uv->y = (utInt.z + 0.5f);
+		}//if y close to -.5 or .5
+		else {
+			uv->x = (utInt.x + 0.5f);
+			uv->y = (utInt.y + 0.5f);
+		}//hopefully, z close to -.5 or .5
+
         intersectionPoint = multiplyMV(box.transform, gvec4(getPointOnRayEp(q, tmin), 1.0f));
         normal = glm::normalize(multiplyMV(box.transform, gvec4(tmin_n, 0.0f)));
         return glm::length(r.origin - intersectionPoint);
@@ -200,7 +215,7 @@ __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
  * @return                   Ray parameter `t` value. -1 if no intersection.
  */
 __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
-        gvec3 &intersectionPoint, gvec3 &normal, bool &outside) {
+        gvec3 &intersectionPoint, gvec3 &normal, bool &outside, float2* uv) {
     float radius = .5;
 
     gvec3 ro = multiplyMV(sphere.inverseTransform, gvec4(r.origin, 1.0f));

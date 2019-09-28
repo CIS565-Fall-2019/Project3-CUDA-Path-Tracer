@@ -39,6 +39,11 @@ public:
 	int width = -1;
 	int height = -1;
 
+	/**
+	Makes a dumb little procedural texture of a checkerboard, with variable bumpiness
+	*/
+	void makeProdeduralTexture(gvec3 color1, gvec3 color2, float bumpiness);
+
 	uint8_t texturePresenceMask = 0x00;
 
 	uint8_t createFromGltfVector(std::vector<example::Texture> inputs);

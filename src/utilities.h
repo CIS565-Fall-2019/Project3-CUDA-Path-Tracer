@@ -16,10 +16,10 @@
 #define CACHING_FIRST 1
 #define ANTIALIASING 0
 
-#define TEX_COLOR 0
-#define TEX_EMISSIVE 0
-#define TEX_ROUGH 0
-#define TEX_NORM 0
+#define TEX_COLOR 1
+#define TEX_EMISSIVE 1
+#define TEX_ROUGH 1
+#define TEX_NORM 1
 
 // Useful math symbols
 
