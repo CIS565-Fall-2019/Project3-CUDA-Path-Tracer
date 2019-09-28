@@ -222,6 +222,7 @@ int Scene::loadMaterial(string materialid) {
         Material newMaterial;
 		newMaterial.textureId = -1;
 		newMaterial.textureMask = 0x00;
+		newMaterial.indexOfRefraction = 1.0;//vacuum/air
 
         //load static properties
         for (int i = 0; i < 7; i++) {
@@ -292,7 +293,8 @@ Geom_v Scene::readGltfFromMesh(string filename, int materialid, gmat4 transform)
 
 	//Make the meshes
 	for (int i = 0; i < meshes.size(); i++) {
-		retval.push_back(geomFromGltfMesh(meshes[i], materialid, transform));
+		Geom newGeom = geomFromGltfMesh(meshes[i], materialid, transform);
+		retval.push_back(newGeom);
 	}//for
 
 	return retval;
@@ -301,6 +303,7 @@ Geom_v Scene::readGltfFromMesh(string filename, int materialid, gmat4 transform)
 
 Geom Scene::geomFromGltfMesh(example::Mesh<float> mesh, int materialid, gmat4 transform) {
 	Geom newGeom;
+	newGeom.materialid = materialid;
 	newGeom.type = MESH;
 	newGeom.triangleIndex = triangles.size();
 

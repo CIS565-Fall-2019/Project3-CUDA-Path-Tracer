@@ -19,8 +19,7 @@
 #include "interactions.h"
 
 #define ERRORCHECK 1
-#define SORTING_MATERIAL 1//pretty sure this fucks performance
-#define CACHING_FIRST 1
+
 
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -159,18 +158,34 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
+
 	if (x < cam.resolution.x && y < cam.resolution.y) {
+
 		int index = x + (y * cam.resolution.x);
 		PathSegment & segment = pathSegments[index];
 
 		segment.ray.origin = cam.position;
-    segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
+		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
+		segment.curIOR = 1.0;
+		
 
-		// TODO: implement antialiasing by jittering the ray
+		float xfloat = (float)x;
+		float yfloat = (float)y;
+
+#if ANTIALIASING
+		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, 0);
+		thrust::uniform_real_distribution<float> u01(-0.5, 0.5);
+		float xFac = u01(rng);
+		float yFac = u01(rng);
+		xfloat += xFac;
+		yfloat += yFac;
+#endif
+
 		segment.ray.direction = glm::normalize(cam.view
-			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f)
-			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f)
+			- cam.right * cam.pixelLength.x * (xfloat - (float)cam.resolution.x * 0.5f)
+			- cam.up * cam.pixelLength.y * (yfloat - (float)cam.resolution.y * 0.5f)
 			);
+
 
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
@@ -193,7 +208,7 @@ __global__ void computeIntersections(
 	int path_index = blockIdx.x * blockDim.x + threadIdx.x;
 	if (path_index >= num_paths) return;
 
-	PathSegment pathSegment = pathSegments[path_index];
+	PathSegment& pathSegment = pathSegments[path_index];
 
 	float t;
 	gvec3 intersect_point;
@@ -203,6 +218,7 @@ __global__ void computeIntersections(
 	int hit_tri_index = -1;
 	bool outside = true;
 
+	bool tmp_outside = true;
 	gvec3 tmp_intersect;
 	gvec3 tmp_normal;
 	int tmp_tri_index;
@@ -215,13 +231,13 @@ __global__ void computeIntersections(
 		Geom& geom = geoms[i];
 
 		if (geom.type == CUBE) {
-			t = boxIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+			t = boxIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, tmp_outside);
 		}
 		else if (geom.type == SPHERE) {
-			t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+			t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, tmp_outside);
 		}
 		else if (geom.type == MESH) {
-			t = meshIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside, tris, &tmp_tri_index, &tmp_uv);
+			t = meshIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, tmp_outside, tris, &tmp_tri_index, &tmp_uv);
 		}
 		/*
 		else if (geom.type == TRIANGLE) {
@@ -236,6 +252,7 @@ __global__ void computeIntersections(
 			hit_geom_index = i;
 			intersect_point = tmp_intersect;
 			normal = tmp_normal;
+			outside = tmp_outside;
 			if (geom.type == MESH) {
 				hit_tri_index = tmp_tri_index;
 				min_uv = tmp_uv;
@@ -253,10 +270,8 @@ __global__ void computeIntersections(
 	else {
 		//The ray hits something
 		intersections[path_index].t = t_min;
-		float nX = normal.x;
-		float nY = normal.y;
-		float nZ = normal.z;
-		intersections[path_index].surfaceNormal = gvec3(nX, nY, nZ);
+		intersections[path_index].surfaceNormal = normal;
+		intersections[path_index].leaving = !outside;
 		if (hit_tri_index > -1) {
 			int myMaterial = tris[hit_tri_index].materialid;
 			intersections[path_index].materialId = myMaterial;
@@ -265,6 +280,7 @@ __global__ void computeIntersections(
 		else {
 			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
 			intersections[path_index].uv = { -1.0, -1.0 };
+			
 		}//else
 	}
 }
@@ -308,15 +324,15 @@ __global__ void shadeRealMaterial(
 			}//if we're emitting light
 		}//checking for emissive
 #endif
-
-		gvec3 reverseIncoming = incoming->ray.direction;
-		reverseIncoming *= -1;
-		float lightTerm = DOTP(intersection.surfaceNormal, reverseIncoming);
-		incoming->color *= lightTerm;//scale by that costheta
-		//incoming->color *= (materialColor * lightTerm);
 		incoming->remainingBounces--;
 
-		scatterRay(*incoming, getPointOnRay(incoming->ray, intersection.t), intersection.surfaceNormal, material, intersection.uv, textureReference, rng);
+		scatterRay(*incoming, 
+					getPointOnRayEp(incoming->ray, intersection.t), 
+					intersection.surfaceNormal, 
+					material, 
+					intersection.leaving, 
+					intersection.uv, 
+					textureReference, rng);
 
 
 	}//if we have an intersection
@@ -391,7 +407,7 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 		// clean shading chunks
 		cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
-#if CACHING_FIRST
+#if CACHING_FIRST && !ANTIALIASING
 		// tracing
 		dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
 		if (depth == 0 && iter == 1) {

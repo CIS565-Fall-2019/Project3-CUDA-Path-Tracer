@@ -28,8 +28,12 @@ __host__ __device__ inline unsigned int utilhash(unsigned int a) {
  * Compute a point at parameter value `t` on ray `r`.
  * Falls slightly short so that it doesn't intersect the object it's hitting.
  */
+__host__ __device__ gvec3 getPointOnRayEp(Ray r, float t) {
+    return r.origin + (t - EPSILON) * glm::normalize(r.direction);
+}
+
 __host__ __device__ gvec3 getPointOnRay(Ray r, float t) {
-    return r.origin + (t - .0001f) * glm::normalize(r.direction);
+	return r.origin + (t) * glm::normalize(r.direction);
 }
 
 /**
@@ -40,23 +44,36 @@ __host__ __device__ gvec3 multiplyMV(glm::mat4 m, glm::vec4 v) {
 }
 
 
-/**
-Lifted nearly verbatim from Wikipedia article on Moller-Trumbore intersection algorithm
-*/
 __host__ __device__ float triangleIntersectionTest(Triangle tri, Ray r,
-	gvec3& intersectionPoint, gvec3& normal, float2& uv) {
+	gvec3& intersectionPoint, gvec3& normal, float2& uv, bool& backface) {
 
-	gvec3 results;
+	gvec3 results, results2;
+	//doing two tests: against the triangle, and then the reverse-triangle (not ideal, but needed for refraction)
 	bool didHit = glm::intersectRayTriangle(r.origin, r.direction, tri.vert0, tri.vert1, tri.vert2, results);
-	if (!didHit) return -1;
-	float alpha = results.x;
-	float beta = results.y;
+	bool didHitReverse = glm::intersectRayTriangle(r.origin, r.direction, tri.vert0, tri.vert2, tri.vert1, results2);
+
+	float alpha, beta;
+
+	//if (!didHit) return -1;
+	if (didHit) {
+		alpha = results.x;
+		beta = results.y;
+		backface = false;
+	}
+	else if (didHitReverse) {
+		alpha = results2.x;
+		beta = results2.y;
+		backface = true;
+	}
+	else return -1;
+
 	float t = results.z;
 
 	normal = (tri.norm0 * (1.0f - alpha - beta)) + (tri.norm1 * alpha) + (tri.norm2 * beta);
+	if (backface) normal *= -1.0;
 	uv.x = (tri.uv0.x * (1.0f - alpha - beta)) + (tri.uv1.x * alpha) + (tri.uv2.x * beta);
 	uv.y = (tri.uv0.y * (1.0f - alpha - beta)) + (tri.uv1.y * alpha) + (tri.uv2.y * beta);
-	intersectionPoint = getPointOnRay(r, t);
+	intersectionPoint = getPointOnRayEp(r, t);
 
 	return t;
 
@@ -71,30 +88,34 @@ __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
  *
  * @param intersectionPoint  Output parameter for point of intersection.
  * @param normal             Output parameter for surface normal.
- * @param outside            Output param for whether the ray came from outside.
+ * @param outside            Output param for whether the ray came from outside. (as of yet, unchanged)
  * @return                   Ray parameter `t` value. -1 if no intersection.
  */
 __host__ __device__ float meshIntersectionTest(Geom mesh, Ray r,
 	gvec3& intersectionPoint, gvec3& normal, bool& outside, Triangle* tris, int* triIndex, float2* uv) {
 
-	float t = boxIntersectionTest(mesh, r, intersectionPoint, normal, outside);
+	bool boundingBoxOutside = true;
+
+	float t = boxIntersectionTest(mesh, r, intersectionPoint, normal, boundingBoxOutside);
 	if (t < 0) return -1;
 	//if we hit inside the box, THEN check against our triangles
 
 	gvec3 tmp_intersection, min_intersection;
 	gvec3 tmp_normal, min_normal;
+	bool tmp_backface = false;
+	bool backface = false;
 	float2 tmp_uv = { -1.0, -1.0 };
 	float2 min_uv = { -1.0, -1.0 };
 	float t_min = INFINITY;
 	for (int i = mesh.triangleIndex; i < mesh.triangleIndex + mesh.triangleCount; i++) {
 		Triangle tri = tris[i];
 		tmp_uv = { -1.0, -1.0 };
-		t = triangleIntersectionTest(tri, r, tmp_intersection, tmp_normal, tmp_uv);
+		tmp_backface = false;
+		t = triangleIntersectionTest(tri, r, tmp_intersection, tmp_normal, tmp_uv, tmp_backface);
 		if (t > 0.0 && t < t_min) {
 			*triIndex = i;
-
+			backface = tmp_backface;
 			min_intersection = tmp_intersection;
-			//min_normal = gvec3(dnox, dnoy, dnoz);
 			min_normal = tmp_normal;
 			min_uv = tmp_uv;
 			t_min = t;
@@ -105,6 +126,9 @@ __host__ __device__ float meshIntersectionTest(Geom mesh, Ray r,
 		intersectionPoint = min_intersection;
 		normal = min_normal;
 		*uv = min_uv;
+		if (backface) outside = false;
+		else outside = true;
+		//outside = !backface;
 
 		return t_min;
 	}//if
@@ -159,7 +183,7 @@ __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
             tmin_n = tmax_n;
             outside = false;
         }
-        intersectionPoint = multiplyMV(box.transform, gvec4(getPointOnRay(q, tmin), 1.0f));
+        intersectionPoint = multiplyMV(box.transform, gvec4(getPointOnRayEp(q, tmin), 1.0f));
         normal = glm::normalize(multiplyMV(box.transform, gvec4(tmin_n, 0.0f)));
         return glm::length(r.origin - intersectionPoint);
     }
@@ -208,7 +232,7 @@ __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
         outside = false;
     }
 
-    gvec3 objspaceIntersection = getPointOnRay(rt, t);
+    gvec3 objspaceIntersection = getPointOnRayEp(rt, t);
 
     intersectionPoint = multiplyMV(sphere.transform, gvec4(objspaceIntersection, 1.f));
     normal = glm::normalize(multiplyMV(sphere.invTranspose, gvec4(objspaceIntersection, 0.f)));

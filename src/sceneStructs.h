@@ -59,12 +59,6 @@ struct Material {
     float emittance;
 	int8_t textureId;//index of texture to draw from
 	uint8_t textureMask;//presence/absence of texture data to override other attributes
-	/* Eventually, may want to think in these terms?
-	gvec3 diffuse;
-	gvec3 specular;
-	gvec3 transmittance;
-	gvec3 emission;
-	*/
 };
 
 struct Camera {
@@ -91,6 +85,7 @@ struct PathSegment {
 	gvec3 color;
 	int pixelIndex;
 	int remainingBounces;
+	float curIOR;
 };
 
 // Use with a corresponding PathSegment to do:
@@ -101,6 +96,7 @@ struct ShadeableIntersection {
   gvec3 surfaceNormal;
   float2 uv;
   int materialId;
+  bool leaving;
 };
 
 //vector typedefs

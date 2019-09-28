@@ -6,9 +6,40 @@
 #include <texture_types.h>
 #define ECONST 	2.71828182845904523536
 
+/**
+This may end up with performance improvements over the glm implementation; giving my compiler a chance to compete
+*/
+__host__ __device__ gvec3 normalize(const gvec3 vector) {
+	float mag = sqrtf(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
+	return gvec3(vector.x / mag, vector.y / mag, vector.z / mag);
+}//normalize
+
+/**
+Reflects an incoming vector by the normal
+Note: does not normalize the output
+*/
 __host__ __device__ gvec3 reflectIncomingByNormal(const gvec3 incoming, const gvec3 normal) {
 	return incoming - 2 * DOTP(incoming, normal) * normal;
-}//reflecTIncomingByNormal
+}//reflectIncomingByNormal
+
+__host__ __device__ gvec3 refractIncomingByNormal(const gvec3 incoming, const gvec3 normal, const float iorInc, const float iorMat, bool* wentThrough) {
+	//float critAngle = asinf(iorMat / iorInc);
+	float3 incomingf = { incoming.x, incoming.y, incoming.z };
+	float cosIncTheta = DOTP(-1.0 * incomingf, normal);
+	float sinIncTheta = 1.0 - cosIncTheta * cosIncTheta;
+	if (sinIncTheta >= iorMat / iorInc) {
+		*wentThrough = false;
+		return reflectIncomingByNormal(incoming, normal);
+	}// if greater than or equal to the critical angle (then, reflect)
+	else {
+		*wentThrough = true;
+		float c = cosIncTheta;
+		float r = iorInc / iorMat;
+		gvec3 refract = r * incoming + (r * c - sqrtf(1 - r * r * (1 - c * c))) * normal;
+		float3 refractf = { refract.x, refract.y, refract.z };
+		return gvec3(refractf.x, refractf.y, refractf.z);
+	}//else
+}//refractIncomingByNormal
 
 // CHECKITOUT
 /**
@@ -53,7 +84,7 @@ gvec3 calculateRandomDirectionInHemisphere(glm::vec3 normal,
 __host__ __device__ gvec3 calculateShinyDirection(gvec3 incoming, gvec3 normal, float exponent,
 												thrust::default_random_engine& rng) {
 	//gvec3 perfectMirror = REFLECT(incoming, normal);//will be adding an offset to this
-	gvec3 perfectMirror = glm::normalize(reflectIncomingByNormal(incoming, normal));//will be adding an offset to this
+	gvec3 perfectMirror = normalize(reflectIncomingByNormal(incoming, normal));//will be adding an offset to this
 
 	thrust::uniform_real_distribution<float> u01(0, 1);
 
@@ -66,20 +97,20 @@ __host__ __device__ gvec3 calculateShinyDirection(gvec3 incoming, gvec3 normal, 
 						costheta);//random direction off of z-axis "reflect-vector"
 	*/
 
-	glm::vec3 directionNotNormal;
+	gvec3 directionNotNormal;
 	if (abs(perfectMirror.x) < SQRT_OF_ONE_THIRD) {
-		directionNotNormal = glm::vec3(1, 0, 0);
+		directionNotNormal = gvec3(1, 0, 0);
 	}
 	else if (abs(perfectMirror.y) < SQRT_OF_ONE_THIRD) {
-		directionNotNormal = glm::vec3(0, 1, 0);
+		directionNotNormal = gvec3(0, 1, 0);
 	}
 	else {
-		directionNotNormal = glm::vec3(0, 0, 1);
+		directionNotNormal = gvec3(0, 0, 1);
 	}
-	glm::vec3 perpendicularDirection1 =
-		glm::normalize(glm::cross(perfectMirror, directionNotNormal));
-	glm::vec3 perpendicularDirection2 =
-		glm::normalize(glm::cross(perfectMirror, perpendicularDirection1));
+	gvec3 perpendicularDirection1 =
+		normalize(glm::cross(perfectMirror, directionNotNormal));
+	gvec3 perpendicularDirection2 =
+		normalize(glm::cross(perfectMirror, perpendicularDirection1));
 
 	return costheta * perfectMirror
 		+ cos(phi) * sintheta * perpendicularDirection1
@@ -87,6 +118,7 @@ __host__ __device__ gvec3 calculateShinyDirection(gvec3 incoming, gvec3 normal, 
 
 }//calculateShinyDirection
 
+#if TEX_NORM
 __device__ gvec3 modifyNormalWithMap(const gvec3 normal, float2 uv, cudaTextureObject_t myTexture) {
 
 	float4 normText = tex2DLayered<float4>(myTexture, uv.x, uv.y, TEXTURE_LAYER_NORMAL);
@@ -117,6 +149,7 @@ __device__ gvec3 modifyNormalWithMap(const gvec3 normal, float2 uv, cudaTextureO
 		+ normText.y * sintheta * perpendicularDirection2; 
 
 }//modifyNormalWithMap
+#endif
 
 __device__
 gvec3 getMaterialColor(
@@ -176,10 +209,11 @@ __device__ float roughnessToExponent(float roughness) {
  */
 __device__
 void scatterRay(
-	PathSegment& pathSegment,
+	PathSegment& segment,
 	gvec3 intersect,
 	gvec3 normal,
 	const Material& m,
+	bool leavingMaterial,
 	float2 uv,
 	cudaTextureObject_t textureReference,
 	thrust::default_random_engine& rng) {
@@ -191,30 +225,39 @@ void scatterRay(
 	}
 #endif
 
+	gvec3 reverseIncoming = segment.ray.direction;
+	reverseIncoming *= -1;
+	float lightTerm = DOTP(normal, reverseIncoming);
+	
+
 	thrust::uniform_real_distribution<float> u01(0, 1);
 	float branchRandom = u01(rng);
-	float probDiff = glm::length(m.color);
-	float probSpec = glm::length(m.specular.color);
+	float probDiff = glm::length(m.color) * (1.0 - m.hasRefractive);
+	float probSpec = glm::length(m.specular.color) * (1.0 - m.hasRefractive);
 	float probMirror = probSpec * m.hasReflective;
 	probSpec *= (1.0 - m.hasReflective);
 
-	float totalProb = probDiff + probSpec + probMirror;
+	float totalProbBounce = probDiff + probSpec + probMirror;
 
-	if (totalProb < EPSILON) {
-		pathSegment.color = gvec3(0.0f, 0.0f, 0.0f);
-		pathSegment.remainingBounces = 0;
+	if (totalProbBounce + m.hasRefractive < EPSILON) {
+		segment.color = gvec3(0.0f, 0.0f, 0.0f);
+		segment.remainingBounces = 0;
 		return;
-	}//if some jackass put a black color in the scene
+	}//if some jackass put a totally black color in the scene
 
 	//else, probabilistically choose between diffuse/specular
-	probDiff /= totalProb;
-	probSpec /= totalProb;
-	probMirror /= totalProb;
-	float exponent = m.specular.exponent;
+	probDiff /= totalProbBounce;
+	probSpec /= totalProbBounce;
+	probMirror /= totalProbBounce;
+	probDiff *= (1.0 - m.hasRefractive);
+	probSpec *= (1.0 - m.hasRefractive);
+	probMirror *= (1.0 - m.hasRefractive);
 	//these now sum to 1
 
+	float exponent = m.specular.exponent;
 	gvec3 diffColor = getMaterialColor(m, uv, textureReference);
 	gvec3 specColor = m.specular.color;
+	//segment.color *= lightTerm;//scale by that costheta
 
 #if TEX_ROUGH
 	if (m.textureMask & TEXTURE_METALLICROUGHNESS) {
@@ -227,27 +270,56 @@ void scatterRay(
 		exponent = roughnessToExponent(roughness);
 
 		probMirror = 0;
-		probDiff = 1.0 - metalness;
-		probSpec = metalness;
+		probDiff = (1.0 - metalness) * (1.0 - m.hasRefractive);
+		probSpec = metalness * (1.0 - m.hasRefractive);
 	}
 #endif
 
+	if (leavingMaterial) branchRandom = 1.0;//force refractive on the way out
+
 	if (branchRandom < probDiff) {
 		gvec3 newDirection = calculateRandomDirectionInHemisphere(normal, rng);
-		pathSegment.ray = Ray{ intersect,  newDirection };
-		pathSegment.color *= diffColor;
+		segment.ray = Ray{ intersect /*+ EPSILON * newDirection*/,  newDirection };
+		segment.color *= diffColor;
+		segment.color *= lightTerm;//scale by that costheta
 	}//if diffuse
 	else if (branchRandom < probDiff + probSpec) {
-		gvec3 newDirection = calculateShinyDirection(pathSegment.ray.direction, normal, exponent, rng);
-		pathSegment.ray = Ray{ intersect, newDirection };
-		pathSegment.color *= specColor;
+		gvec3 newDirection = calculateShinyDirection(segment.ray.direction, normal, exponent, rng);
+		segment.ray = Ray{ intersect /*+ EPSILON * newDirection*/, newDirection };
+		segment.color *= specColor;
+		//segment.color *= lightTerm;//scale by that costheta
 	}//else if specular
-	else {
+	else if (branchRandom < probDiff + probSpec + probMirror) {
 		//gvec3 newDirection = REFLECT(pathSegment.ray.direction, normal);
-		gvec3 newDirection = glm::normalize(reflectIncomingByNormal(pathSegment.ray.direction, normal));
-		float newX = newDirection.x; float newY = newDirection.y; float newZ = newDirection.z;
-		pathSegment.ray = Ray{ intersect, gvec3(newX, newY, newZ) };
-		pathSegment.color *= specColor;
+		gvec3 newDirection = normalize(reflectIncomingByNormal(segment.ray.direction, normal));
+		segment.ray = Ray{ intersect /*+ EPSILON * newDirection*/, newDirection };
+		segment.color *= specColor;
+		//segment.color *= lightTerm;//scale by that costheta
 	}//else if mirror
+	else {
+		bool wentThrough = false;
+		float ior1, ior2;
+		if (leavingMaterial) {
+			ior1 = segment.curIOR;
+			ior2 = 1.0;
+		}//if
+		else {
+			ior1 = segment.curIOR;
+			ior2 = m.indexOfRefraction;
+		}
+
+		gvec3 newDirection = normalize(refractIncomingByNormal(segment.ray.direction, normal, ior1, ior2, &wentThrough));
+		
+		segment.color *= specColor;
+		if (wentThrough) {
+			segment.ray = Ray{ intersect - EPSILON * normal, newDirection };
+			if (leavingMaterial) segment.curIOR = 1.0;
+			else segment.curIOR = m.indexOfRefraction;
+		}
+		else {
+			segment.ray = Ray{ intersect, newDirection };
+		}//just bounced
+		//segment.color *= lightTerm;//scale by that costheta
+	}//else if refractive
 
 }//scatterRay

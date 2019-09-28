@@ -10,10 +10,18 @@
 #include <vector>
 #include <cuda_runtime_api.h>
 
-#define TEX_COLOR 1
-#define TEX_EMISSIVE 1
-#define TEX_ROUGH 1
-#define TEX_NORM 1
+// Performance and Feature Switches
+
+#define SORTING_MATERIAL 1//pretty sure this fucks performance
+#define CACHING_FIRST 1
+#define ANTIALIASING 0
+
+#define TEX_COLOR 0
+#define TEX_EMISSIVE 0
+#define TEX_ROUGH 0
+#define TEX_NORM 0
+
+// Useful math symbols
 
 #define PI                3.1415926535897932384626422832795028841971f
 #define TWO_PI            6.2831853071795864769252867665590057683943f
@@ -62,7 +70,7 @@ typedef struct f4vec {
 //Preprocessor macro for dot product
 #define DOTP(a, b) (a.x * b.x + a.y * b.y + a.z * b.z)
 //Preprocessor macro for cross product
-#define CROSSP(a, b) (gvec3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x))//IS THIS WRONG?
+#define CROSSP(a, b) (gvec3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x))
 //Preprocessor macro for ray reflection of a (incoming) over n (normal)
 #define REFLECT(a, n) (a - (2 * DOTP(a, n)) * n)
 
