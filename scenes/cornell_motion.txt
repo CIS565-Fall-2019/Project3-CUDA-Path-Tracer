@@ -38,12 +38,12 @@ REFR        0
 REFRIOR     0
 EMITTANCE   0
 
-// Specular white
+// Specular yellow
 MATERIAL 4
-RGB         .98 .98 .98
+RGB         .98 .98 0
 SPECEX      0
-SPECRGB     .98 .98 .98
-REFL        1
+SPECRGB     .98 .98 0
+REFL        0
 REFR        0
 REFRIOR     0
 EMITTANCE   0
@@ -75,7 +75,6 @@ material 1
 TRANS       0 0 0
 ROTAT       0 0 0
 SCALE       10 .01 10
-VELOCITY    0 0 0
 
 // Ceiling
 OBJECT 2
@@ -84,7 +83,6 @@ material 1
 TRANS       0 10 0
 ROTAT       0 0 90
 SCALE       .01 10 10
-VELOCITY    0 0 0
 
 // Back wall
 OBJECT 3
@@ -93,7 +91,6 @@ material 1
 TRANS       0 5 -5
 ROTAT       0 90 0
 SCALE       .01 10 10
-VELOCITY    0 0 0
 
 // Left wall
 OBJECT 4
@@ -102,7 +99,6 @@ material 2
 TRANS       -5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
-VELOCITY    0 0 0
 
 // Right wall
 OBJECT 5
@@ -111,13 +107,12 @@ material 3
 TRANS       5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
-VELOCITY    0 0 0
 
 // Sphere
 OBJECT 6
 sphere
-material 5
+material 4
 TRANS       -1 4 -1
 ROTAT       0 0 0
 SCALE       3 3 3
-VELOCITY    0 -1 0
+VELOCITY    1 0 0
