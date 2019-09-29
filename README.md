@@ -87,6 +87,12 @@ Refractive Sphere (IOR = 1.52) |  Refractive Cube (IOR = 1.52)
 :-------------------------:|:-------------------------:
 ![](img/RefractiveSphere1.52.5000samp.png)| ![](img/RefractiveCube1.52.5000samp.png)
 
+![](img/GlassTorus5000samp.IOR1.52.png)
+<p align="center">
+  Glass Torus with Caustics <br>
+  5000 Samples, Refractive material with IOR 1.52
+</p>
+
 ### OBJ Loading
 In order to render a piece of geometry, there must be a way to find a ray's intersection with that geometry. Basic shapes, such as spheres and boxes, can be described by simple intersection equations, but arbitrary meshes are more complex. To render these, I implemented an OBJ loader that reads in mesh data from and OBJ file using the TinyObj loader. The mesh geometry consists of a list of triangles that make up the form. Triangles have a simple intersection function, so to intersect with the mesh, we can iterate over all triangles in that mesh. 
 
@@ -112,6 +118,18 @@ When iterating through the triangles in a mesh, a single ray might intersect wit
 
 In order to store the triangle mesh data, I added a MESH type to the geom struct, as well as a first triangle index and a last triangle index.  The scene class contains a list of all of the triangles in the scene, which gets passed to the GPU as a buffer. When iterating over all geometry in the scene, if it is a mesh, the mesh then knows which triangles belong to it by indexing into the triangle buffer.  It iterates over the triangle buffer from its first triangle index, inclusive, to its last triangle index, exclusive. 
 
+![](img/InstrumentScene5000samp.IOR1.52.DOV0.075FL6.png)
+<p align="center">
+  Glass Instruments (2 mesh objects)<br>
+  5000 Samples, Refractive material with IOR 1.52, Lens Radius 0.75, Focal Length 6
+</p>
+
+![](img/MirrorDragon1091samp.png)
+<p align="center">
+  Reflective Dragon <br>
+  1091 Samples
+</p>
+
 ### Camera
 Adjusting the direction in which we cast rays into the scene can create various camera effects.  I used this technique to implement depth of field and anti-aliasing.
 #### Depth of Field
@@ -119,6 +137,14 @@ Depth of field is achieved by implementing a thin-lens camera model. Instead of 
 
 The diagram below illustrates the concept of the rays distributing over a lens and focusing at a certain distance z:
 ![](img/ThinLensCamera.PNG)
+
+Lens Radius 2 |  Lens Radius 1   
+:-------------------------:|:-------------------------:
+![](DOVLensRad2FL11.5.png)| ![](img/DOVRAD1FL11.5.5000samp.png)
+
+Lens Radius 0.4 |  Lens Radius 0   
+:-------------------------:|:-------------------------:
+![](DOVRAD0.4FL11.5.5000samp.png)| ![](img/DOVRAD0.5000samp.png)
 
 #### Anti-Aliasing
 Anti-aliasing is inteded to smooth out sharp borders in the render that come from discretizing the scene into individual pixels. Without anti-aliasing, we sample the pixel at its top left value, meaning we cast a ray through the top left corner of each pixel at every iteration. However, a straight edge might cut through an individual pixel, creating two contrasting colors within a single pixel. By just sampling one point in the pixel, we will only get one of the colors. This will ultimately result in a step ladder effect. However, if we distribute our samples over the entire pixel, we can get an average of the color within that pixel, softening the shart, stepped edges. 
@@ -134,6 +160,16 @@ rayDirection = normalize(camView
                          - camRight * camPixelLength.x * (x - camResolution * 0.5 + offsetx) 
                          - campUp * campPixelLength.y * (y - camResolution * 0.5 + offsety)
 ```
+
+Anti-Aliasing Off |  Anti-Aliasing On   
+:-------------------------:|:-------------------------:
+![](img/AAOff5000samp.png)| ![](img/ReflectiveSphere5000samp.png)
+
+Anti-Aliasing Off |  Anti-Aliasing On   
+:-------------------------:|:-------------------------:
+![](img/AAOffCloseup.png)| ![](img/AAOnCloseup.png)
+
+
 ### Optimizations
 #### Stream Compaction
 For each iteration of bouncing rays throughout the scene, we parallelize all of the rays. There are as many rays cast into the scene as their are pixels on the screen, all being run in parallel. The rays bounce around the scene collecting light, but eventually terminate, either after bouncing a certain maximum number of times, hitting a light, or hitting nothing in the scene. Not all of the rays will terminate after the same number of iterations.  Some might hit a light right away, some might hit nothing right away, and some might bounce until their max depth is exceeded and be forced to terminate. Rather than wasting threads on the rays that have terminated early, we use stream compaction to avoid putting in unnecessary work on these terminated rays.
