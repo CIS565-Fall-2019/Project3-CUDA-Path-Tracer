@@ -11,6 +11,17 @@ CUDA Path Tracer
 
 ![Glass Zelda on a Textured Altar](progressImages/oidn_zelda_2000fil.png)
 
+A Path Tracer is a method of rendering virtual geometry onto the screen. Notably, they do so by simulating how light moves around a scene. This is in contrast to traditional rendering methods, which transform the geometry more directly from world-space to screen-space. While path tracers are slower than traditional renderers, they are able to natively perform much more impressive feats overall.
+
+![glass, steel, and mirror ball in a checkered hellscape](progressImages/checkers_unfiltered.png)
+
+For example, features such as *caustics* (the more intense light on the floor at the bottom-left of the image), or complex reflections and re-reflections, are easier to get with path-tracing than other methods.
+
+The overall operation is as such: for each pixel in an image, shoot a ray from our camera out, and see what it intersects. If it hit a light source, we're done; otherwise, use the material properties of what we hit to generate a "bounced" ray, and do the same with that one until we either didn't hit anything, or we hit a light source. Multiply the color effects of each of our materials together, and then we get the color that pixel should be. We do that thousands of times, relfecting in different ways each time, until our image becomes something sensible.
+
+This particular implementation is running on the GPU (graphics processing unit) via the CUDA framework, which allows us to parallelize the rigorous task of doing all our calculations for each pixel one at a time. This allows for significant speed-ups over CPU path tracers.
+
+## Features
 
 ### Object loading
 
@@ -116,7 +127,6 @@ Certainly, CMake has a way to do this, but as somebody who is not a CMake wizard
     * [Zelda](https://sketchfab.com/3d-models/ssbb-zelda-6612b024962b4141b1f867babe0f0e6c) by ThatOneGuyWhoDoesThings
     * [Sheik](https://sketchfab.com/3d-models/ssbb-sheik-4916d918d2c44f6bb984b59f082fc48c) by ThatOneGuyWhoDoesThings
     * [Hunter Rifle](https://sketchfab.com/3d-models/hunter-rifle-wip-ae83df4cc35c4eff89b34f266de9af3c) by cotman sam
-    * [2b (Nier Automata)](https://sketchfab.com/3d-models/2b-7f6592832c464477b866ad81c21b720e) by Kimchi_Lord
     * [Textured Cube](https://sketchfab.com/3d-models/textured-cube-a883bf6dfd144419929067067c7f6dff) by Stakler
 
 ### Other Code
