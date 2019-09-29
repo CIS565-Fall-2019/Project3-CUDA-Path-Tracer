@@ -21,7 +21,7 @@ I implemented various features of a path tracer, such as different materials, ca
 # AMY LU PACA IMAGES
 Perfect Specular           |  Refractive               | Diffuse
 :-------------------------:|:-------------------------:|:-------------------------:
-![](img/AlpacaReflective5000sampl.DOV0.1FL8.png)| ![](img/Alpaca5000sampIOR1.52DOV0.1FL8.png) |![](img/img/AlpacaDiffuse5000sampDOV0.1FL8.png)
+![](img/AlpacaReflective5000sampl.DOV0.1FL8.png)| ![](img/Alpaca5000sampIOR1.52DOV0.1FL8.png) |![](img/AlpacaDiffuse5000sampDOV0.1FL8.png)
 
 ## Features
 ### Materials
