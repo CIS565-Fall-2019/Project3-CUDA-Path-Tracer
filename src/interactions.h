@@ -2,9 +2,14 @@
 
 #include "intersections.h"
 
-
-#define INTENSITY 1 // to make things more shiny
 #define REFRACTION
+//#define IMPORTANCE_SAMPLING
+
+
+__host__ __device__ float get_pdf(glm::vec3 ray, glm::vec3 normal)
+{
+	return dot(ray, normal) * (1 / PI);
+}
 // CHECKITOUT
 /**
  * Computes a cosine-weighted random direction in a hemisphere.
@@ -44,50 +49,13 @@ glm::vec3 calculateRandomDirectionInHemisphere(
         + sin(around) * over * perpendicularDirection2;
 }
 
-__host__ __device__ glm::vec3 imperfect_mirror(glm::vec3 perfectMirror, thrust::default_random_engine &rng, float exponent)
+__host__ __device__ glm::vec3 compute_reflection(PathSegment& path, glm::vec3 normal, float t,const Material& m, thrust::default_random_engine &rng, float* pdf)
 {
 	thrust::uniform_real_distribution<float> u01(0, 1);
-
-	float costheta = powf(u01(rng), (1.0 / (exponent + 1)));//is this op expensive?
-	float sintheta = sqrtf(1.0 - costheta * costheta);
-	float phi = TWO_PI * u01(rng);
-	/*
-	gvec3 offset = gvec3(sintheta * cosf(phi),
-						sintheta * sinf(phi),
-						costheta);//random direction off of z-axis "reflect-vector"
-	*/
-
-	glm::vec3 directionNotNormal;
-	if (abs(perfectMirror.x) < SQRT_OF_ONE_THIRD) {
-		directionNotNormal = glm::vec3(1, 0, 0);
-	}
-	else if (abs(perfectMirror.y) < SQRT_OF_ONE_THIRD) {
-		directionNotNormal = glm::vec3(0, 1, 0);
-	}
-	else {
-		directionNotNormal = glm::vec3(0, 0, 1);
-	}
-	glm::vec3 perpendicularDirection1 =
-		glm::normalize(glm::cross(perfectMirror, directionNotNormal));
-	glm::vec3 perpendicularDirection2 =
-		glm::normalize(glm::cross(perfectMirror, perpendicularDirection1));
-
-	return costheta * perfectMirror
-		+ cos(phi) * sintheta * perpendicularDirection1
-		+ sin(phi) * sintheta * perpendicularDirection2;
-}
-
-__host__ __device__ glm::vec3 compute_reflection(PathSegment& path, glm::vec3 normal, float t,const Material& m, thrust::default_random_engine &rng, glm::vec3 speed)
-{
-	thrust::uniform_real_distribution<float> u01(0, 1);
-	glm::vec3 old_ray_origin = path.ray.origin;
 	glm::vec3 old_ray_direction = path.ray.direction;
 	glm::vec3 new_ray_direction;
 	glm::vec3 color;
 	float exponent = m.specular.exponent;
-	
-	// 
-	float shininess = (m.hasReflective * INTENSITY);
 
 	float rand = u01(rng);
 
@@ -100,65 +68,48 @@ __host__ __device__ glm::vec3 compute_reflection(PathSegment& path, glm::vec3 no
 	}
 	else
 	{
+		float cos_theta;
 		new_ray_direction = calculateRandomDirectionInHemisphere(normal, rng);
-		color = m.specular.color;
+		color = m.color;
 	}
 	// need to add some epsilon according to slides od I add to ray or color?
 	// think colo
 	// http://web.cse.ohio-state.edu/~shen.94/681/Site/Slides_files/reflection_refraction.pdf
 
 
-	//if (path.ray.speed.x == 1)
-	//	assert(0);
-	//if not perfect mirror
-	//impoerfect_mirror(new_ray_direction, rng, m.specular.color);
-	//new_ray_direction += (speed * rand)* 10.0f;
+#ifdef IMPORTANCE_SAMPLING
+	*pdf = get_pdf(new_ray_direction, normal);
+#endif
 	path.ray.direction = glm::normalize(new_ray_direction); 
 	return color;
 }
 
-__host__ __device__ glm::vec3 compute_refraction(PathSegment& path, glm::vec3 normal, float t,const Material& m, thrust::default_random_engine &rng, glm::vec3 speed)
+__host__ __device__ glm::vec3 compute_refraction(PathSegment& path, glm::vec3 normal, float t,const Material& m, thrust::default_random_engine &rng,float* pdf)
 {
 	thrust::uniform_real_distribution<float> u01(0, 1);
-	glm::vec3 old_ray_origin = path.ray.origin;
 	glm::vec3 old_ray_direction = path.ray.direction;
 	glm::vec3 color = m.color; // unless we have total internal reflection we will return the material color;
 	glm::vec3 new_ray_direction;
-	glm::vec3 new_normal = glm::vec3(0);
+	glm::vec3 new_normal;
 	float eta; // essentially n1/n2 or n2/n1 depending on persepctive of ray
 	
 	//// notes from https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
 	//// for refraction we have some corner cases we need to handle.
-	//float cos_theta1 = glm::dot( -normal, old_ray_direction);
-	////normal = glm::faceforward(normal, old_ray_direction, normal);
-	//if (cos_theta1 < 0.f) {
-	//	// inside moving out 
-	//	new_normal = normal;
-	//	cos_theta1 = -cos_theta1;
-	//	eta = m.indexOfRefraction; // we are doing pretty much air over our index of refraction.. airs index ~= 1.
-	//}
-	//else {
-	//	// we are outside moving towards a surface
-	//	new_normal = -normal;
-	//	eta = 1/m.indexOfRefraction; // material index over air index
-	//}
-
-
 	// //Specular Refraction/Transmission
-	float etaA = 1; // Air
-	float etaB = m.indexOfRefraction;
+	float n1 = 1; // Air
+	float n2 = m.indexOfRefraction;
 
 	 //Determine which is incident and which is transmitted
 	 //by looking at direction of neg normal.
 	 //Vectors are facing same direction if dot product is positive
-	bool isLeaving = glm::dot(old_ray_direction, normal) > 0;
-	if (isLeaving) {
+	bool leaving = glm::dot(old_ray_direction, normal) > 0;
+	if (leaving) {
 		new_normal = -normal;
-		eta = etaB / etaA;
+		eta = n2 / n1;
 	}
 	else {
 		new_normal = normal;
-		eta = etaA / etaB;
+		eta = n1 / n2;
 	}
 
 	// I think there was some rounding errors... dot product was producing values of 1.00000012
@@ -174,16 +125,15 @@ __host__ __device__ glm::vec3 compute_refraction(PathSegment& path, glm::vec3 no
 	// normal must be positive 
 	//float sin_theta2 = (eta) * (sqrtf(1 - (cos_theta1 * cos_theta1)));
 	//assert((1 - (cos_theta1 * cos_theta1) >= 0)); // make sure no NaN's
-
-	//float n;
 	// total internal reflection so should just be zero
 	//if (sin_theta2 >= 1)
+
+	// just using api's ... theory is commented out above
 	new_ray_direction = glm::refract(old_ray_direction, new_normal, eta);
 
 	if(glm::length(new_ray_direction) < EPSILON)
 	{
 		new_ray_direction = glm::reflect(old_ray_direction, new_normal);
-		//color = glm::vec3(0.f);
 		color = m.specular.color;
 	}
 	
@@ -195,9 +145,6 @@ __host__ __device__ glm::vec3 compute_refraction(PathSegment& path, glm::vec3 no
 		//new_ray_direction = glm::refract(old_ray_direction, normal, eta);
 		// finally refract
 		//new_ray_direction = (eta * old_ray_direction) + (((eta * cos_theta1) - cos_theta2) * normal); // cos theta1 and normal must be positive ... this is guaranteed by statemetns above
-			// 
-		float shininess = (m.hasRefractive * INTENSITY);
-
 		float rand = u01(rng);
 
 		if (rand < m.hasRefractive) {
@@ -209,19 +156,21 @@ __host__ __device__ glm::vec3 compute_refraction(PathSegment& path, glm::vec3 no
 		}
 		else
 		{
-			new_ray_direction = calculateRandomDirectionInHemisphere(new_normal, rng);
+			float cos_theta;
+			new_ray_direction = calculateRandomDirectionInHemisphere(normal, rng);
 			color = m.color;
 		}
 	}
 
-
+#ifdef IMPORTANCE_SAMPLING
+	*pdf = get_pdf(new_ray_direction, normal);
+#endif
 	// compute our new ray origin
-	//new_ray_direction += speed;
 	path.ray.direction = glm::normalize(new_ray_direction);
 	return color;
 }
 
-__host__ __device__ glm::vec3 compute_diffuse(PathSegment& path, glm::vec3 normal, float t, const Material& m, thrust::default_random_engine &rng, glm::vec3 speed)
+__host__ __device__ glm::vec3 compute_diffuse(PathSegment& path, glm::vec3 normal, float t, const Material& m, thrust::default_random_engine &rng, float* pdf)
 {
 	thrust::uniform_real_distribution<float> u01(0, 1);
 	glm::vec3 old_ray_origin = path.ray.origin;
@@ -241,8 +190,7 @@ __host__ __device__ glm::vec3 compute_diffuse(PathSegment& path, glm::vec3 norma
 	if (rand < probdiffuse )
 	{
 		new_ray_direction = calculateRandomDirectionInHemisphere(normal, rng);
-		assert(probdiffuse <= 1.f && probdiffuse >= 0);
-		color = m.color / probdiffuse;
+		color = m.color;
 	}
 	else
 	{
@@ -250,10 +198,13 @@ __host__ __device__ glm::vec3 compute_diffuse(PathSegment& path, glm::vec3 norma
 		new_ray_direction = glm::reflect(old_ray_direction, normal);
 		//printf("%f :  %f : %f\n", probspec, rand, probdiffuse);
 		assert(probspec <= 1.f && probspec >= 0);
-		color = m.specular.color / probspec;
+		color = m.specular.color;
 	}
 
-	// compute our new ray origin
+#ifdef IMPORTANCE_SAMPLING
+	*pdf = get_pdf(new_ray_direction, normal);
+#endif
+
 	//new_ray_direction += speed;
 	path.ray.direction = glm::normalize(new_ray_direction);
 	return color;
@@ -274,7 +225,6 @@ __host__ __device__ float fresnels(glm::vec3 normal, glm::vec3 old_ray_direction
 	// cos theta2 = (sqrt ( 1 - sin theta2^2))  
 
 	float cos_theta1 = glm::dot(-normal, old_ray_direction);
-	//normal = glm::faceforward(normal, old_ray_direction, normal);
 	if (cos_theta1 < 0.f) {
 		cos_theta1 = -cos_theta1;
 		eta = material.indexOfRefraction; // we are doing pretty much air over our index of refraction.. airs index ~= 1.s
@@ -287,9 +237,6 @@ __host__ __device__ float fresnels(glm::vec3 normal, glm::vec3 old_ray_direction
 		n1 = eta_air;
 		n2 = eta_mat;
 	}
-
-
-
 
 	// I think there was some rounding errors... dot product was producing values of 1.00000012
 	// so camp our values....
@@ -326,7 +273,7 @@ __host__ __device__ float fresnels(glm::vec3 normal, glm::vec3 old_ray_direction
 // based off of fresenels equation we follow the route of reflection or refraction
 // resources: https://computergraphics.stackexchange.com/questions/2482/choosing-reflection-or-refraction-in-path-tracing
 // https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
-__host__ __device__ glm::vec3 compute_fresnels(PathSegment& path, glm::vec3 normal, float t, const Material& m, thrust::default_random_engine &rng,glm::vec3 speed)
+__host__ __device__ glm::vec3 compute_fresnels(PathSegment& path, glm::vec3 normal, float t, const Material& m, thrust::default_random_engine &rng,float* pdf)
 {
 	glm::vec3 color;
 	thrust::uniform_real_distribution<float> u01(0, 1);
@@ -336,23 +283,15 @@ __host__ __device__ glm::vec3 compute_fresnels(PathSegment& path, glm::vec3 norm
 	float Fresnels_Number = fresnels(normal,path.ray.direction,m);
 	assert(Fresnels_Number >= 0 && Fresnels_Number <= 1); // make sure its reasonable
 
-	float probreflect = m.hasReflective;
-	float probrefract = m.hasRefractive;
-	float total = probrefract + probreflect;
-
-	probrefract /= total;
-
 	// the lower the fresnels number the less reflective
-	if (probrefract > rand )
+	if (Fresnels_Number < rand )
 	{
-		color = compute_refraction(path, normal, t, m,rng,speed);
+		color = compute_refraction(path, normal, t, m,rng,pdf);
 		Fresnels_Number = 1 - Fresnels_Number;
-		//printf("refract %f \n", Fresnels_Number);
 	}
 	else
 	{
-		color = compute_reflection(path, normal, t, m,rng,speed);
-		//printf("reflect %f \n", Fresnels_Number);
+		color = compute_reflection(path, normal, t, m,rng,pdf);
 	}
 
 	//assert(Fresnels_Number >= 0 && Fresnels_Number <= 1); // make sure its reasonable
@@ -399,32 +338,36 @@ void scatterRay(
 	// calculateRandomDirection or depending on what we want to call
 	// is diffuse is reflective is refractive. is opaque? etc etc
 	glm::vec3 color;
-	thrust::uniform_real_distribution<float> u01(0, 1);
-	
+	float pdf = 0;
+
 #ifdef REFRACTION
 	//  
 	if (m.hasReflective > 0.0f && m.hasRefractive > 0.0f)
 	{
-		color = compute_fresnels(pathSegment, normal, t, m,rng,speed);
+		color = compute_fresnels(pathSegment, normal, t, m,rng,&pdf);
 	}
 	//if refractive
 	else if (m.hasRefractive > 0.0f)
 	{
-		color = compute_refraction(pathSegment, normal, t, m, rng, speed);
+		color = compute_refraction(pathSegment, normal, t, m, rng, &pdf);
 	}
 #endif
+
 	// if reflective
 	else if (m.hasReflective > 0.0f)
 	{
-		color = compute_reflection(pathSegment, normal, t, m,rng,speed);
+		color = compute_reflection(pathSegment, normal, t, m,rng,&pdf);
 	}
 	// else diffuse
 	else{
-		color = compute_diffuse(pathSegment, normal, t, m, rng,speed);
+		color = compute_diffuse(pathSegment, normal, t, m, rng,&pdf);
 	}
 
-	// direction is updated by the compute functions above
-	glm::vec3 bump = speed * u01(rng);
 	pathSegment.ray.origin = intersect + (.01f * pathSegment.ray.direction);
+
+#ifdef IMPORTANCE_SAMPLING
+	color = color * (1 / PI) * glm::dot(pathSegment.ray.direction, normal) / pdf;
+#endif
+
 	pathSegment.color *= color; 
 }

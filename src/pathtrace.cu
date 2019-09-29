@@ -27,14 +27,14 @@
 #define ERRORCHECK 1
 
 // toggleable part 1 macros
-//#define CACHE_ME_OUTSIDE
+#define CACHE_ME_OUTSIDE
 #define STREAM_COMPACTION
 //#define MATERIAL_SORT
 //#define ANTIALIASING
 //#define DEPTH_OF_FIELD
 #define LENS_RADIUS 0.4f
 #define FOCAL_DISTANCE 7.0f
-#define MOTION_BLUR
+//#define MOTION_BLUR
 
 #ifdef CACHE_ME_OUTSIDE 
 #ifdef ANTIALIASING
@@ -434,7 +434,6 @@ __global__ void computeIntersections(
 			intersections[path_index].t = t_min;
 			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
 			intersections[path_index].surfaceNormal = normal;
-			intersections[path_index].speed = speed; // if the object has a speed
 			// store this?
 			//intersections[path_index].intersection_point = intersect_point;
 		}
@@ -496,6 +495,7 @@ __global__ void shadeFakeMaterial (
       else{
 		  scatterRay(pathSegments[idx], getPointOnRay(pathSegments[idx].ray,intersection.t),intersection.surfaceNormal, material,intersection.t, rng, intersection.speed);
 		  pathSegments[idx].remainingBounces--; // decrement our bounce
+		  pathSegments[idx].depth++;
       }
 
 	  //pathSegments[idx].ray.origin += intersection.speed;
@@ -511,14 +511,20 @@ __global__ void shadeFakeMaterial (
 }
 
 // Add the current iteration's output to the overall image
-__global__ void finalGather(int nPaths, glm::vec3 * image, PathSegment * iterationPaths)
+__global__ void finalGather(int nPaths, glm::vec3 * image, PathSegment * iterationPaths,const int depth)
 {
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 
 	if (index < nPaths)
 	{
 		PathSegment iterationPath = iterationPaths[index];
-		image[iterationPath.pixelIndex] += iterationPath.color;
+		if (iterationPath.depth != 0)
+		{
+			//iterationPath.color /= (float)iterationPath.depth;
+			//printf("depth %d : %f\n",iterationPath.depth, iterationPath.color.x);
+			iterationPath.depth = 0;
+		}
+		image[iterationPath.pixelIndex] += (iterationPath.color);
 	}
 }
 
@@ -806,7 +812,7 @@ if( depth >= traceDepth)
 
   // Assemble this iteration and apply it to the image
   dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
-	finalGather<<<numBlocksPixels, blockSize1d>>>(num_paths, dev_image, dev_paths);
+	finalGather<<<numBlocksPixels, blockSize1d>>>(num_paths, dev_image, dev_paths,traceDepth);
 
     ///////////////////////////////////////////////////////////////////////////
 

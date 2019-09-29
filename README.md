@@ -20,9 +20,9 @@ The below charts are gathered from the scene shown above. In this scene we have 
 
 ![](img/1_loop.png)
 
-The above chart shows the speed up or slow down associated with eneabling each algorithm. We see that in general material sorting adds too much overhead to see any benefits. Wee see caching helps improve performance as we get to make one less call to our function compute intersections and we see that stream compaction helps improve performance by quite a bit because we get to remove some dead rays from the scene and do less work each depth calculation.
+The above chart shows the speed up or slow down associated with enabling each algorithm/technique. We see that in general material sorting adds too much overhead to see any benefits. We see caching helps improve performance as we get to make one less call to our function "compute intersections" and we see that stream compaction helps improve performance by quite a bit because we get to remove some dead rays from the scene and do less work each depth calculation. The rest of the features are essentially free as they are not adding many instructions or complexity to the system.
 
-more information below for each algorithm in the algorithm analysis 
+more information below for each algorithm in the algorithm analysis. 
 
 ## Algorith Analysis
 
@@ -48,7 +48,7 @@ Every sample, rays are generated from the camera and enter the scene. for the fi
 
 As we allow more bounces or depth to the scene the benefit of this technique will diminish.
 
-The chart above shows us that with a depth of 1 we do not spend any time computing intersections since we just reuse. The time to copy from this information from CPU to GPU was about .25ms compared to computing the intersection which costed us around 250ms
+The chart above shows us that with a depth of 1 we do not spend any time computing intersections since we just reuse. The time to copy from this information from CPU to GPU was about .25ms compared to computing the intersection which costed us around 250ms.
 
 
 ### Stream Compaction 
@@ -69,12 +69,15 @@ The above chart shows us the time spent doing our sorting we can see almost an e
 
 ### Anti-aliasing
 
+code can be found in pathtrace.cu in "generate ray from camera"
+
+anti-aliasing is best done on the gpu because every ray from the camera must be slightly manipulated. Therefore since we have many rays and they are all data dependent it makes sense to compute this on a gpu.
+
 The idea behind anti aliasing is to add some jitter or randomness to the camera rays. Instead of having the rays shoot out the same direction every time we add a slight random offset. This has the rays bounce in different possibly more interesting directions to accumlate color. What we see with the anti aliasing is edges become a bit smoother. This technique is essentially free because all we are doing is adding some randomness to the input rays. 
 
 Unfortunately if we use anti aliasing we can not use the First Bounce Cache technique. This is because we are manipulating our first rays just a bit. So the first computation will not always be the same.
 
 We could possibly use both techniques if we made the "random-ness" of anti aliasing more deterministic. For example, we adjust the camera jitter based off of our sample number. IF we did this though we would have to have cache more elements meaning more memory useage.
-
 
 
 ![](img/combo_alias.jpg)
@@ -84,6 +87,7 @@ The left image spehere is a render with anti aliasing. You will notice that the 
 On the right is a render with no aliasing. You will notice the edges are more abrupt and jagged. 
 
 Both of these images are at the same sample point. 
+
 
 Below is the full image render even from afar the jagged edges are noticeable!
 
@@ -96,7 +100,6 @@ No Alias
  
 Anti Aliasing
 
-
 ![](img/zoom_nice_no_aa.png)
 
 No Alias
@@ -106,6 +109,11 @@ No Alias
 Anti Aliasing
 
 ## depth of field
+
+code for implementation can be found in pathtrace.cu function "ConcentricSampleDisk"
+
+depth of field is best done on the gpu because every ray from the camera must be slightly manipulated based on our lens and focal point. Therefore since we have many rays and they are all data dependent it makes sense to compute this on a gpu.
+
 
 From our chart we see depth of field did not add much, if any overhead to the system.
 Similar to anti-aliasing this technique is done once per iteration and makes adjustments to the camera. the compute time for this is pretty minimal there by it is masked away by the heavier functions. 
@@ -127,30 +135,60 @@ And finally, this is what I see without my contacts
 
 ## Motion Blur
 
+code for implementation can be found in pathtrace.cu, function "add_blur"
+
 Similar to depth of field and anti aliasing motion blur is pretty much free. The drawbck is that again, we can not use the caching technique. This is so because we ever moving the object position justa bit every iteration.
 
-This algorithm has us update the position by a little bit every iteration. So, we just need to loop through however many objects are in the scene and update it based on the speed of the object. Unless there are 1000's of objects in a scene this can be done easily and quickly on the CPU.
+This algorithm has us update the position by a little bit every iteration. So, we just need to loop through however many objects are in the scene and update it based on the speed of the object. Unless there are 1000's of objects in a scene this can and should  be done easily and quickly on the CPU.
 
-Below is an image with the lotf smaller spheres flying around the scene. Simulating something like electrons around a nucleus.
+Below is an image with alot smaller spheres flying around the scene. Simulating something like electrons around a nucleus.
+
 
 ![](img/motion_blur_sun.png)
 
-## Refraction
+
+## Refraction ( Extra ? )
+
+code for implementation can be found in interactions.h, function "compute_refraction"
+
+depth of field is best done on the gpu because every ray is data dependent and the amount of rays to compute per picture is large.
 
 From our results above we see that refracion addded a bit of overhead but not too much. This is expected as adding refraction adds a bit more branch divergence. But the time spent computing refraction is not significantly more than computing a reflective or diffuse object so we only see a slight slow down.
 
-Below is a render with my attempt to simulate refractive water. To do this I just added a thin blue refractive material. It is not the prettiest render but it shows refraction.
+Below is a scene with objects that have some refractivity and a slight bit of reflectivity. We see the sphere in the back blue light onto the white wall. We see the yellow sphere obscured from the refractive sphere in front and on the right we see a neat looking cube where we actually see a small reflection inside due to the phenomena of total internal reflection. 
+
+
+![](img/good_refraction.png)
+
+
+Below is a render with my attempt to simulate refractive water. To do this I just added a thin blue refractive material. It is not the prettiest render but it shows use of fresnels number when combining refraction and reflection.
+
 
 ![](img/water_refraction.png)
+
 
 From the image above we can see the distortion on the walls and slight distortion of the tower.
 
 In real life, water and other refractive materials have some reflection to them. When you look into a lake if it is calm enough you can see a reflection. This is where Fresnels Number can create a more realistic render. 
 
-In the below image we add some reflective and refractive properties to the "water" and we can see how the middle area has a little glean to it.
+In the below image we add some reflective and refractive properties to the "water" and use fresnels number to calculate how much reflectivity this ray has. We can see how the middle area has a little glean to it. and the "water" is a different color. If we could add textures this could become even more realistic!
 
 ![](img/water_refraction_p2.png)
 
+
+### Importance Sampling ( Extra )
+
+code for implementation can be found in interactions.h wrapped in #ifdef
+
+depth of field is best done on the gpu because we are adding weight to our ray during diffusion,reflection or refraction. Since we have thousands of rays per image all data dependent the computation is best done on the gpu side.  
+
+From our chart we can see that importance sampling does not add really any overhead to the system ( about 20ms added ). That is because it is just a few extra  multiplies and divides per thread in the shader to get a weight. 
+
+The theory behind importance sampling is that it will help the image converge much quicker. I did not notice a noticeable difference of when the image converges while using importance sampling vs not using importance sampling. at iterations 50, 250, 550 the image roughly looked the same. No worse no better.
+
+During a regular render we would accumulate color per depth. With importance sampling we want to give some weight to our ray bounces based off of where they hit. 
+
+For example, when we have a diffuse bounce we can bounce anywhere in our cosine weighted hemisphere but some spots in this hemisphere shine brighter than others. With importance sampling we can give more weight to these and less weight to areas that are not as interesting. This helps the image converge much quicker.
 
 ### Pictures
 
@@ -161,6 +199,7 @@ Physically Based Rendering second and third edition
 	Used this books algorithms to employ Depth of field
 	Used book for refraction
 	Used book for fresnels
+	Used book for importance sampling
 
 https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
 	in help with refraction
@@ -173,6 +212,17 @@ https://computergraphics.stackexchange.com/questions/2482/choosing-reflection-or
 
 https://github.com/ssloy/tinyraytracer/wiki/Part-1:-understandable-raytracing
 	in general helped with the basics of fresnels, reflection, refraction
+
+Ziad Our TA for help with motion blur
+
+https://learning.oreilly.com/library/view/physically-based-rendering/9780128007099/B9780128006450500130_2.xhtml
+	Help with importance sampling
+
+https://computergraphics.stackexchange.com/questions/4979/what-is-importance-sampling
+	Help with importance sampling
+
+https://www.scratchapixel.com/lessons/3d-basic-rendering/global-illumination-path-tracing/global-illumination-path-tracing-practical-implementation
+	Help with importance sampling
 
 
 

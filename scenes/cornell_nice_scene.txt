@@ -43,9 +43,9 @@ MATERIAL 4
 RGB         .98 .98 .98
 SPECEX      0
 SPECRGB     .98 .98 .98
-REFL        1
-REFR        0
-REFRIOR     0
+REFL        0
+REFR        1
+REFRIOR     1.3
 EMITTANCE   0
 
 // diffuse purple
@@ -83,9 +83,19 @@ MATERIAL 8
 RGB         .01 .76 .98
 SPECEX      0
 SPECRGB     .01 .76 .98
-REFL        1
-REFR        1
+REFL        .4
+REFR        .6
 REFRIOR     1.8
+EMITTANCE   0
+
+// Specular white
+MATERIAL 9
+RGB         .98 .98 .98
+SPECEX      0
+SPECRGB     .98 .98 .98
+REFL        .1
+REFR        .9
+REFRIOR     1.3
 EMITTANCE   0
 
 // Camera
@@ -190,19 +200,19 @@ ROTAT       0 0 0
 SCALE       2 2 2
 SPEED       0 1 0
 
-// Sphere in wall
+// Sphere in wallmake -5 for in wall
 OBJECT 10
 sphere
-material 4
-TRANS       -5 5 0
+material 9
+TRANS       -1 2 3
 ROTAT       0 0 0
-SCALE       3 3 3
+SCALE       2 2 2
 SPEED       0 0 0
 
 // Sphere in back hovering
 OBJECT 11
 cube
-material 5
+material 4
 TRANS       4 1 3
 ROTAT       0 0 0
 SCALE       2 2 2
@@ -211,7 +221,7 @@ SPEED       0 0 0
 // box
 OBJECT 12
 sphere
-material 5
+material 8
 TRANS       2 7 -3
 ROTAT       0 0 0
 SCALE       3 3 3
