@@ -1,0 +1,367 @@
+// Emissive material (light)
+MATERIAL 0
+RGB         1 1 1
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   5
+
+// Diffuse white
+MATERIAL 1
+RGB         .98 .98 .98
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Diffuse red
+MATERIAL 2
+RGB         .85 .35 .35
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Refl+Refr White
+MATERIAL 3
+RGB         .98 .98 .98
+SPECEX      500
+SPECRGB     .98 .98 .98
+REFL        1
+REFR        1
+REFRIOR     1.5
+EMITTANCE   0
+
+// Refl White
+MATERIAL 4
+RGB         .98 .98 .98
+SPECEX      500
+SPECRGB     .98 .98 .98
+REFL        1
+REFR        0
+REFRIOR     1.5
+EMITTANCE   0
+
+// Refr White
+MATERIAL 5
+RGB         .98 .98 .98
+SPECEX      500
+SPECRGB     .98 .98 .98
+REFL        0
+REFR        1
+REFRIOR     1.5
+EMITTANCE   0
+
+// Refl+Refr red
+MATERIAL 6
+RGB         .85 .35 .35
+SPECEX      500
+SPECRGB     .85 .35 .35
+REFL        1
+REFR        1
+REFRIOR     1.5
+EMITTANCE   0
+
+// Refl red
+MATERIAL 7
+RGB         .85 .35 .35
+SPECEX      500
+SPECRGB     .85 .35 .35
+REFL        1
+REFR        0
+REFRIOR     1.5
+EMITTANCE   0
+
+// Refr red
+MATERIAL 8
+RGB         .85 .35 .35
+SPECEX      500
+SPECRGB     .85 .35 .35
+REFL        0
+REFR        1
+REFRIOR     1.5
+EMITTANCE   0
+
+// Black
+MATERIAL 9
+RGB         0.2 0.2 0.2
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Camera
+CAMERA
+RES         2000 1200
+FOVY        45
+ITERATIONS  5000
+DEPTH       8
+FILE        cornell
+EYE         0 5 10.5
+LOOKAT      0 5 0
+UP          0 0 0
+
+
+// Ceiling light 1
+OBJECT 0
+cube
+material 0
+TRANS       8 10 0
+ROTAT       0 0 0
+SCALE       1.5 .3 1.5
+
+// Ceiling light 2
+OBJECT 1
+cube
+material 0
+TRANS       -8 10 0
+ROTAT       0 0 0
+SCALE       1.5 .3 1.5
+
+// Ceiling light 3
+OBJECT 2
+cube
+material 0
+TRANS       0 10 0
+ROTAT       0 0 0
+SCALE       9 .3 0.5
+
+// Floor
+OBJECT 3
+cube
+material 1
+TRANS       0 0 0
+ROTAT       0 0 0
+SCALE       20 .01 20
+
+// Ceiling
+OBJECT 4
+cube
+material 1
+TRANS       0 10 0
+ROTAT       0 0 90
+SCALE       .01 20 20
+
+// Back wall
+OBJECT 5
+cube
+material 1
+TRANS       0 5 -10
+ROTAT       0 90 0
+SCALE       .01 20 20
+
+// Left wall
+OBJECT 6
+cube
+material 1
+TRANS       -10 5 0
+ROTAT       0 0 0
+SCALE       .01 20 20
+
+// Right wall
+OBJECT 7
+cube
+material 1
+TRANS       10 5 0
+ROTAT       0 0 0
+SCALE       .01 20 20
+
+// Sphere - White Diff
+OBJECT 8
+sphere
+material 1
+TRANS       -7 7 0
+ROTAT       0 0 0
+SCALE       3 3 3
+
+// Sphere = Red Diff
+OBJECT 9
+sphere
+material 2
+TRANS       -7 3 0
+ROTAT       0 0 0
+SCALE       3 3 3
+
+// Sphere - White RlRf
+OBJECT 10
+sphere
+material 3
+TRANS       -2 7 0
+ROTAT       0 0 0
+SCALE       3 3 3
+
+// Sphere - White Rl
+OBJECT 11
+sphere
+material 4
+TRANS       2 7 0
+ROTAT       0 0 0
+SCALE       3 3 3
+
+// Sphere - White Rf
+OBJECT 12
+sphere
+material 5
+TRANS       7 7 0
+ROTAT       0 0 0
+SCALE       3 3 3
+
+// Sphere - Red RlRf
+OBJECT 13
+sphere
+material 6
+TRANS       -2 3 0
+ROTAT       0 0 0
+SCALE       3 3 3
+
+// Sphere = Red Rl
+OBJECT 14
+sphere
+material 7
+TRANS       2 3 0
+ROTAT       0 0 0
+SCALE       3 3 3
+
+// Sphere - Red Rf
+OBJECT 15
+sphere
+material 8
+TRANS       7 3 0
+ROTAT       0 0 0
+SCALE       3 3 3
+
+// Accent Sphere
+OBJECT 16
+sphere
+material 9
+TRANS       6 3 -2
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Accent Sphere
+OBJECT 17
+sphere
+material 9
+TRANS       7 4 -2
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Accent Sphere
+OBJECT 18
+sphere
+material 9
+TRANS       8 3 -2
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Accent Sphere
+OBJECT 19
+sphere
+material 9
+TRANS       6 7 -2
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Accent Sphere
+OBJECT 20
+sphere
+material 9
+TRANS       7 8 -2
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Accent Sphere
+OBJECT 21
+sphere
+material 9
+TRANS       8 7 -2
+ROTAT       0 0 0
+SCALE       1 1 1
+
+//////////////////////////////////////////
+
+// Accent Sphere
+OBJECT 22
+sphere
+material 9
+TRANS       -1 3 -2
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Accent Sphere
+OBJECT 23
+sphere
+material 9
+TRANS       -2 4 -2
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Accent Sphere
+OBJECT 24
+sphere
+material 9
+TRANS       -3 3 -2
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Accent Sphere
+OBJECT 25
+sphere
+material 9
+TRANS       -1 7 -2
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Accent Sphere
+OBJECT 26
+sphere
+material 9
+TRANS       -2 8 -2
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Accent Sphere
+OBJECT 27
+sphere
+material 9
+TRANS       -3 7 -2
+ROTAT       0 0 0
+SCALE       1 1 1
+
+
+/////////////// MOTION SPHERES
+// Accent Sphere
+OBJECT 28
+sphere
+material 9
+TRANS       -8 9 4
+ROTAT       0 0 0
+SCALE       1 1 1
+VELO        2 0 0
+
+// Accent Sphere
+OBJECT 29
+sphere
+material 9
+TRANS       8 5 4
+ROTAT       0 0 0
+SCALE       1 1 1
+VELO        0 0 -4
+
+// Accent Sphere
+OBJECT 30
+sphere
+material 9
+TRANS       -8 2 4
+ROTAT       0 0 0
+SCALE       1 1 1
+VELO        1 1 0
+
