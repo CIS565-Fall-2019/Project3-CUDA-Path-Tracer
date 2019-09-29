@@ -35,7 +35,12 @@ I implemented a simple axis-aligned bounding volume for my loaded meshes. That i
 
 ##### Performance
 
-TODO: performance analysis
+The image of the three guns was a good testbed for bounding box testing; the scene had a lot of triangles, but they were very densely localized. As such, cutting out a significant number of the triangle intersections was relevant.
+
+I saw, with bounding-box culling, a time of `144s` to reach 500 iterations. Without, the same scene took `236s`. This, additionally, gives evidence that one of the more time-consuming parts of the path-tracer is intersecting each ray with the scene geometry; taking out roughly 2/3 of the intersections tests produced a 61% speedup.
+
+![Gun Trio](progressImages/rifleTrioFil.png)
+TODO: put three-guns image here
 
 #### Textures
 
@@ -82,6 +87,8 @@ Here is a series of images of the same scene, with differing level of textures a
 TODO: Performance analysis
 
 I also implemented a *very* simple procedural texture for use on my cube primitives (though, in theory, it could be applied to the triangle meshes as well without too much issue).
+
+However, all it did was fill in texture memory in the same way that the loaded textures did; given that the GPU accesses both in the same way, there was no noticeable performance difference.
 
 ### Specular Sampling with Exponent
 
@@ -160,7 +167,9 @@ Certainly, CMake has a way to do this, but as somebody who is not a CMake wizard
     * [Zelda](https://sketchfab.com/3d-models/ssbb-zelda-6612b024962b4141b1f867babe0f0e6c) by ThatOneGuyWhoDoesThings
     * [Sheik](https://sketchfab.com/3d-models/ssbb-sheik-4916d918d2c44f6bb984b59f082fc48c) by ThatOneGuyWhoDoesThings
     * [Hunter Rifle](https://sketchfab.com/3d-models/hunter-rifle-wip-ae83df4cc35c4eff89b34f266de9af3c) by cotman sam
-    * [Textured Cube](https://sketchfab.com/3d-models/textured-cube-a883bf6dfd144419929067067c7f6dff) by Stakler
+    * [Textured Cube](https://sketchfab.com/3d-models/textured-cube-a883bf6dfd144419929067067c7f6dff) by Stakler (used for development)
+    * [Sci-fi blaster](https://sketchfab.com/3d-models/sci-fi-assault-rifle-laser-blaster-f730872e1ee843e9a3934e9e3f6719c0) by Artem Goyko
+    * [Plasma gun](https://sketchfab.com/3d-models/avas-ai-plasma-gun-a23c67a856dc43b1a7f34aacede9f183) by alx_flameniro
 
 ### Other Code
 * Used [TinyObjLoader](https://github.com/syoyo/tinyobjloader) library for loading `*.obj` files
