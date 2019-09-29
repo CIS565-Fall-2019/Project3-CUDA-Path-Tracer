@@ -40,6 +40,7 @@ int Scene::loadGeom(string objectid) {
     } else {
         cout << "Loading Geom " << id << "..." << endl;
         Geom newGeom;
+		Light light;
         string line;
 
         //load object type
@@ -72,7 +73,9 @@ int Scene::loadGeom(string objectid) {
                 newGeom.translation = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
             } else if (strcmp(tokens[0].c_str(), "ROTAT") == 0) {
                 newGeom.rotation = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
-            } else if (strcmp(tokens[0].c_str(), "SCALE") == 0) {
+            } else if (strcmp(tokens[0].c_str(), "VELOCITY") == 0) {
+				newGeom.velocity = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+			} else if (strcmp(tokens[0].c_str(), "SCALE") == 0) {
                 newGeom.scale = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
             }
 
@@ -85,6 +88,12 @@ int Scene::loadGeom(string objectid) {
         newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
 
         geoms.push_back(newGeom);
+
+		if (materials[newGeom.materialid].emittance > 0) {
+			light.geom = newGeom;
+			lights.push_back(light);
+		}
+
         return 1;
     }
 }
@@ -124,7 +133,11 @@ int Scene::loadCamera() {
             camera.lookAt = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
         } else if (strcmp(tokens[0].c_str(), "UP") == 0) {
             camera.up = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
-        }
+        } else if (strcmp(tokens[0].c_str(), "RADIUS") == 0) {
+			camera.radius= atof(tokens[1].c_str());
+		} else if (strcmp(tokens[0].c_str(), "FOCAL") == 0) {
+			camera.focalLength = atof(tokens[1].c_str());
+		}
 
         utilityCore::safeGetline(fp_in, line);
     }

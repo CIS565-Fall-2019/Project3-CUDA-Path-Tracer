@@ -22,11 +22,17 @@ struct Geom {
     int materialid;
     glm::vec3 translation;
     glm::vec3 rotation;
-    glm::vec3 scale;
+	glm::vec3 velocity;
+	glm::vec3 scale;
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
 };
+
+struct Light {
+	Geom geom;
+};
+
 
 struct Material {
     glm::vec3 color;
@@ -49,6 +55,8 @@ struct Camera {
     glm::vec3 right;
     glm::vec2 fov;
     glm::vec2 pixelLength;
+	float radius;
+	float focalLength;
 };
 
 struct RenderState {
