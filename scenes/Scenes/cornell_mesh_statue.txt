@@ -8,19 +8,19 @@ REFR        0
 REFRIOR     0
 EMITTANCE   5
 
-// Diffuse white
+// Transparent Red
 MATERIAL 1
-RGB         .98 .98 .98
+RGB         .88 .38 .38
 SPECEX      0
 SPECRGB     0 0 0
 REFL        0
-REFR        0
-REFRIOR     0
+REFR        1
+REFRIOR     1.83
 EMITTANCE   0
 
-// Diffuse red
+// Diffuse Green
 MATERIAL 2
-RGB         .85 .35 .35
+RGB         .35 .85 .35
 SPECEX      0
 SPECRGB     0 0 0
 REFL        0
@@ -28,9 +28,9 @@ REFR        0
 REFRIOR     0
 EMITTANCE   0
 
-// Diffuse green
+// Diffuse Gray
 MATERIAL 3
-RGB         .35 .85 .35
+RGB         .35 .35 .35
 SPECEX      0
 SPECRGB     0 0 0
 REFL        0
@@ -46,6 +46,16 @@ SPECRGB     .98 .98 .98
 REFL        1
 REFR        0
 REFRIOR     0
+EMITTANCE   0
+
+// Diffused Red
+MATERIAL 5
+RGB         .98 .38 .38
+SPECEX      0
+SPECRGB     .98 .38 .38
+REFL        0
+REFR        0
+REFRIOR     1.83
 EMITTANCE   0
 
 // Camera
@@ -66,52 +76,22 @@ cube
 material 0
 TRANS       0 10 0
 ROTAT       0 0 0
-SCALE       3 .3 3
+SCALE       10 .3 10
+VEL 0 0 0
 
 // Floor
 OBJECT 1
 cube
-material 1
+material 2
 TRANS       0 0 0
 ROTAT       0 0 0
 SCALE       10 .01 10
 
-// Ceiling
-OBJECT 2
-cube
-material 1
-TRANS       0 10 0
-ROTAT       0 0 90
-SCALE       .01 10 10
 
-// Back wall
-OBJECT 3
-cube
-material 1
-TRANS       0 5 -5
-ROTAT       0 90 0
-SCALE       .01 10 10
-
-// Left wall
-OBJECT 4
-cube
-material 2
-TRANS       -5 5 0
-ROTAT       0 0 0
-SCALE       .01 10 10
-
-// Right wall
-OBJECT 5
-cube
+// Mesh
+MESH 0
+PATH ../scenes/Models/bunny.obj
 material 3
-TRANS       5 5 0
-ROTAT       0 0 0
-SCALE       .01 10 10
-
-// Sphere
-OBJECT 6
-sphere
-material 4
-TRANS       -1 4 -1
-ROTAT       0 0 0
-SCALE       3 3 3
+TRANS		0 0 2
+ROTAT		0 0 0
+SCALE		1 1 1

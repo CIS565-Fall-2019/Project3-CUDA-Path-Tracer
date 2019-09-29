@@ -26,6 +26,21 @@ struct Geom {
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
+	glm::vec3 vel;
+};
+
+struct Mesh {
+	// Vertices
+	glm::vec3 * v[3];
+	// Normals
+	glm::vec3 * n[3];
+	int num_faces;
+};
+
+struct Face {
+	glm::vec3 v[3];
+	glm::vec3 n[3];
+	int materialid;
 };
 
 struct Material {
@@ -66,6 +81,10 @@ struct PathSegment {
 	int remainingBounces;
 };
 
+struct MeshBoundingBox {
+	glm::vec3 lb;
+	glm::vec3 ub;
+};
 // Use with a corresponding PathSegment to do:
 // 1) color contribution computation
 // 2) BSDF evaluation: generate a new ray
@@ -73,4 +92,6 @@ struct ShadeableIntersection {
   float t;
   glm::vec3 surfaceNormal;
   int materialId;
+  bool is_inside;
+  glm::vec3 intersect;
 };

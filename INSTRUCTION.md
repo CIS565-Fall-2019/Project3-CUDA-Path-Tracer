@@ -86,7 +86,7 @@ by material type. This should be easily toggleable.
   are contiguous in memory before shading. How does this impact performance? Why?
 * A toggleable option to cache the first bounce intersections for re-use across all
 subsequent iterations. Provide performance benefit analysis across different
-max ray depths.
+max ray depths. 
 
 ##### Part 2 - Make Your Pathtracer Unique!
 
@@ -105,7 +105,7 @@ with point value up to +20/100 at the grader's discretion
   * Refraction (e.g. glass/water) [PBRT 8.2] with Frensel effects using
     [Schlick's approximation](https://en.wikipedia.org/wiki/Schlick's_approximation)
     or more accurate methods [PBRT 8.5]. You can use `glm::refract` for
-    Snell's law.
+    Snell's law. ??? 
     * Recommended but not required: non-perfect specular surfaces. (See below.)
   * Physically-based depth-of-field (by jittering rays within an aperture)
     [PBRT 6.2.3].
@@ -114,7 +114,7 @@ with point value up to +20/100 at the grader's discretion
 * Procedural Shapes & Textures.
   * You must generate a minimum of two different complex shapes procedurally. (Not primitives)
   * You must be able to shade object with a minimum of two different textures
-* Texture mapping [PBRT 10.4] and Bump mapping [PBRT 9.3].
+* Texture mapping [PBRT 10.4] and Bump mapping ??? [PBRT 9.3].
   * Implement file-loaded textures AND a basic procedural texture
   * Provide a performance comparison between the two
 * Direct lighting (by taking a final ray directly to a random point on an
@@ -124,7 +124,7 @@ with point value up to +20/100 at the grader's discretion
 * Subsurface scattering [PBRT 5.6.2, 11.6].
 * [Better hemisphere sampling methods](http://graphics.ucsd.edu/courses/cse168_s14/ucsd/CSE168_11_Random.pdf)
 * Arbitrary mesh loading and rendering (e.g. `obj` files) with
-toggleable bounding volume intersection culling
+toggleable bounding volume intersection culling ???
   * You can find models online or export them from your favorite 3D modeling application.
   With approval, you may use a third-party loading code to bring the data
   into C++. [tinyObj](http://syoyo.github.io/tinyobjloader/) is highly recommended.
@@ -141,7 +141,7 @@ toggleable bounding volume intersection culling
   * If implemented in conjunction with Arbitrary mesh loading, this qualifies as the
 toggleable bounding volume intersection culling.
   * See below for more resources
-* [Wavefront pathtracing](https://research.nvidia.com/publication/megakernels-considered-harmful-wavefront-path-tracing-gpus):
+* [Wavefront pathtracing](https://research.nvidia.com/publication/megakernels-considered-harmful-wavefront-path-tracing-gpus): ???
 Group rays by material without a  sorting pass. A sane implementation will
 require considerable refactoring, since every supported material suddenly needs
 its own kernel.

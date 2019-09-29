@@ -35,6 +35,10 @@ __host__ __device__ glm::vec3 multiplyMV(glm::mat4 m, glm::vec4 v) {
     return glm::vec3(m * v);
 }
 
+__host__ __device__ __inline__ glm::vec3 clampRGB(glm::vec3 color) {
+	return glm::clamp(color, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f));
+}
+
 // CHECKITOUT
 /**
  * Test intersection between a ray and a transformed cube. Untransformed,
@@ -141,4 +145,56 @@ __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
     }
 
     return glm::length(r.origin - intersectionPoint);
+}
+
+
+/**
+ * Test intersection between a ray and a triangle.
+ *
+ * @param intersectionPoint  Output parameter for point of intersection.
+ * @param normal             Output parameter for surface normal.
+ * @param outside            Output param for whether the ray came from outside.
+ * @return                   Ray parameter `t` value. -1 if no intersection.
+ */
+__host__ __device__ float triangleIntersectionTest(Face f,Ray r, glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
+	// Collision point
+	glm::vec3 baryPosition(0.0f);
+	bool collision = glm::intersectRayTriangle(r.origin, r.direction, f.v[0], f.v[1], f.v[2], baryPosition);
+	// is rand_shit inside triangle or not
+	if (!collision)
+		return -1;
+	intersectionPoint = baryPosition.x *  f.v[0] + baryPosition.y *  f.v[1] + (1 - baryPosition.x - baryPosition.y)  *  f.v[2];
+	// get normals
+	normal = glm::normalize((1 - baryPosition.x - baryPosition.y) * f.n[0] + baryPosition.x * f.n[1] + baryPosition.y * f.n[2]);
+	// Calculate t
+	return baryPosition.z;
+	//return -1;
+}
+
+
+__host__ __device__ bool RayAABBintersect(const Ray &ray,const MeshBoundingBox& aabb) {
+	glm::vec3 dirfrac;
+	// r.dir is unit direction vector of ray
+	dirfrac.x = 1.0f / ray.direction.x;
+	dirfrac.y = 1.0f / ray.direction.y;
+	dirfrac.z = 1.0f / ray.direction.z;
+	// lb is the corner of AABB with minimal coordinates - left bottom, rt is maximal corner
+	// r.org is origin of ray
+	float t1 = (aabb.lb.x - ray.origin.x)*dirfrac.x;
+	float t2 = (aabb.ub.x - ray.origin.x)*dirfrac.x;
+	float t3 = (aabb.lb.y - ray.origin.y)*dirfrac.y;
+	float t4 = (aabb.ub.y - ray.origin.y)*dirfrac.y;
+	float t5 = (aabb.lb.z - ray.origin.z)*dirfrac.z;
+	float t6 = (aabb.ub.z - ray.origin.z)*dirfrac.z;
+
+	float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
+	float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
+
+	// if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
+	if (tmax < 0)
+		return false;
+	// if tmin > tmax, ray doesn't intersect AABB
+	if (tmin > tmax)
+		return false;
+	return true;
 }
