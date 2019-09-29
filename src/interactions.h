@@ -73,7 +73,6 @@ void scatterRay(
         glm::vec3 normal,
         const Material &m,
         thrust::default_random_engine &rng) {
-    // TODO: implement this.
     // A basic implementation of pure-diffuse shading will just call the
     // calculateRandomDirectionInHemisphere defined above.
 
@@ -90,6 +89,11 @@ void scatterRay(
 		bool inside = glm::dot(direction, normal) > 0.0f;
 		glm::vec3 newNormal = inside ? -normal : normal;
 		float refIdx = inside ? m.indexOfRefraction : (1.0f / m.indexOfRefraction);
+
+		if (glm::length(direction) < EPSILON) {
+			color = glm::vec3(0.0f);
+			direction = glm::reflect(direction, normal);
+		}
 
 		//Schlick's reflection coefficient approximation
 		float R0 = powf((1.0f - refIdx) / (1.0f + refIdx), 2.0f);

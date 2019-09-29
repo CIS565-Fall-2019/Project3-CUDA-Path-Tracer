@@ -22,9 +22,9 @@
 
 #define ERRORCHECK 1
 #define MATERIAL_SORT 1
-#define CACHE_FIRST 1
+#define CACHE_FIRST 0
 #define ANTIALIAS 0
-#define MOTION 0
+#define MOTION 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -105,7 +105,7 @@ void pathtraceInit(Scene *scene) {
   	cudaMalloc(&dev_intersections, pixelcount * sizeof(ShadeableIntersection));
   	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
-    // TODO: initialize any extra device memeory you need
+    // initialize any extra device memeory you need
 #if CACHE_FIRST
 	cudaMalloc(&dev_intersections_cache, pixelcount * sizeof(ShadeableIntersection));
 	cudaMemset(dev_intersections_cache, 0, pixelcount * sizeof(ShadeableIntersection));
@@ -377,7 +377,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
     // * Finally, add this iteration's results to the image. This has been done
     //   for you.
 
-    //perform one iteration of path tracing
+    // perform one iteration of path tracing
 
 	generateRayFromCamera <<<blocksPerGrid2d, blockSize2d >>>(cam, iter, traceDepth, dev_paths);
 	checkCUDAError("generate camera ray");
@@ -397,7 +397,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	// tracing
 	dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
-#if CACHE_FIRST && !ANTIALIAS
+#if CACHE_FIRST && !ANTIALIAS && !MOTION
 	if (depth == 0) {
 		if (iter == 1) {
 			computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
@@ -453,7 +453,6 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	thrust::device_ptr<ShadeableIntersection> thrust_intersections(dev_intersections);
 	thrust::device_ptr<PathSegment> thrust_paths(dev_paths);
 	thrust::sort_by_key(thrust_intersections, thrust_intersections, thrust_paths + num_paths, sort_materialID());
-	//thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + num_paths, dev_paths, sort_materialID());
 #endif // MATERIAL_SORT
 
 
@@ -468,8 +467,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	PathSegment* path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, not_terminated());
 	num_paths = path_end - dev_paths;
 
-	iterationComplete = (depth >= traceDepth || num_paths <= 0); // TODO: should be based off stream compaction results.
-
+	iterationComplete = (depth >= traceDepth || num_paths <= 0); // based off stream compaction results.
 	}
 
 #if MOTION
@@ -493,6 +491,5 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
             pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
 
     checkCUDAError("pathtrace");
-
 
 }
