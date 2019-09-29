@@ -369,25 +369,27 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		// tracing
 		dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
 		#if CACHE_FIRST_BOUNCE
-			if(depth == 0 && iter != 1) {
-				dev_cur_intersections = dev_cached_intersections;
-			}else {
-				computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
-					depth
-					, num_paths
-					, dev_paths
-					, dev_geoms
-					, dev_meshes
-					, hst_scene->geoms.size()
-					, hst_scene->mesh.num_triangles
-					, dev_intersections
-					, iter
-					, dev_leftover_indices
-					);
-				if(depth == 0 && iter == 1){
-					cudaMemcpy(dev_cached_intersections, dev_intersections, pixelcount * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice, iter);
+			#if ANTI_ALIASING == 0
+				if(depth == 0 && iter != 1) {
+					dev_cur_intersections = dev_cached_intersections;
+				}else {
+					computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
+						depth
+						, num_paths
+						, dev_paths
+						, dev_geoms
+						, dev_meshes
+						, hst_scene->geoms.size()
+						, hst_scene->mesh.num_triangles
+						, dev_intersections
+						, iter
+						, dev_leftover_indices
+						);
+					if(depth == 0 && iter == 1){
+						cudaMemcpy(dev_cached_intersections, dev_intersections, pixelcount * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice, iter);
+					}
 				}
-			}
+			#endif
 		#else
 			computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
 					depth
