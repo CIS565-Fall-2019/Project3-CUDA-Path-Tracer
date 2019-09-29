@@ -21,7 +21,7 @@ I implemented various features of a path tracer, such as different materials, ca
 # AMY LU PACA IMAGES
 Diffuse                    |  Perfect Specular         | Refractive
 :-------------------------:|:-------------------------:|:-------------------------:
-![](img/Alpaca5000sampIOR1.52DOV0.1FL8.png)| ![](img/MirrorDragon266samp.png) |![](img/DOVBlooper3.png)
+![](img/Alpaca5000sampIOR1.52DOV0.1FL8.png)| ![](img/AlpacaReflective5000sampl.DOV0.1FL8.png) |![](img/DOVBlooper3.png)
 
 ## Features
 ### Materials
@@ -99,7 +99,13 @@ In order to store the triangle mesh data, I added a MESH type to the geom struct
 ### Camera
 Adjusting the direction in which we cast rays into the scene can create various camera effects.  I used this technique to implement depth of field and anti-aliasing.
 #### Depth of Field
+Depth of field is achieved by implementing a thin-lens camera model. Instead of shooting rays straight from the camera eye into the scene, the rays get spread out onto a disk lens and then focused onto a focal point a certain distance away. To spread the rays out onto a disk, I took a 2D random number (2 random numbers), and warped them to a disk shape scaled by the desired lens radius, creating a random distribution over a disk. I offset the lens origin by this disk distribution, creating the effect of the rays being spread over the disk.  I then use the original ray direction and the desired focal length to calculate the focal point, and adjust the ray direction to be the direction from the new offset origin to the focal point. 
+
+The diagram below illustrates the concept of the rays distributing over a lens and focusing at a certain distance z:
+![](img/ThinLensCamera.PNG)
+
 #### Anti-Aliasing
+
 ### Optimizations
 #### Stream Compaction
 #### Material Sorting
