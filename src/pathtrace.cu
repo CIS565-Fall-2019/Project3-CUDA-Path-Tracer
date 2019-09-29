@@ -1,9 +1,13 @@
 #include <cstdio>
 #include <cuda.h>
+#include <math_constants.h>
 #include <cmath>
 #include <thrust/execution_policy.h>
 #include <thrust/random.h>
 #include <thrust/remove.h>
+#include <thrust/device_ptr.h>
+#include <thrust/sort.h>
+#include <thrust/partition.h>
 
 #include "sceneStructs.h"
 #include "scene.h"
@@ -68,7 +72,11 @@ __global__ void sendImageToPBO(uchar4* pbo, glm::ivec2 resolution,
 }
 
 static bool b_useCompaction = true;
-static bool b_useFirstCache = false;
+static bool b_useFirstCache = true;
+#define DEPTH_OF_FILED 0
+#define MOTION_BLUR 0
+#define DIRECT_LIGHT 0
+#define SORT_MATERIAL 1
 
 static Scene* hst_scene = NULL;
 static glm::vec3* dev_image = NULL;
@@ -81,6 +89,8 @@ static ShadeableIntersection* dev_intersections = NULL;
 // ...
 static ShadeableIntersection* dev_first_intersections = NULL;
 static PathSegment* dev_first_paths = NULL;
+static Geom* dev_lights = NULL;
+
 
 void pathtraceInit(Scene* scene) {
 	hst_scene = scene;
@@ -123,6 +133,26 @@ void pathtraceFree() {
 	checkCUDAError("pathtraceFree");
 }
 
+// Took fromo PBRT 6.2.3
+
+__host__ __device__ glm::vec2 ConcentricSampleDisk(glm::vec2 u) {
+	//  <<Map uniform random numbers [0, 1] to [-1, 1]>>
+	glm::vec2 uOffset = 2.f * u - glm::vec2(1, 1);
+
+	// << Apply concentric mapping to point >>
+	float theta, r;
+	if (glm::abs(uOffset.x) > glm::abs(uOffset.y)) {
+		r = uOffset.x;
+		theta = CUDART_PIO4_F * (uOffset.y / uOffset.x);
+	}
+	else {
+		r = uOffset.y;
+		theta = CUDART_PIO2_F - CUDART_PIO4_F * (uOffset.x / uOffset.y);
+	}
+	return r * glm::vec2(glm::cos(theta), glm::sin(theta));
+}
+
+
 /**
 * Generate PathSegments with rays from the camera through the screen into the
 * scene, which is the first bounce of rays.
@@ -140,10 +170,23 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		int index = x + (y * cam.resolution.x);
 		PathSegment& segment = pathSegments[index];
 
-		segment.ray.origin = cam.position;
+		// TODO: implement antialiasing by jittering the ray
+		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, segment.remainingBounces);
+		glm::vec2 pLens(0, 0);
+#if DEPTH_OF_FILED
+		thrust::uniform_real_distribution<float> u01_len(0, 1);
+		float lensRadius = 0.1f;
+		pLens += lensRadius * ConcentricSampleDisk(glm::vec2(u01_len(rng), u01_len(rng)));
+#endif // DEPTH_OF_FILED
+
+#if MOTION_BLUR
+
+		pLens += sinf(iter * 0.1f) *0.1f;
+
+#endif // MOTION_BLUR
+		segment.ray.origin = cam.position + glm::vec3(pLens, 0);
 		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
 
-		// TODO: implement antialiasing by jittering the ray
 		segment.ray.direction = glm::normalize(cam.view
 			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f)
 			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f)
@@ -223,6 +266,26 @@ __global__ void computeIntersections(
 		}
 	}
 }
+
+__global__ void shadeByDirectLight(
+	 int num_paths
+	, ShadeableIntersection* shadeableIntersections
+	, PathSegment* pathSegments
+	, Material* materials
+)
+{
+	// Take a ray directly to a random point on an emissive object
+
+	// 1. Scatter ray from intersection point to light
+
+
+
+	// 2. Intersection test/ see if it's in shadow
+
+	// 3. Shade the path segment
+
+}
+
 
 __global__ void shadeMaterialNaive(
 	int iter
@@ -349,9 +412,17 @@ __global__ void finalGather(int nPaths, glm::vec3* image, PathSegment* iteration
 struct check_completion {
 	__host__ __device__
 	bool operator () (const PathSegment& seg) {
-		return seg.remainingBounces == 0;
+		return seg.remainingBounces > 0;
 	}
 };
+
+struct material_sort {
+	__host__ __device__
+		bool operator() (const ShadeableIntersection& lhs, const ShadeableIntersection& rhs) {
+		return lhs.materialId < rhs.materialId;
+	}
+};
+
 
 void pathtrace(uchar4* pbo, int frame, int iter) {
 	const int traceDepth = hst_scene->state.traceDepth;
@@ -398,30 +469,32 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 
 	// TODO: perform one iteration of path tracing
 
-	if (iter > 0) {
+	if (b_useFirstCache && iter > 0) {
 		// Use cached dev_paths
 		cudaMemcpy(dev_paths, dev_first_paths, pixelcount * sizeof(PathSegment), cudaMemcpyDeviceToDevice);
 	}
 	else { // first iteration
 		generateRayFromCamera << <blocksPerGrid2d, blockSize2d >> > (cam, iter, traceDepth, dev_paths);
 		// Cache camera rays
-		cudaMemcpy(dev_first_paths, dev_paths, pixelcount * sizeof(PathSegment), cudaMemcpyDeviceToDevice);
+		if (b_useFirstCache)
+			cudaMemcpy(dev_first_paths, dev_paths, pixelcount * sizeof(PathSegment), cudaMemcpyDeviceToDevice);
 	}
 	checkCUDAError("generate camera ray");
 
 	int depth = 0;
 	PathSegment* dev_path_end = dev_paths + pixelcount;
-	bool iterationComplete = false;
 
 	int num_paths = dev_path_end - dev_paths;
 
 	// --- PathSegment Tracing Stage ---
 	// Shoot ray into scene, bounce between objects, push shading chunks
 
-	while (!iterationComplete) {
+	while (true) {
 
 		if (b_useCompaction) {
-			PathSegment* new_end = thrust::remove_if(thrust::device, dev_paths, dev_paths + num_paths, check_completion());
+		//	PathSegment* new_end = thrust::remove_if(thrust::device, dev_paths, dev_paths + num_paths, check_completion());
+			PathSegment* new_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, check_completion());
+
 			num_paths = new_end - dev_paths;
 			if (num_paths < 1) break;
 		}
@@ -439,7 +512,7 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 		else 
 		{
 			computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
-				depth
+				  depth
 				, num_paths
 				, dev_paths
 				, dev_geoms
@@ -457,7 +530,6 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 
 		depth++;
 
-
 		// TODO:
 		// --- Shading Stage ---
 		// Shade path segments based on intersections and generate new rays by
@@ -467,13 +539,12 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 	  // TODO: compare between directly shading the path segments and shading
 	  // path segments that have been reshuffled to be contiguous in memory.
 
-		//shadeFakeMaterial << <numblocksPathSegmentTracing, blockSize1d >> > (
-		//	iter,
-		//	num_paths,
-		//	dev_intersections,
-		//	dev_paths,
-		//	dev_materials
-		//	);
+#if SORT_MATERIAL
+		thrust::device_ptr<ShadeableIntersection> intersection_for_mID(dev_intersections);
+		thrust::device_ptr<PathSegment> thrust_paths(dev_paths);
+
+		thrust::sort_by_key(intersection_for_mID, intersection_for_mID + num_paths, thrust_paths, material_sort());
+#endif
 
 		shadeMaterialNaive << <numblocksPathSegmentTracing, blockSize1d >> > (
 			iter,
@@ -487,6 +558,18 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 			break;; // TODO: should be based off stream compaction results.
 	}
 
+#if DIRECT_LIGHT
+	if (num_paths > 1) {
+		dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
+
+		shadeByDirectLight << <numblocksPathSegmentTracing, blockSize1d >> > (
+			num_paths,
+			dev_intersections,
+			dev_paths,
+			dev_materials
+			);
+	}
+#endif // DIRECT_LIGHT
 	num_paths = dev_path_end - dev_paths;
 
 	// Assemble this iteration and apply it to the image
