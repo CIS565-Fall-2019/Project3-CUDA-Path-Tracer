@@ -128,7 +128,7 @@ VELOCITY    0 0 0
 // Sphere
 OBJECT 6
 sphere
-material 4
+material 5
 TRANS       -1 4 -1
 ROTAT       0 0 0
 SCALE       3 3 3

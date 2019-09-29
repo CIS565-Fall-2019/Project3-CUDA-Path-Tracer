@@ -24,10 +24,11 @@
 #define SORT_MATERIAL 0
 #define CACHE_FIRST_BOUNCE 0
 #define ANTI_ALIASING 0
-#define MOTION_BLUR 1
+#define MOTION_BLUR 0
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
+
 void checkCUDAErrorFn(const char *msg, const char *file, int line) {
 #if ERRORCHECK
     cudaDeviceSynchronize();
@@ -511,7 +512,7 @@ struct have_more_bounce
 
 
 
-//thanks for Jie Meng's help
+//thanks for Jie Meng and Hanna's help
 struct material_comparison
 {
     __host__ __device__
@@ -579,6 +580,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
     //   for you.
 
     // TODO: perform one iteration of path tracing
+    //start gpu timer
+    utilityCore::PerformanceTimer timer;
+    timer.startGpuTimer();
 
     //if there is motion blur, we update the transformation of the geometry
 #if MOTION_BLUR
@@ -799,7 +803,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
   // TODO: should be based off stream compaction results, and even shot more rays
   // update the dev_path and num_paths -- if determine no_more_bounce by remainingBounce == -1, then our ray will be termianted and no longer take account
   PathSegment* dev_paths_end_result = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, have_more_bounce());
+  //int previous_paths = num_paths;
   num_paths = dev_paths_end_result - dev_paths;
+  //std::cout << previous_paths - num_paths << std::endl;
   if (depth >= traceDepth || num_paths <= 0)
   {
       iterationComplete = true;
@@ -812,7 +818,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
     dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
     finalGather << <numBlocksPixels, blockSize1d >> > (num_paths, dev_image, dev_paths);
 #endif
-
+    //std::cout << std::endl;
+    timer.endGpuTimer();
+    utilityCore::printElapsedTime(timer.getGpuElapsedTimeForPreviousOperation(), "With stream compaction");
 
     ///////////////////////////////////////////////////////////////////////////
 

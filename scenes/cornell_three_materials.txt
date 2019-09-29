@@ -58,6 +58,16 @@ REFR        0
 REFRIOR     0
 EMITTANCE   0
 
+// transmissive white
+MATERIAL 6
+RGB         .98 .98 .98
+SPECEX      0
+SPECRGB     .98 .98 .98
+REFL        0
+REFR        1
+REFRIOR     1.55
+EMITTANCE   0
+
 
 // Camera
 CAMERA
@@ -66,7 +76,7 @@ FOVY        45
 ITERATIONS  5000
 DEPTH       8
 FILE        cornell
-EYE         0.0 5 10.5
+EYE         0.0 3 8
 LOOKAT      0 5 0
 UP          0 1 0
 
@@ -119,18 +129,26 @@ TRANS       5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
 
-// Sphere
+// reflective Sphere
 OBJECT 6
 sphere
 material 4
-TRANS       -1 5 -1
+TRANS       -0.5 6 1
 ROTAT       0 0 0
 SCALE       3 3 3
 
-// Cube
+// refractive sphere
 OBJECT 7
-cube
+sphere
+material 6
+TRANS       1 3 1
+ROTAT       0 0 0
+SCALE       3 3 3
+
+// diffuse sphere
+OBJECT 8
+sphere
 material 5
-TRANS       2 2 1
-ROTAT       0 45 0
-SCALE       3 4 3
+TRANS       -2 3 1
+ROTAT       0 0 0
+SCALE       3 3 3

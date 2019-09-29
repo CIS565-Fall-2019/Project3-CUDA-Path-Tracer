@@ -66,7 +66,7 @@ FOVY        45
 ITERATIONS  5000
 DEPTH       8
 FILE        cornell
-EYE         0.0 5 10.5
+EYE         1 2 4
 LOOKAT      0 5 0
 UP          0 1 0
 
@@ -77,7 +77,7 @@ cube
 material 0
 TRANS       0 10 0
 ROTAT       0 0 0
-SCALE       3 .3 3
+SCALE       2 .3 2
 
 // Floor
 OBJECT 1
@@ -98,7 +98,7 @@ SCALE       .01 10 10
 // Back wall
 OBJECT 3
 cube
-material 1
+material 4
 TRANS       0 5 -5
 ROTAT       0 90 0
 SCALE       .01 10 10
@@ -123,7 +123,7 @@ SCALE       .01 10 10
 OBJECT 6
 sphere
 material 4
-TRANS       -1 5 -1
+TRANS       -1 6 -1
 ROTAT       0 0 0
 SCALE       3 3 3
 
@@ -131,6 +131,14 @@ SCALE       3 3 3
 OBJECT 7
 cube
 material 5
-TRANS       2 2 1
+TRANS       -1 2.5 -1
 ROTAT       0 45 0
-SCALE       3 4 3
+SCALE       2 5 2
+
+// Front wall
+OBJECT 8
+cube
+material 4
+TRANS       0 5 5
+ROTAT       0 -90 0
+SCALE       .01 10 10
