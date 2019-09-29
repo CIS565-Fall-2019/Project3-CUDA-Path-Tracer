@@ -23,6 +23,7 @@ struct Triangle {
 	glm::vec3 positions[3];
 	//glm::vec3 normals[3];
 	glm::vec3 normal;
+	glm::vec2 uvs[3];
 };
 
 struct Geom {
@@ -36,6 +37,8 @@ struct Geom {
     glm::mat4 invTranspose;
 	int trianglesStart;
 	int trianglesEnd;
+	glm::vec3 maxPos;
+	glm::vec3 minPos;
 };
 
 struct Material {

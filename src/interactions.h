@@ -1,6 +1,7 @@
 #pragma once
 
 #include "intersections.h"
+#include <math.h>
 
 // CHECKITOUT
 /**
@@ -41,6 +42,136 @@ glm::vec3 calculateRandomDirectionInHemisphere(
         + sin(around) * over * perpendicularDirection2;
 }
 
+__host__ __device__ void diffuseReflection(PathSegment& pathSegment, const glm::vec3& normal, const glm::vec3& intersect,
+	const Material& m, thrust::default_random_engine &rng) {
+	pathSegment.color *= m.color;// / float(1.0 - m.hasReflective - m.hasRefractive);
+	pathSegment.ray.direction = glm::normalize(calculateRandomDirectionInHemisphere(normal, rng));
+	pathSegment.ray.origin = intersect + (normal * EPSILON);
+}
+
+__host__ __device__ void specularReflection(PathSegment& pathSegment, const glm::vec3& normal, const glm::vec3& intersect,
+	const Material& m) {
+	pathSegment.color *= m.specular.color;// / m.hasReflective;
+	pathSegment.ray.direction = glm::normalize(glm::reflect(pathSegment.ray.direction, normal));
+	pathSegment.ray.origin = intersect + (normal * EPSILON);
+}
+
+// fresnel for a dielectric material
+__host__ __device__ float fresnel(const PathSegment& pathSegment, const glm::vec3& normal, const Material& m) {
+	float cosThetaI = glm::clamp(glm::dot(-pathSegment.ray.direction, normal), -1.f, 1.f);
+
+	bool entering = cosThetaI > 0.f;
+	float etaI = 1.f;
+	float etaT = m.indexOfRefraction;
+
+	if (!entering) {
+		cosThetaI = glm::abs(cosThetaI);
+		float tempEta = etaI;
+		etaI = etaT;
+		etaT = tempEta;
+	}
+
+	float sinThetaI = glm::sqrt(glm::max(0.f, 1.f - cosThetaI * cosThetaI));
+	float sinThetaT = etaI / etaT * sinThetaI;
+
+	if (sinThetaT >= 1.f) {
+		return 1.f;// / glm::abs(cosThetaI);
+	}
+
+	float cosThetaT = glm::sqrt(glm::max(0.f, 1.f - sinThetaT * sinThetaT));
+
+	float r_parallel = ((etaT * cosThetaI) - (etaI * cosThetaT)) / ((etaT * cosThetaI) + (etaI * cosThetaT));
+	float r_perp = ((etaI * cosThetaI) - (etaT * cosThetaT)) / ((etaI * cosThetaI) + (etaT * cosThetaT));
+
+	return ((r_parallel * r_parallel + r_perp * r_perp) / 2.f) / glm::abs(cosThetaI);
+}
+
+__host__ __device__ void specularRefraction(PathSegment& pathSegment, const glm::vec3& normal, const glm::vec3& intersect, 
+	const Material& m) {
+
+	glm::vec3 inDir = glm::normalize(pathSegment.ray.direction);
+	glm::vec3 nor = glm::normalize(normal);
+	float eta = m.indexOfRefraction;
+
+	if (glm::dot(inDir, nor) < 0) {
+		eta = 1.f / eta;
+	}
+	else {
+		nor = -nor;
+	}
+
+	// check for total internal reflection
+	if (glm::length(pathSegment.ray.direction) < 0.001f) {
+		pathSegment.ray.direction = glm::normalize(glm::reflect(inDir, nor));
+	}
+	else {
+		pathSegment.ray.direction = glm::normalize(glm::refract(inDir, nor, eta));
+
+	}
+
+	pathSegment.color *= m.specular.color;
+	pathSegment.ray.origin = intersect + (nor * EPSILON);
+
+
+
+}
+
+__host__ __device__ void glass(PathSegment& pathSegment, const glm::vec3& normal, const glm::vec3& intersect, 
+	const Material& m, thrust::default_random_engine &rng) {
+	thrust::uniform_real_distribution<float> u01(0, 1);
+
+	glm::vec3 newColor(0.f);
+	glm::vec3 newDir(1.f);
+	/*
+	float cosTheta = glm::dot(pathSegment.ray.direction, normal);
+	bool entering = cosTheta < 0.f;
+	glm::vec3 newNormal = entering ? normal : -normal;
+	float eta = entering ? (1.f / m.indexOfRefraction) : m.indexOfRefraction;
+	glm::vec3 refractDir = glm::refract(pathSegment.ray.direction, newNormal, eta);
+	glm::vec3 reflectDir = glm::reflect(pathSegment.ray.direction, normal);
+
+	newDir = refractDir;
+
+	// check for total internal reflection
+	if (glm::length(newDir) < 0.0001f) {
+		pathSegment.color *= 0.f;
+		newDir = reflectDir;
+	}*/
+
+	float cosTheta = glm::dot(pathSegment.ray.direction, normal);
+	bool entering = cosTheta < 0.f;
+	glm::vec3 newNormal = entering ? normal : -normal;
+	float eta = entering ? (1.f / m.indexOfRefraction) : m.indexOfRefraction;
+	//float eta = entering ? m.indexOfRefraction : (1.f / m.indexOfRefraction);
+	glm::vec3 refractDir = glm::refract(pathSegment.ray.direction, newNormal, eta);
+	glm::vec3 reflectDir = glm::reflect(pathSegment.ray.direction, normal);
+
+	newDir = refractDir;
+
+	// check for total internal reflection
+	if (glm::length(newDir) < 0.0001f) {
+		pathSegment.color *= 0.f;
+		//newDir = reflectDir;
+	}
+
+	//float ft = (1.0 - fresnel(pathSegment, normal, m));
+
+	// schlick's approximation
+	float num = entering ? (1.f - m.indexOfRefraction) : m.indexOfRefraction - 1.f;
+	float R_0 = (1.f - m.indexOfRefraction) / (1.0 + m.indexOfRefraction);
+	//float R_0 = num / (1.0 + m.indexOfRefraction);
+	R_0 = R_0 * R_0; // squared
+	float R_theta = R_0 + (1.0 - R_0) * powf(1.f - glm::abs(cosTheta), 5.f);
+
+	//newDir = R_theta < u01(rng) ? reflectDir : newDir;
+
+	pathSegment.color *= m.specular.color;
+	pathSegment.ray.direction = glm::normalize(newDir);
+	pathSegment.ray.origin = intersect + (newNormal * EPSILON);
+
+	//pathSegment.color *= m.color;
+}
+
 /**
  * Scatter a ray with some probabilities according to the material properties.
  * For example, a diffuse surface scatters in a cosine-weighted hemisphere.
@@ -48,23 +179,8 @@ glm::vec3 calculateRandomDirectionInHemisphere(
  * In order to apply multiple effects to one surface, probabilistically choose
  * between them.
  * 
- * The visual effect you want is to straight-up add the diffuse and specular
- * components. You can do this in a few ways. This logic also applies to
- * combining other types of materials (such as refractive).
- * 
- * - Always take an even (50/50) split between a each effect (a diffuse bounce
- *   and a specular bounce), but divide the resulting color of either branch
- *   by its probability (0.5), to counteract the chance (0.5) of the branch
- *   being taken.
- *   - This way is inefficient, but serves as a good starting point - it
- *     converges slowly, especially for pure-diffuse or pure-specular.
- * - Pick the split based on the intensity of each material color, and divide
- *   branch result by that branch's probability (whatever probability you use).
- *
  * This method applies its changes to the Ray parameter `ray` in place.
  * It also modifies the color `color` of the ray in place.
- *
- * You may need to change the parameter list for your purposes!
  */
 __host__ __device__ void scatterRay(PathSegment & pathSegment, glm::vec3 intersect, 
 	glm::vec3 normal, const Material &m, thrust::default_random_engine &rng) {
@@ -75,46 +191,36 @@ __host__ __device__ void scatterRay(PathSegment & pathSegment, glm::vec3 interse
 	thrust::uniform_real_distribution<float> u01(0, 1);
 	float probability = u01(rng);
 
-	glm::vec3 newDir(0.f);
-	glm::vec3 newColor(1.f);
-
 	// assume m.hasReflective + m.hasRefractive + probability of being diffuse = 1
 	if (probability < m.hasReflective) { 
-		// reflective
+		// specular reflective
 		// new direction is old direction of ray reflected across surface normal
-		newDir = glm::normalize(glm::reflect(pathSegment.ray.direction, normal));
-		newColor = m.specular.color / m.hasReflective;
+		specularReflection(pathSegment, normal, intersect, m);
 	}
-	else if (probability < m.hasRefractive) {
-		// refractive
-		// TODO: I don't remember how to do refractive
-		newColor = m.color / float(1.0 - m.hasReflective - m.hasRefractive);
+	else if (probability < m.hasRefractive + m.hasReflective) {
+		//specularRefraction(pathSegment, normal, intersect, m);
+
+		float f = fresnel(pathSegment, normal, m);
+		
+		if (u01(rng) < f) {
+			specularReflection(pathSegment, normal, intersect, m);
+			//specularRefraction(pathSegment, normal, intersect, m);
+		}
+		else {
+			//specularReflection(pathSegment, normal, intersect, m);
+			specularRefraction(pathSegment, normal, intersect, m);
+		}
 	}
 	else {
 		// diffuse
-		newDir = glm::normalize(calculateRandomDirectionInHemisphere(normal, rng));
-		newColor = m.color / float(1.0 - m.hasReflective - m.hasRefractive);
+		diffuseReflection(pathSegment, normal, intersect, m, rng);
 	}
 
 	// update color
-	float lambertian = glm::abs((glm::dot(glm::normalize(normal), glm::normalize(pathSegment.ray.direction)))); // uhh should this be old or new direction...
-	pathSegment.color *= newColor;// *lambertian;// *pathSegment.color;
+	//float lambertian = glm::abs((glm::dot(glm::normalize(normal), glm::normalize(pathSegment.ray.direction)))); // uhh should this be old or new direction...
+	//pathSegment.color *= newColor;// *lambertian;
 
 	// update ray
-	pathSegment.ray.direction = glm::normalize(newDir);
-	pathSegment.ray.origin = intersect + (normal * EPSILON);
+	//pathSegment.ray.direction = glm::normalize(newDir);
+	//pathSegment.ray.origin = intersect + (normal * EPSILON);
 }
-
-/*
-struct Material {
-	glm::vec3 color;
-	struct {
-		float exponent;
-		glm::vec3 color;
-	} specular;
-	float hasReflective;
-	float hasRefractive;
-	float indexOfRefraction;
-	float emittance;
-};
-*/

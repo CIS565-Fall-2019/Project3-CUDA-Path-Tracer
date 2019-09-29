@@ -60,14 +60,29 @@ int Scene::loadMesh(string filename, Geom& geom) {
 		for (int j = 0; j < mesh.primitives.size(); j++) {
 			tinygltf::Primitive& prim = mesh.primitives[i];
 
+			// positions
 			const tinygltf::Accessor& posAccessor = model.accessors[prim.attributes["POSITION"]];
 			const tinygltf::BufferView& posBufferView = model.bufferViews[posAccessor.bufferView];
 			const tinygltf::Buffer& posBuffer = model.buffers[posBufferView.buffer];
 			const float* positions = reinterpret_cast<const float*>(&posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset]);
-			//for (size_t i = 0; i < posAccessor.count; i++) {
-				//glm::vec3 pos = glm::vec3(positions[i * 3 + 0], positions[i * 3 + 1], positions[i * 3 + 2]);
-			//}
 
+			// get per-component min and max pos for bounding box of geom
+			geom.minPos = glm::vec3(posAccessor.minValues[0], posAccessor.minValues[1], posAccessor.minValues[2]);
+			geom.maxPos = glm::vec3(posAccessor.maxValues[0], posAccessor.maxValues[1], posAccessor.maxValues[2]);
+
+			// normals
+			const tinygltf::Accessor& norAccessor = model.accessors[prim.attributes["NORMAL"]];
+			const tinygltf::BufferView& norBufferView = model.bufferViews[norAccessor.bufferView];
+			const tinygltf::Buffer& norBuffer = model.buffers[norBufferView.buffer];
+			const float* normals = reinterpret_cast<const float*>(&norBuffer.data[norBufferView.byteOffset + norAccessor.byteOffset]);
+
+			// uvs
+			const tinygltf::Accessor& uvAccessor = model.accessors[prim.attributes["TEXCOORD_0"]];
+			const tinygltf::BufferView& uvBufferView = model.bufferViews[uvAccessor.bufferView];
+			const tinygltf::Buffer& uvBuffer = model.buffers[uvBufferView.buffer];
+			const float* uvs = reinterpret_cast<const float*>(&uvBuffer.data[uvBufferView.byteOffset + uvAccessor.byteOffset]);
+			
+			// indices
 			geom.trianglesStart = currTriCount;
 			const tinygltf::Accessor& indicesAccessor = model.accessors[prim.indices];
 			const tinygltf::BufferView& indicesBufferView = model.bufferViews[indicesAccessor.bufferView];
@@ -98,26 +113,32 @@ int Scene::loadMesh(string filename, Geom& geom) {
 				int index0 = indices[i];
 				int index1 = indices[i + 1];
 				int index2 = indices[i + 2];
+
+				// positions
 				glm::vec3 pos0 = glm::vec3(positions[(index0 * 3) + 0], positions[(index0 * 3) + 1], positions[(index0 * 3) + 2]);
 				glm::vec3 pos1 = glm::vec3(positions[(index1 * 3) + 0], positions[(index1 * 3) + 1], positions[(index1 * 3) + 2]);
 				glm::vec3 pos2 = glm::vec3(positions[(index2 * 3) + 0], positions[(index2 * 3) + 1], positions[(index2 * 3) + 2]);
 				tri.positions[0] = pos0;
 				tri.positions[1] = pos1;
 				tri.positions[2] = pos2;
+
+				// normals
 				tri.normal = glm::normalize(glm::cross(pos1 - pos0, pos2 - pos1));
+
+				// uvs
+				glm::vec2 uv1 = glm::vec2(positions[(index0 * 2) + 0], positions[(index0 * 2) + 1]);
+				glm::vec2 uv2 = glm::vec2(positions[(index1 * 2) + 0], positions[(index1 * 2) + 1]);
+				glm::vec2 uv3 = glm::vec2(positions[(index2 * 2) + 0], positions[(index2 * 2) + 1]);
+				tri.uvs[0] = uv1;
+				tri.uvs[1] = uv2;
+				tri.uvs[2] = uv3;
+
 				triangles.push_back(tri);
 				currTriCount++;
 		
 			}
 			geom.trianglesEnd = currTriCount;
-	
-
-
-			// TODO: per-vertex normals
-			//const tinygltf::Accessor& norAccessor = model.accessors[prim.attributes["NORMAL"]];
-			//const tinygltf::BufferView& norBufferView = model.bufferViews[norAccessor.bufferView];
-			//const tinygltf::Buffer& norBuffer = model.buffers[norBufferView.buffer];
-			//const float* normals = reinterpret_cast<const float*>(&norBuffer.data[norBufferView.byteOffset + norAccessor.byteOffset]);
+				
 
 		}
 	}

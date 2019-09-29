@@ -110,11 +110,20 @@ TRANS       5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
 
-// Sphere
+// fish1
 OBJECT 6
 mesh
 material 1
-TRANS       0 4 0
+TRANS       0 5 0
 ROTAT       0 90 0
 SCALE       9 9 9
+FILENAME ../meshes/BarramundiFish.gltf
+
+// fish2
+OBJECT 7
+mesh
+material 1
+TRANS       -3 2 0
+ROTAT       0 90 -20
+SCALE       8 8 8
 FILENAME ../meshes/BarramundiFish.gltf

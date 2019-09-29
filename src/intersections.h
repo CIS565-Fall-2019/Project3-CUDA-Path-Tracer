@@ -166,6 +166,57 @@ __host__ __device__ float meshIntersectionTest(Geom mesh, Ray r,
 
 #if BOUNDING_VOLUME
 	// TODO: compare ray with bounding volume
+	float min_t = (mesh.minPos.x - ro.x) / rd.x;
+	float max_t = (mesh.maxPos.x - ro.x) / rd.x;
+
+	if (min_t > max_t) {
+		float temp = min_t;
+		min_t = max_t;
+		max_t = temp;
+	}
+
+	float min_t_y = (mesh.minPos.y - ro.y) / rd.y;
+	float max_t_y = (mesh.maxPos.y - ro.y) / rd.y;
+
+	if (min_t_y > max_t_y) {
+		float temp = min_t_y;
+		min_t_y = max_t_y;
+		max_t_y = temp;
+	}
+
+	if (min_t > max_t_y || min_t_y > max_t) {
+		return -1;
+	}
+
+	if (min_t_y < min_t) {
+		min_t = min_t_y;
+	}
+
+	if (max_t_y > max_t) {
+		max_t = max_t_y;
+	}
+
+	float min_t_z = (mesh.minPos.z - ro.z) / rd.z;
+	float max_t_z = (mesh.maxPos.z - ro.z) / rd.z;
+
+	if (min_t_z > max_t_z) {
+		float temp = min_t_z;
+		min_t_z = max_t_z;
+		max_t_z = temp;
+	}
+
+	if (min_t > max_t_z || min_t_z > max_t) {
+		return -1;
+	}
+
+	if (min_t_z < min_t) {
+		min_t = min_t_z;
+	}
+
+	if (max_t_z > max_t) {
+		max_t = max_t_z;
+	}
+
 	
 #endif // #if BOUNDING_VOLUME
 
