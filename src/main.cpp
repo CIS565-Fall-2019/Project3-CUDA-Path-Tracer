@@ -147,6 +147,7 @@ void runCuda() {
         // unmap buffer object
         cudaGLUnmapBufferObject(pbo);
     } else {
+		renderState->image = runOIDN(renderState->image, renderState->camera.resolution.x, renderState->camera.resolution.y);
         saveImage();
         pathtraceFree(scene);
         cudaDeviceReset();

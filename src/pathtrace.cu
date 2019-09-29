@@ -18,9 +18,9 @@
 #include "intersections.h"
 #include "interactions.h"
 
+#include <OpenImageDenoise/oidn.h>
+
 #define ERRORCHECK 1
-
-
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -506,6 +506,90 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 
 	checkCUDAError("pathtrace");
 }
+
+#if USING_OIDN
+
+/**
+Important! does a malloc. Must free afterwards
+*/
+float* makeImageBuffer(gvec3_v image, int width, int height) {
+
+	float* retval = (float*) malloc(width * height * 3 * sizeof(float));
+
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			int index = (i * width) + j;
+			retval[3 * index + 0] = image[index].x;
+			retval[3 * index + 1] = image[index].y;
+			retval[3 * index + 2] = image[index].z;
+		}
+	}
+
+	return retval;
+
+}//makeImageBuffer
+
+gvec3_v vectorFromOutBuffer(float* outBuffer, int width, int height) {
+
+	gvec3_v retval = gvec3_v();
+
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			int index = (i * width) + j;
+			retval.push_back( gvec3(outBuffer[3 * index + 0],
+									outBuffer[3 * index + 1],
+									outBuffer[3 * index + 2]));
+		}
+	}
+
+	return retval;
+}//vectorFromOutBuffer
+
+gvec3_v runOIDN(gvec3_v image, int width, int height) {
+
+	//make necessary buffers
+	float* imageBuffer = makeImageBuffer(image, width, height);
+	float* outBuffer = (float*)malloc(width * height * 3 * sizeof(float));
+
+	//Runs the denoiser
+	OIDNDevice device = oidnNewDevice(OIDN_DEVICE_TYPE_DEFAULT);
+	oidnCommitDevice(device);
+	OIDNFilter filter = oidnNewFilter(device, "RT"); // generic ray tracing filter
+
+
+	oidnSetSharedFilterImage(filter, "color", imageBuffer,
+		OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
+	oidnSetSharedFilterImage(filter, "output", outBuffer,
+		OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
+	oidnCommitFilter(filter);
+
+	// Filter the image
+	oidnExecuteFilter(filter);
+
+	// Check for errors
+	const char* errorMessage;
+	if (oidnGetDeviceError(device, &errorMessage) != OIDN_ERROR_NONE)
+		printf("Error: %s\n", errorMessage);
+
+	//transfer raw buffer into a gvec3_v
+	gvec3_v retval = vectorFromOutBuffer(outBuffer, width, height);
+
+
+	//cleanup
+	oidnReleaseFilter(filter);
+	oidnReleaseDevice(device);
+
+
+	//free buffers
+	free(outBuffer);
+	free(imageBuffer);
+
+
+	return retval;
+}
+
+#endif
+
 cudaArray* Texture::putOntoDevice(int textureIndex) {
 	cudaChannelFormatDesc f4 = cudaCreateChannelDesc<float4>();
 	cudaExtent extents = make_cudaExtent(width, height, 4);

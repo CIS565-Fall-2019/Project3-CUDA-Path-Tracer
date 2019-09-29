@@ -15,6 +15,7 @@
 #define SORTING_MATERIAL 1//pretty sure this fucks performance
 #define CACHING_FIRST 1
 #define ANTIALIASING 0
+#define USING_OIDN 1
 
 #define TEX_COLOR 1
 #define TEX_EMISSIVE 1

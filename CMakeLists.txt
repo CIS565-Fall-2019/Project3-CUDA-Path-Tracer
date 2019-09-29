@@ -62,6 +62,8 @@ set(GLM_ROOT_DIR "external")
 find_package(GLM REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
 
+find_package(TBB REQUIRED)
+
 include_directories(external/tinyobjloader)
 include_directories(external/gltfraytracexample)
 include_directories(external/oidn/include)
