@@ -15,12 +15,15 @@
 #include "interactions.h"
 #include <glm/gtc/matrix_inverse.hpp>
 #include<glm/gtc/matrix_transform.hpp>
+#include<chrono>
+
 
 #define ERRORCHECK 1
 #define MATERIAL_SORT 0
 #define STREAM_COMPACT 1
 #define CACHE_BOUNCE 1
 #define MOTION_BLUR 0
+#define ANTI_ALIAS 0
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -146,11 +149,19 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		// TODO: implement antialiasing by jittering the ray
 		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, traceDepth);
 		thrust::uniform_real_distribution<float> dist(0, 1);
-		segment.ray.direction = glm::normalize(cam.view
-			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f + dist(rng) )
-			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f + dist(rng))
+		if (ANTI_ALIAS) {
+			segment.ray.direction = glm::normalize(cam.view
+				- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f + dist(rng))
+				- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f + dist(rng))
 			);
-
+		}
+		else {
+			segment.ray.direction = glm::normalize(cam.view
+				- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f)
+				- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f)
+			);
+		}
+		
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
 	}
@@ -399,8 +410,11 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
   bool iterationComplete = false;
   bool firstIteration = true;
+  auto start = std::chrono::high_resolution_clock::now();
+
   dim3 numblocksPathSegmentTracing = (hst_scene->geoms.size() + blockSize1d - 1) / blockSize1d;
-  motionBlur << <numblocksPathSegmentTracing, blockSize1d >> > (dev_geoms, hst_scene->geoms.size(), 0.1);
+  if(MOTION_BLUR)
+	motionBlur << <numblocksPathSegmentTracing, blockSize1d >> > (dev_geoms, hst_scene->geoms.size(), 0.1);
 	while (!iterationComplete) {
 
 	// clean shading chunks
@@ -491,6 +505,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
   iterationComplete = (depth == traceDepth);
 	
 }
+	
+
   // Assemble this iteration and apply it to the image
   dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
 	finalGather<<<numBlocksPixels, blockSize1d>>>(num_paths, dev_image, dev_paths);
