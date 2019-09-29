@@ -43,9 +43,9 @@ MATERIAL 4
 RGB         .30 .95 .30
 SPECEX      0
 SPECRGB     .98 .98 .98
-REFL        1
-REFR        0
-REFRIOR     0
+REFL        0
+REFR        1
+REFRIOR     1.33
 EMITTANCE   0
 
 // Camera
@@ -109,12 +109,12 @@ ROTAT       0 0 0
 SCALE       .01 10 10
 
 // Sphere
-//OBJECT 6
-//sphere
-//material 4
-//TRANS       -1 7 -1
-//ROTAT       60 30 0
-//SCALE       2 2 2
+OBJECT 6
+sphere
+material 4
+TRANS       -1 7 -1
+ROTAT       60 30 0
+SCALE       3 3 3
 
 // Small Cube
 //OBJECT 7
@@ -125,12 +125,12 @@ SCALE       .01 10 10
 //SCALE       2 2 2
 
 // Small Cube
-OBJECT 6
-mesh		../objects/PikachuOBJ.obj
-material 4
-TRANS       2 2 -1
-ROTAT       0 0 0
-SCALE       2 2 2
+//OBJECT 6
+//mesh		../objects/PikachuOBJ.obj
+//material 4
+//TRANS       2 2 -1
+//ROTAT       0 0 0
+//SCALE       2 2 2
 
 //OBJECT 7
 //cube

@@ -32,6 +32,7 @@ const int SORT_BY_MATERIAL = 0;
 const int CACHE__FIRST_BOUNCE = 0;
 const int MOTION_BLUR = 0;
 const int STREAM_COMPACT_SHARED = 0;
+const int MESH_LOADING = 0;
 
 const int ANTI_ALIASING = 1;
 
@@ -267,7 +268,7 @@ __global__ void computeIntersections(
 				}
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
-			else if (geom.type == MESH) {
+			else if (geom.type == MESH && MESH_LOADING) {
 				//Loop over all triangles
 				glm::vec3 inter;
 				glm::vec3 nor;
