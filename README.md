@@ -211,7 +211,7 @@ https://computergraphics.stackexchange.com/questions/2482/choosing-reflection-or
 https://github.com/ssloy/tinyraytracer/wiki/Part-1:-understandable-raytracing
 	in general helped with the basics of fresnels, reflection, refraction
 
-Ziad Our TA for help with motion blur
+Ziad and Hannah, Our TA's for help with motion blur
 
 https://learning.oreilly.com/library/view/physically-based-rendering/9780128007099/B9780128006450500130_2.xhtml
 	Help with importance sampling
