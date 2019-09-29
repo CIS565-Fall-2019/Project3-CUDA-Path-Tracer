@@ -105,7 +105,7 @@ ROTAT       0 0 0
 SCALE       .3 3 3
 VEL 0 0 0
 
-// Sphere
+// Cube
 OBJECT 5
 cube
 material 4

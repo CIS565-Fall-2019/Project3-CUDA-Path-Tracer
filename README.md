@@ -67,8 +67,10 @@ Fresnel's effect is the idea that even a refractive material has a reflective qu
 | <p align="center"> Transparent object with Fresnel's effect Off </b></p> | <p align="center"> <b>Transparent object with Fresnel's effect On </b></p> |
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | ![](./img/fresnels/refractive_no_fresnel.png)                | ![](./img/fresnels/refractive_fresnels.png)                  |
+| <p align="center"> Diffused object </b></p>                  | <p align="center"> Reflective object </b></p>                |
+| <img src="./img/fresnels/diffused.png" title="Diffuse reference"/> | <img src="./img/fresnels/reflective.png" title="reflective reference"/> |
 
-<img src="./img/fresnels/diffused.png" title="Diffuse reference" style="zoom: 50%;" />
+
 
 ### Meshes
 
