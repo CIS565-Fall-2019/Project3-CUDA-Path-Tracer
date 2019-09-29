@@ -1,0 +1,188 @@
+// Diffuse White
+MATERIAL 0
+RGB         1 1 1
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE  0
+
+// Emissive material (Sun)
+MATERIAL 1
+RGB         0.9921 0.721 0.0745//0.9921 0.721 0.0745
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   10
+
+// Emissive material (Mercury)
+MATERIAL 2
+RGB         0.8588 0.807 0.7921
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Emissive material (Venus)
+MATERIAL 3
+RGB         0.545 0.490 0.509
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Emissive material (Earth)
+MATERIAL 4
+RGB         0.882 0.663 0.373
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Emissive material (Mars)
+MATERIAL 5
+RGB         0.5765 0.2824 0.2196
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Emissive material (Jupiter)
+MATERIAL 6
+RGB         0.2509 0.266 0.211
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Emissive material (Saturn)
+MATERIAL 7
+RGB         0.7725 0.6705 0.4313
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Emissive material (Uranus)
+MATERIAL 8
+RGB         0.8352 0.9843 0.9882
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Emissive material (Neptune)
+MATERIAL 9
+RGB         0.4509 0.6745 0.6745
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+
+
+// Camera
+CAMERA
+RES         2560 1920
+FOVY        45
+ITERATIONS  5000
+DEPTH       2
+FILE        cornell
+EYE         0.0 5 10.5
+LOOKAT      0 5 0
+UP          0 1 0
+RADIUS		0.9
+FOCAL		11.0
+
+// Sun
+OBJECT 0
+sphere
+material 1
+TRANS       0 5 0
+ROTAT       0 0 0
+SCALE       2 2 2
+
+// Mercury
+OBJECT 1
+sphere
+material 2
+TRANS       -2 5 0
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Venus
+OBJECT 2
+sphere
+material 3
+TRANS       -6.9 5 -2.9
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Earth
+OBJECT 3
+sphere
+material 4
+TRANS       -2.86 5 -2.7
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Mars
+OBJECT 4
+sphere
+material 5
+TRANS       -2.8 5 4
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Jupiter
+OBJECT 5
+sphere
+material 6
+TRANS       -0.9 5 5.9
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Saturn
+OBJECT 6
+sphere
+material 7
+TRANS       -6 5 3.5
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Uranus
+OBJECT 7
+sphere
+material 8
+TRANS       6.8 5 -4.05
+ROTAT       0 0 0
+SCALE       1 1 1
+
+// Neptune
+OBJECT 8
+sphere
+material 9
+TRANS       -2.7 5 -8.5
+ROTAT       0 0 0
+SCALE       1 1 1
+
+//x y z
