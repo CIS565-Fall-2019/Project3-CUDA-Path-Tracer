@@ -21,11 +21,13 @@
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
 
-#define STREAM_COMPACTION 1
-#define SORT_BY_MATERIAL 0
-#define CACHE_FIRST_BOUNCE 1
+#define TIME_ITER 1
 
-#define DIRECT_LIGHTING 1
+#define STREAM_COMPACTION 0
+#define SORT_BY_MATERIAL 1
+#define CACHE_FIRST_BOUNCE 0
+
+#define DIRECT_LIGHTING 0
 
 void checkCUDAErrorFn(const char *msg, const char *file, int line) {
 #if ERRORCHECK
@@ -46,6 +48,14 @@ void checkCUDAErrorFn(const char *msg, const char *file, int line) {
     exit(EXIT_FAILURE);
 #endif
 }
+
+#if TIME_ITER
+PerformanceTimer& timer()
+{
+    static PerformanceTimer timer;
+    return timer;
+}
+#endif
 
 __host__ __device__
 thrust::default_random_engine makeSeededRandomEngine(int iter, int index, int depth) {
@@ -371,7 +381,7 @@ __global__ void shadeSceneDirectLighting(
         ShadeableIntersection intersection = shadeableIntersections[idx];
         if (pathSegments[idx].remainingBounces <= 0) { return; }
 
-        if (intersection.t > 0.0f) { // if the intersection exists...
+        if (intersection.t > 0.0f && num_lights > 0) { // if the intersection exists...
             thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, 0);
 
             Material material = materials[intersection.materialId];
@@ -472,7 +482,7 @@ struct isTerm
  * Wrapper for the __global__ call that sets up the kernel calls and does a ton
  * of memory management
  */
-void pathtrace(uchar4 *pbo, int frame, int iter) {
+float pathtrace(uchar4 *pbo, int frame, int iter) {
     const int traceDepth = hst_scene->state.traceDepth;
     const Camera &cam = hst_scene->state.camera;
     const int pixelcount = cam.resolution.x * cam.resolution.y;
@@ -519,6 +529,10 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
     //     since some shaders you write may also cause a path to terminate.
     // * Finally, add this iteration's results to the image. This has been done
     //   for you.
+
+    #if TIME_ITER
+    timer().startCpuTimer();
+    #endif
 
 	generateRayFromCamera <<<blocksPerGrid2d, blockSize2d >>>(cam, iter, traceDepth, dev_paths);
 	checkCUDAError("generate camera ray");
@@ -617,6 +631,10 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
         #endif
 	}
 
+    #if TIME_ITER
+        timer().endCpuTimer();
+    #endif
+
     num_paths = dev_path_end - dev_paths;
 
     // Assemble this iteration and apply it to the image
@@ -633,4 +651,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
             pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
 
     checkCUDAError("pathtrace");
+    #if TIME_ITER
+        return timer().getCpuElapsedTimeForPreviousOperation();
+    #else
+        return -1.f
+    #endif
 }

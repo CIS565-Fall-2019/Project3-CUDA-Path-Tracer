@@ -22,6 +22,7 @@ glm::vec3 ogLookAt; // for recentering the camera
 Scene *scene;
 RenderState *renderState;
 int iteration;
+float t;
 
 int width;
 int height;
@@ -101,6 +102,7 @@ void saveImage() {
 void runCuda() {
     if (camchanged) {
         iteration = 0;
+        t = 0.f;
         Camera &cam = renderState->camera;
         cameraPosition.x = zoom * sin(phi) * sin(theta);
         cameraPosition.y = zoom * cos(theta);
@@ -125,6 +127,7 @@ void runCuda() {
     if (iteration == 0) {
         pathtraceFree();
         pathtraceInit(scene);
+        t = 0.f;
     }
 
     if (iteration < renderState->iterations) {
@@ -134,7 +137,7 @@ void runCuda() {
 
         // execute the kernel
         int frame = 0;
-        pathtrace(pbo_dptr, frame, iteration);
+        t += pathtrace(pbo_dptr, frame, iteration);
 
         // unmap buffer object
         cudaGLUnmapBufferObject(pbo);
@@ -143,6 +146,11 @@ void runCuda() {
         pathtraceFree();
         cudaDeviceReset();
         exit(EXIT_SUCCESS);
+    }
+
+    if (iteration % 10 == 1)
+    {
+        printf("Average up to Iteration %d: %f ms\n", iteration, t/float(iteration));
     }
 }
 
