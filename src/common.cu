@@ -27,11 +27,11 @@ namespace StreamCompaction {
 			int tid = (blockIdx.x * blockDim.x) + threadIdx.x;
 			if (tid >= n) return;
 			
-			if(idata[tid]!=0){
-				bools[tid] = 1;
+			if(idata[tid]==-1){
+				bools[tid] = 0;
 			}
 			else {
-				bools[tid] = 0;
+				bools[tid] = 1;
 			}
 		}
 

@@ -301,7 +301,7 @@ namespace StreamCompaction {
 
 			//fullBlocksPerGrid = 4;
 
-			kernScanShared << < fullBlocksPerGrid, blockSize / 2, (2 * blockSize + blockSize / 8) * sizeof(int) >> > (n_new, dev_odata, dev_arrayA);
+			kernScanShared << < fullBlocksPerGrid, blockSize / 2, blockSize  * sizeof(int) >> > (n_new, dev_odata, dev_arrayA);
 			//cudaMemcpy(tmp_print, dev_odata, n_new * sizeof(int), cudaMemcpyDeviceToHost);
 			//checkCUDAErrorFn("cudaMemcpyFromSymbol from dev_odata to tmp_print failed!");
 			//printf("kernScanShared results per %d blocks\n", fullBlocksPerGrid);
@@ -314,6 +314,7 @@ namespace StreamCompaction {
 			//printArray(fullBlocksPerGrid, tmp_print, true);
 
 			oldScan(fullBlocksPerGrid, dev_lastElements2, dev_lastElements);
+
 			//kernScanShared << < 1, blockSize / 2, blockSize * sizeof(int) >> > (n_new, dev_lastElements2, dev_lastElements);
 			//cudaMemcpy(tmp_print, dev_lastElements2, fullBlocksPerGrid * sizeof(int), cudaMemcpyDeviceToHost);
 			//checkCUDAErrorFn("cudaMemcpyFromSymbol from dev_odata to odata failed!");
@@ -389,7 +390,7 @@ namespace StreamCompaction {
 				tmp = false;
 			}
 
-			kernScanShared << < fullBlocksPerGrid, blockSize / 2, (2 * blockSize + blockSize / 8) * sizeof(int) >> > (n_new, dev_odata, dev_arrayA);
+			kernScanShared << < fullBlocksPerGrid, blockSize / 2, blockSize * sizeof(int) >> > (n_new, dev_odata, dev_arrayA);
 			//cudaMemcpy(tmp_print, dev_odata, n_new * sizeof(int), cudaMemcpyDeviceToHost);
 
 			kernGetLastElement << < fullBlocksPerGrid, blockSize, blockSize * sizeof(int) >> > (n_new, dev_lastElements, dev_odata, dev_arrayA);
@@ -430,7 +431,7 @@ namespace StreamCompaction {
 		 * @returns      The number of elements remaining after compaction.
 		 */
 
-		int compact(int n, int *odata, const int *idata) {
+		int compact(int n, int *dev_idata) {
 
 			// TODO
 			int * indices = new int[n];
@@ -440,11 +441,11 @@ namespace StreamCompaction {
 			cudaMalloc((void**)&dev_bools, n * sizeof(int));
 			checkCUDAErrorFn("cudaMalloc dev_bools failed!");
 
-			cudaMalloc((void**)&dev_idata, n * sizeof(int));
-			checkCUDAErrorFn("cudaMalloc dev_arrayA failed!");
+			//cudaMalloc((void**)&dev_idata, n * sizeof(int));
+			//checkCUDAErrorFn("cudaMalloc dev_arrayA failed!");
 
-			cudaMemcpy(dev_idata, idata, n * sizeof(int), cudaMemcpyHostToDevice);
-			checkCUDAErrorFn("cudaMemcpyToSymbol from idata to dev_arrayA failed!");
+			//cudaMemcpy(dev_idata, idata, n * sizeof(int), cudaMemcpyHostToDevice);
+			//checkCUDAErrorFn("cudaMemcpyToSymbol from idata to dev_arrayA failed!");
 
 			int n_new = n;
 			if (1 << ilog2ceil(n) != n) {
@@ -472,8 +473,12 @@ namespace StreamCompaction {
 
 			timer().endGpuTimer();
 
+			int *lastiEl = new int[1];
+			cudaMemcpy(lastiEl, dev_idata + n - 1, 1 * sizeof(int), cudaMemcpyDeviceToHost);
+			checkCUDAErrorFn("cudaMemcpyFromSymbol from dev_odata to odata failed!");
+
 			// Copy back to cpu
-			cudaMemcpy(odata, dev_odata, n * sizeof(int), cudaMemcpyDeviceToHost);
+			cudaMemcpy(dev_idata, dev_odata, n * sizeof(int), cudaMemcpyDeviceToDevice);
 			checkCUDAErrorFn("cudaMemcpyFromSymbol from dev_odata to odata failed!");
 
 
@@ -481,15 +486,17 @@ namespace StreamCompaction {
 			cudaMemcpy(lastEl, dev_indices + n - 1, 1 * sizeof(int), cudaMemcpyDeviceToHost);
 			checkCUDAErrorFn("cudaMemcpyFromSymbol from dev_odata to odata failed!");
 
+
+
 			//printf("GPU Compaction : \n");
 			//printArray(n, odata, true);
 
 			cudaFree(dev_bools);
-			cudaFree(dev_idata);
+			//cudaFree(dev_idata);
 			cudaFree(dev_indices);
 			cudaFree(dev_odata);
 
-			if (idata[n - 1] != 0) {
+			if (lastiEl[0] != 0) {
 				return lastEl[0] + 1;
 			}
 			else {
