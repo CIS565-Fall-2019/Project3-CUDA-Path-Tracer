@@ -36,7 +36,7 @@ Scene::Scene(string filename) {
 	tinyobj::attrib_t attribs;
 	std::string warning;
 	std::string error;
-	std::string objfile = "../objs/torus.obj";
+	std::string objfile = "../objs/alpaca.obj";
 	bool objLoad = tinyobj::LoadObj(&attribs, &shapes, &materials, &warning, &error, objfile.c_str());
 	if (!warning.empty()) {
 		std::cout << "WARN: " << warning << std::endl;
@@ -53,9 +53,9 @@ Scene::Scene(string filename) {
 	Geom cubeMesh;
 	cubeMesh.materialid = 4;
 	cubeMesh.type = MESH;
-	cubeMesh.rotation = glm::vec3(20, 0, 15);
-	cubeMesh.scale = glm::vec3(2.5, 2.5, 2.5);
-	cubeMesh.translation = glm::vec3(0, 4, 0);
+	cubeMesh.rotation = glm::vec3(0, 40, 0);
+	cubeMesh.scale = glm::vec3(4, 4, 4);
+	cubeMesh.translation = glm::vec3(0, 0, 2);
 
 	cubeMesh.transform = utilityCore::buildTransformationMatrix(
 		cubeMesh.translation, cubeMesh.rotation, cubeMesh.scale);
@@ -87,7 +87,7 @@ Scene::Scene(string filename) {
 
 		// Go over every triangle and add the triangle
 		for (int i = 0; i < currIndices.size(); i += 3) {
-			std::cout << "TRIANGLE " << i << std::endl;
+			//std::cout << "TRIANGLE " << i << std::endl;
 
 			tinyobj::index_t indexP1 = currIndices.at(i);
 			tinyobj::index_t indexP2 = currIndices.at(i + 1);
@@ -168,6 +168,147 @@ Scene::Scene(string filename) {
 	}
 	cubeMesh.lastTriangle = this->triangles.size();
 	this->geoms.push_back(cubeMesh);
+
+//	std::vector<tinyobj::shape_t> shapesCello;
+//	std::vector<tinyobj::material_t> materialsCello;
+//	tinyobj::attrib_t attribsCello;
+//	std::string warningCello;
+//	std::string errorCello;
+//	std::string objfileCello = "../objs/cello.obj";
+//	bool objLoadCello = tinyobj::LoadObj(&attribsCello, &shapesCello, &materialsCello, &warningCello, &errorCello, objfileCello.c_str());
+//	if (!warningCello.empty()) {
+//		std::cout << "WARN: " << warningCello << std::endl;
+//	}
+//	if (!errorCello.empty()) {
+//		std::cout << "ERR: " << errorCello << std::endl;
+//	}
+//
+//	if (!objLoadCello) {
+//		std::cout << "failed to load obj";
+//		return;
+//	}
+//
+//
+//	Geom celloMesh;
+//	celloMesh.materialid = 4;
+//	celloMesh.type = MESH;
+//	celloMesh.rotation = glm::vec3(-20, -30, -20);
+//	celloMesh.scale = glm::vec3(2, 2, 2);
+//	celloMesh.translation = glm::vec3(1.4, 1.3, 6.1);
+//
+//	celloMesh.transform = utilityCore::buildTransformationMatrix(
+//		celloMesh.translation, celloMesh.rotation, celloMesh.scale);
+//	celloMesh.inverseTransform = glm::inverse(celloMesh.transform);
+//	celloMesh.invTranspose = glm::inverseTranspose(celloMesh.transform);
+//
+//	celloMesh.minXYZ = glm::vec3(FLT_MAX);
+//	celloMesh.maxXYZ = glm::vec3(-FLT_MAX);
+//
+//
+//
+//
+//	// Get out the vertices and normals from attribs
+//	std::vector<float> &positionsCello = attribsCello.vertices;
+//	std::vector<float> &normalsCello = attribsCello.normals;
+//	std::cout << positionsCello.size() << std::endl;
+//	celloMesh.firstTriangle = cubeMesh.lastTriangle;
+//	celloMesh.lastTriangle = celloMesh.firstTriangle;
+//
+//	// Iterate over every shape in the obj
+//	for (tinyobj::shape_t shape : shapesCello) {
+//		// Get the indices of the points in each shape
+//		std::vector<tinyobj::index_t> &currIndices = shape.mesh.indices;
+//		// Make sure number of indices is a multiple of 3 for triangulation
+//		if (currIndices.size() % 3 != 0) {
+//			std::cout << "not triangles" << std::endl;
+//			return;
+//		}
+//		celloMesh.lastTriangle += currIndices.size() / 3;
+//
+//
+//		// Go over every triangle and add the triangle
+//		for (int i = 0; i < currIndices.size(); i += 3) {
+//			//std::cout << "TRIANGLE " << i << std::endl;
+//
+//			tinyobj::index_t indexP1 = currIndices.at(i);
+//			tinyobj::index_t indexP2 = currIndices.at(i + 1);
+//			tinyobj::index_t indexP3 = currIndices.at(i + 2);
+//
+//			/*std::cout << indexP1.vertex_index << std::endl;
+//			std::cout << indexP2.vertex_index << std::endl;
+//			std::cout << indexP3.vertex_index << std::endl;
+//*/
+//			Triangle currTri;
+//
+//			currTri.p1 = glm::vec3(positionsCello.at(3 * indexP1.vertex_index),
+//				positionsCello.at(3 * indexP1.vertex_index + 1),
+//				positionsCello.at(3 * indexP1.vertex_index + 2));
+//			currTri.p2 = glm::vec3(positionsCello.at(3 * indexP2.vertex_index),
+//				positionsCello.at(3 * indexP2.vertex_index + 1),
+//				positionsCello.at(3 * indexP2.vertex_index + 2));
+//			currTri.p3 = glm::vec3(positionsCello.at(3 * indexP3.vertex_index),
+//				positionsCello.at(3 * indexP3.vertex_index + 1),
+//				positionsCello.at(3 * indexP3.vertex_index + 2));
+//
+//			currTri.n2 = glm::vec3(normalsCello.at(3 * indexP2.normal_index),
+//				normalsCello.at(3 * indexP2.normal_index + 1),
+//				normalsCello.at(3 * indexP2.normal_index + 2));
+//			currTri.n3 = glm::vec3(normalsCello.at(3 * indexP3.normal_index),
+//				normalsCello.at(3 * indexP3.normal_index + 1),
+//				normalsCello.at(3 * indexP3.normal_index + 2));
+//			currTri.n1 = glm::vec3(normalsCello.at(3 * indexP1.normal_index),
+//				normalsCello.at(3 * indexP1.normal_index + 1),
+//				normalsCello.at(3 * indexP1.normal_index + 2));
+//
+//			celloMesh.minXYZ.x = min(currTri.p1.x,
+//				min(currTri.p2.x,
+//					min(currTri.p3.x,
+//						celloMesh.minXYZ.x)));
+//
+//			celloMesh.minXYZ.y = min(currTri.p1.y,
+//				min(currTri.p2.y,
+//					min(currTri.p3.y,
+//						celloMesh.minXYZ.y)));
+//
+//			celloMesh.minXYZ.z = min(currTri.p1.z,
+//				min(currTri.p2.z,
+//					min(currTri.p3.z,
+//						celloMesh.minXYZ.z)));
+//
+//			celloMesh.maxXYZ.x = max(currTri.p1.x,
+//				max(currTri.p2.x,
+//					max(currTri.p3.x,
+//						celloMesh.maxXYZ.x)));
+//
+//			celloMesh.maxXYZ.y = max(currTri.p1.y,
+//				max(currTri.p2.y,
+//					max(currTri.p3.y,
+//						celloMesh.maxXYZ.y)));
+//
+//			celloMesh.maxXYZ.z = max(currTri.p1.z,
+//				max(currTri.p2.z,
+//					max(currTri.p3.z,
+//						celloMesh.maxXYZ.z)));
+//
+//
+//
+//
+//			this->triangles.push_back(currTri);
+//
+//			/*std::cout << "(" << currTri.p1.x << ", " << currTri.p1.y << ", " << currTri.p1.z << ")" << std::endl;
+//			std::cout << "(" << currTri.p2.x << ", " << currTri.p2.y << ", " << currTri.p2.z << ")" << std::endl;
+//			std::cout << "(" << currTri.p3.x << ", " << currTri.p3.y << ", " << currTri.p3.z << ")" << std::endl;*/
+//
+//			/*std::cout << "(" << currTri.n1.x << ", " << currTri.n1.y << ", " << currTri.n1.z << ")" << std::endl;
+//			std::cout << "(" << currTri.n2.x << ", " << currTri.n2.y << ", " << currTri.n2.z << ")" << std::endl;
+//			std::cout << "(" << currTri.n3.x << ", " << currTri.n3.y << ", " << currTri.n3.z << ")" << std::endl*/;
+//
+//
+//
+//		}
+//	}
+//	celloMesh.lastTriangle = this->triangles.size();
+//	this->geoms.push_back(celloMesh);
 }
 
 int Scene::loadGeom(string objectid) {
