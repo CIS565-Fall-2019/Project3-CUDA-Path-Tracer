@@ -80,14 +80,16 @@ void scatterRay(
     // calculateRandomDirectionInHemisphere defined above.
 
 	glm::vec3 newDirection;
-	
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	float dist = u01(rng);
 	// If type==1, then it is diffuse
-	if (m.hasReflective) {
+	if (dist < m.hasReflective) {
 		newDirection = glm::reflect(pathSegment.ray.direction, normal);
 		pathSegment.color *= m.specular.color;
 	}
 		
-	else if (m.hasRefractive) {
+	else if (m.hasRefractive < dist && dist < 2* m.hasRefractive) {
+
 
 		thrust::uniform_real_distribution<float> u01(0, 1);
 

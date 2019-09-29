@@ -7,6 +7,8 @@
 #include <thrust/count.h>
 #include <thrust/partition.h>
 #include <thrust/sort.h>
+#include <glm/gtc/matrix_inverse.hpp>
+
 
 #include "sceneStructs.h"
 #include "scene.h"
@@ -16,10 +18,15 @@
 #include "pathtrace.h"
 #include "intersections.h"
 #include "interactions.h"
+#include "efficient.h"
+
 
 #define ERRORCHECK 1
 #define CACHEFIRSTBOUNCE 1
 #define RAYSORT 0
+#define MOTION_BLUR 0
+#define STREAMCOMPACT_BY_THRUST 0
+#define STREAM_COMPACT 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -79,6 +86,7 @@ static Material * dev_materials = NULL;
 static PathSegment * dev_paths = NULL;
 static ShadeableIntersection * dev_intersections = NULL;
 static ShadeableIntersection * dev_first_intersections = NULL;
+int *dev_remaining_paths = NULL;
 // TODO: static variables for device memory, any extra info you need, etc
 // ...
 
@@ -104,6 +112,9 @@ void pathtraceInit(Scene *scene) {
 	cudaMalloc(&dev_first_intersections, pixelcount * sizeof(ShadeableIntersection));
 	cudaMemset(dev_first_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
+	cudaMalloc(&dev_remaining_paths, pixelcount * sizeof(int));
+	cudaMemset(dev_remaining_paths, 0, pixelcount * sizeof(int));
+
     // TODO: initialize any extra device memeory you need
 
     checkCUDAError("pathtraceInit");
@@ -115,6 +126,7 @@ void pathtraceFree() {
   	cudaFree(dev_geoms);
   	cudaFree(dev_materials);
   	cudaFree(dev_intersections);
+	cudaFree(dev_remaining_paths);
     // TODO: clean up any extra device memory you created
 
     checkCUDAError("pathtraceFree");
@@ -128,7 +140,7 @@ void pathtraceFree() {
 * motion blur - jitter rays "in time"
 * lens effect - jitter ray origin positions based on a lens
 */
-__global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, PathSegment* pathSegments)
+__global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, PathSegment* pathSegments,int *dev_remaining_paths)
 {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -156,6 +168,7 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
+		dev_remaining_paths[index] = index;
 		//segment.notDead = 1;
 	}
 }
@@ -171,12 +184,14 @@ __global__ void computeIntersections(
 	, Geom * geoms
 	, int geoms_size
 	, ShadeableIntersection * intersections
+	,int *dev_remaining_paths
 	)
 {
-	int path_index = blockIdx.x * blockDim.x + threadIdx.x;
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (path_index < num_paths)
+	if (idx < num_paths)
 	{
+		int path_index = dev_remaining_paths[idx];
 		PathSegment pathSegment = pathSegments[path_index];
 
 		float t;
@@ -201,7 +216,24 @@ __global__ void computeIntersections(
 			}
 			else if (geom.type == SPHERE)
 			{
+				
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+				//for (int i = 0; i < hst_scene->geoms.size(); i++) {
+				//	float t = 0.01f;
+				//	Geom & motion_geom = hst_scene->geoms[i];
+				//	if (motion_geom.hasMotion) {
+				//		motion_geom.translation += mot * t;
+				//		motion_geom.transform = utilityCore::buildTransformationMatrix(motion_geom.translation, motion_geom.rotation, motion_geom.scale);
+				//		motion_geom.inverseTransform = glm::inverse(motion_geom.transform);
+				//		motion_geom.invTranspose = glm::inverseTranspose(motion_geom.transform);
+				//		printf("Hello motion value for object ID: %d is: %0.02f, %0.02f , %0.02f\n", motion_geom.materialid, motion_geom.translation.x, motion_geom.translation.y, motion_geom.translation.z);
+						//printf("Hello motion value for object ID: %d is: %0.02f, %0.02f , %0.02f\n", motion_geom.translation.x, motion_geom.translation.y, motion_geom.translation.z);
+						//printf("Hello motion value for object ID: %d is: %0.02f, %0.02f , %0.02f\n", motion_geom.translation.x, motion_geom.translation.y, motion_geom.translation.z);
+					
+				
+				//cudaMemcpy(dev_geoms, &(hst_scene->geoms)[0], hst_scene->geoms.size() * sizeof(Geom), cudaMemcpyHostToDevice);
+
+
 			}
 			// TODO: add more intersection tests here... triangle? metaball? CSG?
 
@@ -229,14 +261,17 @@ __global__ void computeIntersections(
 			intersections[path_index].intersectionPoint = tmp_intersect;
 		}
 		//pathSegment.remainingBounces--;
+
+
 	}
 }
 
-__global__ void shaderKernel(int iter,int numPaths,int depth, ShadeableIntersection* shadeableIntersections, Material* materials, PathSegment* pathsegments) {
-	int idx = threadIdx.x + blockIdx.x * blockDim.x;
-	if (idx >= numPaths || pathsegments[idx].remainingBounces < 0)
+__global__ void shaderKernel(int iter,int numPaths,int depth, ShadeableIntersection* shadeableIntersections, Material* materials, PathSegment* pathsegments,int *dev_remaining_paths) {
+	int idxx = threadIdx.x + blockIdx.x * blockDim.x;
+	if (idxx >= numPaths || pathsegments[dev_remaining_paths[idxx]].remainingBounces < 0)
 		return;
-
+	
+	int idx = dev_remaining_paths[idxx];
 	ShadeableIntersection &intersection = shadeableIntersections[idx];
 	Material &material = materials[intersection.materialId];
 	PathSegment &pathsegment = pathsegments[idx];
@@ -246,6 +281,7 @@ __global__ void shaderKernel(int iter,int numPaths,int depth, ShadeableIntersect
 			pathsegment.color *= material.color * material.emittance;
 			//printf("Hello \n");
 			pathsegment.remainingBounces =0;
+
 		}
 		else {
 			thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, depth);
@@ -259,8 +295,13 @@ __global__ void shaderKernel(int iter,int numPaths,int depth, ShadeableIntersect
 	else {
 		pathsegment.color = glm::vec3(0.0f);
 		pathsegment.remainingBounces = 0;
+		
 	}
 
+	#if STREAM_COMPACT
+		if (pathsegment.remainingBounces<=0)
+			dev_remaining_paths[idxx] = -1;
+	#endif	
 }
 
 
@@ -365,7 +406,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	// 1D block for path tracing
 	const int blockSize1d = 128;
-
+	
+	
     ///////////////////////////////////////////////////////////////////////////
 
     // Recap:
@@ -397,7 +439,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
     // TODO: perform one iteration of path tracing
 	//int traceDepth = 4;
-	generateRayFromCamera <<<blocksPerGrid2d, blockSize2d >>>(cam, iter, traceDepth, dev_paths);
+	generateRayFromCamera <<<blocksPerGrid2d, blockSize2d >>>(cam, iter, traceDepth, dev_paths, dev_remaining_paths);
 	checkCUDAError("generate camera ray");
 
 	//printf("Hello World\n");
@@ -435,6 +477,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 				, dev_geoms
 				, hst_scene->geoms.size()
 				, dev_first_intersections
+				, dev_remaining_paths
 				);
 			checkCUDAError("First trace bounce failed");
 			cudaDeviceSynchronize();
@@ -451,7 +494,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 				, dev_paths
 				, dev_geoms
 				, hst_scene->geoms.size()
-				, dev_intersections
+				, dev_intersections,
+				dev_remaining_paths
 				);
 			checkCUDAError("First trace bounce failed");
 			cudaDeviceSynchronize();
@@ -459,13 +503,20 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 		depth++;
 		
-		shaderKernel << <numblocksPathSegmentTracing, blockSize1d >> > (iter, numPaths, depth, dev_intersections, dev_materials, dev_paths);
+		shaderKernel << <numblocksPathSegmentTracing, blockSize1d >> > (iter, numPaths, depth, dev_intersections, dev_materials, dev_paths, dev_remaining_paths);
 		checkCUDAError("Gathering the final Image failed");
 		cudaDeviceSynchronize();
 
-		dev_path_end = thrust::partition(thrust::device,dev_paths, dev_paths + numPaths, pathsDead());
+		#if STREAMCOMPACT_BY_THRUST
+			dev_path_end = thrust::partition(thrust::device,dev_paths, dev_paths + numPaths, pathsDead());
+			numPaths = dev_path_end - dev_paths;
+		#endif		
 
-		numPaths = dev_path_end - dev_paths;
+		#if STREAM_COMPACT
+			numPaths = StreamCompaction::Efficient::compact(numPaths,dev_remaining_paths);
+		#endif		
+
+		
 		#if RAYSORT
 			thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + numPaths, dev_paths, cmp());
 		#endif
