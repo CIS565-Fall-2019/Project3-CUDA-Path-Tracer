@@ -20,12 +20,12 @@
 
 #define ERRORCHECK 1
 
-#define LENSRADIUS 0.1
-#define FOCALLENGTH 8
-#define DEPTHOFFIELD 1
+#define LENSRADIUS 0.0
+#define FOCALLENGTH 11.5
+#define DEPTHOFFIELD 0
 #define SORTBYMATERIAL 1
 #define STREAMCOMPACT 1
-#define ANTIALIASING 1
+#define ANTIALIASING 0
 //#define CACHEFIRSTBOUNCE
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
