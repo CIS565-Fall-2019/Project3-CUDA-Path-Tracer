@@ -17,7 +17,15 @@ This is an implementation of CUDA-based path tracer capable of rendering globall
   - `main.cpp` : Setup and keyboard control logic
   - `pathtrace.cu` : Driver class which takes care of casting rays into the scene, testing for intersections, shading, graphics and performance optimizations and terminating a ray either after bouncing 8 times or reaching an emissive source
   - `interactions.cu` : Simulates coloring and scattering of reflective, diffusing and refractive surfaces
-  - `intersections.cu`: Handles box, sphere, and mesh intersections
+  - `intersections.cu` : Handles box, sphere, and mesh intersections
+  - `utilities.h` : Contains some utility functions and following flags to togge the features:
+     ```
+      #define COMPACT_RAYS [0,1]
+      #define CACHE_FIRST_BOUNCE [0,1]
+      #define MATERIAL_BASED_SORT [0,1]
+      #define ANTI_ALIASING [0,1]
+      #define MOTION_BLUR [0,1]
+     ```
 
 ### Controls
  * Esc to save an image and exit.
