@@ -41,6 +41,10 @@ Finally, the ray incorporates the color of the material it just hit:
 ```
 pathColor *= materialColor
 ```
+Diffuse Sphere             |  Diffuse Cube          
+:-------------------------:|:-------------------------:
+![](img/diffuseSphere5000samp.png)| ![](img/DiffuseBox5000samp.png)
+
 #### Perfect Specular
 A pure specular material will reflect the ray along the reverse of its incoming angle, creating a mirror effect. Unlike in diffuse, there is no distribution involved in this bounce. A ray incoming at a certain angle will deterministically bounce in a single direction.
 ```
@@ -50,6 +54,14 @@ Just like with diffuse, we offset the new origin so that it will not be inside t
 ```
 pathColor *= materialSpecularColor
 ```
+Specular Sphere            |  Specular Cube          
+:-------------------------:|:-------------------------:
+![](img/ReflectiveSphere5000samp.png)| ![](img/ReflectiveCube5000samp.png)
+
+Blue Specular Sphere       |  Blue Specular Cube          
+:-------------------------:|:-------------------------:
+![](img/ReflectiveSphereBlue5000samp.png)| ![](img/ReflectiveBoxBlue5000samp.png)
+
 #### Refractive
 A refractive material will bounce the ray through the material at a certain angle depending on the index of refraction (IOR). The refection will change if the ray is outside entering the geometry or inside exiting, as the index of refraction is inverted. Refraction also has a property called total internal reflection.  This means that if the incoming ray hits an object at a grazing angle, it will reflect off the object rather than refracting through it. This may also occur while the ray is inside of the object, reflecting interally. 
 
@@ -70,6 +82,10 @@ if outsideEntering:
         refractedDirection = normalize(reflect(originalDirection, -normal))
 ```
 Note that my implementation of refraction does not update the color of the path, as the light just passes through the material and gets bent, but does not pick up color from the material itself.
+
+Refractive Sphere (IOR = 1.52) |  Refractive Cube (IOR = 1.52)  
+:-------------------------:|:-------------------------:
+![](img/RefractiveSphere1.52.5000samp.png)| ![](img/RefractiveCube1.52.5000samp.png)
 
 ### OBJ Loading
 In order to render a piece of geometry, there must be a way to find a ray's intersection with that geometry. Basic shapes, such as spheres and boxes, can be described by simple intersection equations, but arbitrary meshes are more complex. To render these, I implemented an OBJ loader that reads in mesh data from and OBJ file using the TinyObj loader. The mesh geometry consists of a list of triangles that make up the form. Triangles have a simple intersection function, so to intersect with the mesh, we can iterate over all triangles in that mesh. 
