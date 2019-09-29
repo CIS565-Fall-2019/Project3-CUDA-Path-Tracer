@@ -171,7 +171,7 @@ Anti-Aliasing Off |  Anti-Aliasing On
 
 Anti-Aliasing Off |  Anti-Aliasing On   
 :-------------------------:|:-------------------------:
-![](img/AAOffCloseup.PNG)| ![](img/AAOnCloseup.PNG)
+![](img/AAVOffCloseup.PNG)| ![](img/AAOnCloseup.PNG)
 
 
 ### Optimizations
