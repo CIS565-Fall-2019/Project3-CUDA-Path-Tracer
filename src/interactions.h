@@ -75,6 +75,7 @@ void scatterRay(
         thrust::default_random_engine &rng) {
 	//Update ray's direction as per cosine-weighted ... and origin to where it bounced off from
 	pathSegment.ray.direction = glm::normalize(calculateRandomDirectionInHemisphere(normal, rng));
-	pathSegment.ray.origin = intersect + pathSegment.ray.direction * 0.01f;
+	pathSegment.ray.origin = intersect + normal * 0.01f;
 	pathSegment.color *= m.color;
+	pathSegment.remainingBounces -= 1;
 }
