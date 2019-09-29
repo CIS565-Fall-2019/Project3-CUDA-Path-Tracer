@@ -101,9 +101,13 @@ __host__ __device__ float meshIntersectionTest(Geom mesh, Ray r,
 	bool boundingBoxOutside = true;
 	float2 garbageuv;
 
+#if BOUNDING_BOXES
 	float t = boxIntersectionTest(mesh, r, intersectionPoint, normal, boundingBoxOutside, &garbageuv);
 	if (t < 0) return -1;
 	//if we hit inside the box, THEN check against our triangles
+#else
+	float t = -1.0;
+#endif
 
 	gvec3 tmp_intersection, min_intersection;
 	gvec3 tmp_normal, min_normal;

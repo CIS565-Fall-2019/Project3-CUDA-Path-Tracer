@@ -12,16 +12,17 @@
 
 // Performance and Feature Switches
 
-#define SORTING_MATERIAL 1//pretty sure this fucks performance
+#define SORTING_MATERIAL 0//dpes not help performance
 #define CACHING_FIRST 1
-#define ANTIALIASING 1
+#define ANTIALIASING 0
 #define USING_OIDN 1
-#define ANY_REFRACTIVE 1
+#define ANY_REFRACTIVE 0
+#define BOUNDING_BOXES 1
 
 #define TEX_COLOR 1
-#define TEX_EMISSIVE 0
-#define TEX_ROUGH 0
-#define TEX_NORM 0
+#define TEX_EMISSIVE 1
+#define TEX_ROUGH 1
+#define TEX_NORM 1
 
 // Useful math symbols
 

@@ -721,11 +721,8 @@ cudaArray* Texture::putOntoDevice(int textureIndex) {
 	myparms.extent = extents;
 	myparms.kind = cudaMemcpyHostToDevice;
 	cudaMemcpy3D(&myparms);
-	err = cudaGetLastError();
-	if (err != cudaSuccess) {
-		printf("Error on the 3d memcpy! Err %d\n", err);
-		exit(-1);
-	}
+	checkCUDAError("3dmemcpy!");
+
 	//check cuda error
 
 	cudaResourceDesc    texRes;
