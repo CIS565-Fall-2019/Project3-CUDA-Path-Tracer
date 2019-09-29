@@ -15,12 +15,6 @@ This repo is a path tracer written entirely in C++ and CUDA accelerated. The ide
 
 All images shown were created by running 5000 iterations unless otherwise specified, and all scene files and meshes are provided
 
-### Dependencies & CMake changes
-
-* CUDA 10+
-* [tinyobjloader](https://github.com/syoyo/tinyobjloader) (Included in repo)
-* Added *common.h* to the CMakeList.txt
-
 ### Features
 * Reflective and diffused materials
 * Stream compaction
@@ -211,6 +205,12 @@ For the first blooper, this was in the very early stages where the floor and cei
 For the next stumble, for a long time, I couldn't figure out why my roof was black. Then I understood I was double adding colours (which made the walls very vivid) and also having a bug in the loop termination condition.
 
 ![Black roof](./img/bloopers/black_roof.png)
+
+## Dependencies & CMake changes
+
+- CUDA 10+
+- [tinyobjloader](https://github.com/syoyo/tinyobjloader) (Included in repo)
+- Added *common.h* to the CMakeList.txt
 
 ## Useful links
 
