@@ -124,7 +124,7 @@ SCALE       9 .3 0.5
 // Floor
 OBJECT 3
 cube
-material 0
+material 1
 TRANS       0 0 0
 ROTAT       0 0 0
 SCALE       20 .01 20
@@ -132,7 +132,7 @@ SCALE       20 .01 20
 // Ceiling
 OBJECT 4
 cube
-material 0
+material 1
 TRANS       0 10 0
 ROTAT       0 0 90
 SCALE       .01 20 20
@@ -140,7 +140,7 @@ SCALE       .01 20 20
 // Back wall
 OBJECT 5
 cube
-material 0
+material 1
 TRANS       0 5 -10
 ROTAT       0 90 0
 SCALE       .01 20 20
@@ -148,7 +148,7 @@ SCALE       .01 20 20
 // Left wall
 OBJECT 6
 cube
-material 0
+material 1
 TRANS       -10 5 0
 ROTAT       0 0 0
 SCALE       .01 20 20
@@ -156,7 +156,7 @@ SCALE       .01 20 20
 // Right wall
 OBJECT 7
 cube
-material 0
+material 1
 TRANS       10 5 0
 ROTAT       0 0 0
 SCALE       .01 20 20
@@ -196,8 +196,8 @@ def main(argv):
       elif opt in ("-o", "--output"):
          outputfile = arg
 
-   NUM_OBJECTS = 2000
-   NUM_MATS = 2
+   NUM_OBJECTS = 20
+   NUM_MATS = 5
 
    print(genMaterials(NUM_MATS))
    print(genCamera())

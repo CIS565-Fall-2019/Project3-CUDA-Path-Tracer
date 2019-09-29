@@ -206,12 +206,13 @@ std::vector<Geom> Scene::readGltfFile(const Geom & parentGeom, const string & fi
 	cout << "JOHN: Loaded!" << endl;
 
 	// OK, we parsed the file thanks to gltf. Now to make sense of the mesh.
-	for (const auto& mesh : gltfMeshes) {
+	// Multiple-Mesh objects not playing nicely.
+	//for (const auto& mesh : gltfMeshes) {
 		cout << "JOHN: Parsing Mesh" << endl;
 		// Parse each mesh for all triangles.
-		vector<Geom> g = gltfMeshToTriangles(parentGeom, mesh);
+		vector<Geom> g = gltfMeshToTriangles(parentGeom, gltfMeshes[0]);
 		out.insert(out.end(), g.begin(), g.end());
-	}
+	//}
 	
 	// TODO: Care about materials. For now, use the material from the config file.
 

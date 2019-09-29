@@ -518,8 +518,13 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	// --- PathSegment Tracing Stage ---
 	// Shoot ray into scene, bounce between objects, push shading chunks
 
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+
 	bool iterationComplete = false;
 	while (!iterationComplete) {
+		cudaEventRecord(start);
 		dim3 numblocksPathSegmentTracing = (num_active_paths + blockSize1d - 1) / blockSize1d;
 
 		if (CACHE_ENABLED && depth == 0 && cache_valid) {
@@ -555,7 +560,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 		// Sort by Material IDX. This will improve cache reuse on Shader stage
 		// Also reduces branch divergence in shader!
-		if (PRESHADER_SORT) {
+		if (PRESHADER_MATERIAL_SORT) {
 			thrust::sort_by_key(
 				thrust::device_ptr<ShadeableIntersection>(dev_intersections),
 				thrust::device_ptr<ShadeableIntersection>(dev_intersections + num_active_paths),
@@ -578,6 +583,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			dev_paths,
 			dev_materials
 			);
+		cudaDeviceSynchronize();
 
 		if (POSTSHADER_PARTITION) {
 			// Remove all null intersections. Returns new end interator.
@@ -601,6 +607,13 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		if (num_active_paths == 0 || depth >= traceDepth) {
 			iterationComplete = true;
 		}
+
+		cudaEventRecord(stop);
+		cudaEventSynchronize(stop);
+		float milliseconds = 0;
+		cudaEventElapsedTime(&milliseconds, start, stop);
+
+		printf("%d\t%d\t%f\n", depth, num_active_paths, milliseconds);
 	}
 
 	// Assemble this iteration and apply it to the image

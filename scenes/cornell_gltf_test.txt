@@ -100,7 +100,7 @@ EMITTANCE   0
 
 // Camera
 CAMERA
-RES         600 600
+RES         2000 1200
 FOVY        45
 ITERATIONS  5000
 DEPTH       8
@@ -178,7 +178,7 @@ SCALE       .01 20 20
 OBJECT 8
 mesh
 material 2
-TRANS       0 5 0
+TRANS       0 2 -3
 ROTAT       0 0 0
-SCALE       1 1 1
+SCALE       2 2 2
 FILE  C:\Users\John\git\Project3-CUDA-Path-Tracer\external\glTF-Sample-Models\2.0\CesiumMilkTruck\glTF\CesiumMilkTruck.gltf
