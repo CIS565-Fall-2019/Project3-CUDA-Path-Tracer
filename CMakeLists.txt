@@ -62,8 +62,6 @@ set(GLM_ROOT_DIR "external")
 find_package(GLM REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
 
-find_package(TBB REQUIRED)
-
 include_directories(external/tinyobjloader)
 include_directories(external/gltfraytracexample)
 include_directories(external/oidn/include)
@@ -110,6 +108,7 @@ add_subdirectory(external/oidn)
 cuda_add_executable(${CMAKE_PROJECT_NAME} ${sources} ${headers})
 target_link_libraries(${CMAKE_PROJECT_NAME}
     ${LIBRARIES}
-    #stream_compaction  # TODO: uncomment if using your stream compaction
     OpenImageDenoise
+    #stream_compaction  # TODO: uncomment if using your stream compaction
     )
+

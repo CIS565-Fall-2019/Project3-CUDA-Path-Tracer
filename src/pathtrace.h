@@ -15,4 +15,10 @@ Does this by doing one last run of pieces of our path tracing to fill buffers co
 Returns a new vector of pixel values to save out
 */
 gvec3_v runOIDN(gvec3_v image, int width, int height);
+
+/**
+Runs the path tracer thing one time to get albedo and normal
+Note: already have the buffers allocated!
+*/
+void getOIDNMaps(float3* albedoMap, float3* normalMap);
 #endif

@@ -512,16 +512,14 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 /**
 Important! does a malloc. Must free afterwards
 */
-float* makeImageBuffer(gvec3_v image, int width, int height) {
+float3* makeImageBuffer(gvec3_v image, int width, int height) {
 
-	float* retval = (float*) malloc(width * height * 3 * sizeof(float));
+	float3* retval = (float3*) malloc(width * height * sizeof(float3));
 
 	for (int i = 0; i < height; i++) {
 		for (int j = 0; j < width; j++) {
 			int index = (i * width) + j;
-			retval[3 * index + 0] = image[index].x;
-			retval[3 * index + 1] = image[index].y;
-			retval[3 * index + 2] = image[index].z;
+			retval[index] = { image[index].x, image[index].y, image[index].z };
 		}
 	}
 
@@ -529,16 +527,16 @@ float* makeImageBuffer(gvec3_v image, int width, int height) {
 
 }//makeImageBuffer
 
-gvec3_v vectorFromOutBuffer(float* outBuffer, int width, int height) {
+gvec3_v vectorFromOutBuffer(float3* outBuffer, int width, int height) {
 
 	gvec3_v retval = gvec3_v();
 
 	for (int i = 0; i < height; i++) {
 		for (int j = 0; j < width; j++) {
 			int index = (i * width) + j;
-			retval.push_back( gvec3(outBuffer[3 * index + 0],
-									outBuffer[3 * index + 1],
-									outBuffer[3 * index + 2]));
+			retval.push_back( gvec3(outBuffer[index].x,
+									outBuffer[index].y,
+									outBuffer[index].z));
 		}
 	}
 
@@ -548,8 +546,13 @@ gvec3_v vectorFromOutBuffer(float* outBuffer, int width, int height) {
 gvec3_v runOIDN(gvec3_v image, int width, int height) {
 
 	//make necessary buffers
-	float* imageBuffer = makeImageBuffer(image, width, height);
-	float* outBuffer = (float*)malloc(width * height * 3 * sizeof(float));
+	float3* imageBuffer = makeImageBuffer(image, width, height);
+	float3* outBuffer = (float3*)malloc(width * height * sizeof(float3));
+	float3* normalBuffer = (float3*)malloc(width * height * sizeof(float3));
+	float3* albedoBuffer = (float3*)malloc(width * height * sizeof(float3));
+
+	//fill buffers with the good stuff
+	getOIDNMaps(albedoBuffer, normalBuffer);
 
 	//Runs the denoiser
 	OIDNDevice device = oidnNewDevice(OIDN_DEVICE_TYPE_DEFAULT);
@@ -559,8 +562,14 @@ gvec3_v runOIDN(gvec3_v image, int width, int height) {
 
 	oidnSetSharedFilterImage(filter, "color", imageBuffer,
 		OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
+	oidnSetSharedFilterImage(filter, "albedo", albedoBuffer,
+		OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0); // optional
+	oidnSetSharedFilterImage(filter, "normal", normalBuffer,
+		OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
 	oidnSetSharedFilterImage(filter, "output", outBuffer,
 		OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
+	oidnSetFilter1b(filter, "hdr", true); // image is HDR
+
 	oidnCommitFilter(filter);
 
 	// Filter the image
@@ -583,11 +592,113 @@ gvec3_v runOIDN(gvec3_v image, int width, int height) {
 	//free buffers
 	free(outBuffer);
 	free(imageBuffer);
+	free(normalBuffer);
+	free(albedoBuffer);
 
 
 	return retval;
 }
 
+__global__ void transferToOIDNBuffers(PathSegment* pathSegments, ShadeableIntersection* intersections, float3* albedos, float3* normals, int num_paths) {
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if (idx >= num_paths) return;
+
+	ShadeableIntersection intersection = intersections[idx];
+	PathSegment segment = pathSegments[idx];
+
+	if (intersection.t < 0.0) {
+		normals[idx].x = 0.0f;
+		normals[idx].y = 0.0f;
+		normals[idx].z = 0.0f;
+		albedos[idx].x = 0.0f;
+		albedos[idx].y = 0.0f;
+		albedos[idx].z = 0.0f;
+	}//if
+	else {
+		normals[idx].x = intersection.surfaceNormal.x;
+		normals[idx].y = intersection.surfaceNormal.y;
+		normals[idx].z = intersection.surfaceNormal.z;
+		albedos[idx].x = segment.color.x;
+		albedos[idx].y = segment.color.y;
+		albedos[idx].z = segment.color.z;
+	}//else
+
+}//transferToOIDNBuffers
+
+void getOIDNMaps(float3* albedoMap, float3* normalMap) {
+
+	//run the path tracing stuff
+	const int traceDepth = hst_scene->state.traceDepth;
+	const Camera& cam = hst_scene->state.camera;
+	const int pixelcount = cam.resolution.x * cam.resolution.y;
+
+	//allocate device pointers for transferring color/normal
+	float3* dev_albedo;
+	float3* dev_normal;
+	cudaMalloc(&dev_albedo, pixelcount * sizeof(float3));
+	checkCUDAError("cudamalloc");
+	cudaMalloc(&dev_normal, pixelcount * sizeof(float3));
+	checkCUDAError("cudamalloc");
+
+	// 2D block for generating ray from camera
+	const dim3 blockSize2d(8, 8);
+	const dim3 blocksPerGrid2d(
+		(cam.resolution.x + blockSize2d.x - 1) / blockSize2d.x,
+		(cam.resolution.y + blockSize2d.y - 1) / blockSize2d.y);
+
+	// 1D block for path tracing
+	const int blockSize1d = 128;
+
+
+	//makes our initial path segments in dev_paths; contains the ray, a color, a pixelIndex, and bounce count for each
+	generateRayFromCamera << <blocksPerGrid2d, blockSize2d >> > (cam, 0, traceDepth, dev_paths);
+	checkCUDAError("generate camera ray");
+
+	int depth = 0;
+	PathSegment* dev_path_end = dev_paths + pixelcount;
+	int num_paths = dev_path_end - dev_paths;//ok, clever use of pointer math...
+
+	int total_paths = num_paths;
+
+	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
+
+	dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
+	computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
+		depth,
+		num_paths,
+		dev_paths,
+		dev_geoms,
+		dev_tris,
+		hst_scene->geoms.size(),
+		dev_intersections);
+	checkCUDAError("trace one bounce");
+
+	cudaDeviceSynchronize();
+
+	shadeRealMaterial << <numblocksPathSegmentTracing, blockSize1d >> > (
+		0,
+		num_paths,
+		dev_intersections,
+		dev_paths,
+		dev_materials,
+		texObjects);
+	checkCUDAError("shadeRealMaterial");
+
+	cudaDeviceSynchronize();
+
+	transferToOIDNBuffers <<<numblocksPathSegmentTracing, blockSize1d >>> (dev_paths, dev_intersections, dev_albedo, dev_normal, pixelcount);
+	checkCUDAError("put in correct buffer");
+	
+	cudaMemcpy(normalMap, dev_normal, pixelcount * sizeof(float3), cudaMemcpyDeviceToHost);
+	checkCUDAError("cudamemcpy");
+	cudaMemcpy(albedoMap, dev_albedo, pixelcount * sizeof(float3), cudaMemcpyDeviceToHost);
+	checkCUDAError("cudamemcpy");
+
+	cudaFree(dev_albedo);
+	cudaFree(dev_normal);
+
+}
 #endif
 
 cudaArray* Texture::putOntoDevice(int textureIndex) {
