@@ -5,7 +5,7 @@ CUDA Path Tracer
 
 * Grace Gilbert
   * https://www.linkedin.com/in/grace-gilbert-2493a0156, http://gracelgilbert.com
-* Tested on: Windows 10, i9-9900K @ 3.60GHz 64GB, GeForce RTX 2080 40860MB (Personal Laptop)
+* Tested on: Windows 10, i9-9900K @ 3.60GHz 64GB, GeForce RTX 2080 40860MB
 
 ![](img/InstrumentScene5000samp.IOR1.52.DOV0.075FL6.png)
 <p align="center">
