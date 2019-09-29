@@ -2,6 +2,9 @@
 #include <ctime>
 #include "main.h"
 #include "preview.h"
+#include "common.h""
+
+#define TIME false
 
 GLuint positionLocation = 0;
 GLuint texcoordsLocation = 1;
@@ -169,9 +172,14 @@ bool init() {
 }
 
 void mainLoop() {
-    while (!glfwWindowShouldClose(window)) {
+	Common::PerformanceTimer timer;
+	if (TIME) {
+		timer.startCpuTimer();
+	}
+	int status = 0;
+    while (!glfwWindowShouldClose(window) && !status) {
         glfwPollEvents();
-        runCuda();
+        status = runCuda();
 
         string title = "CIS565 Path Tracer | " + utilityCore::convertIntToString(iteration) + " Iterations";
         glfwSetWindowTitle(window, title.c_str());
@@ -185,6 +193,11 @@ void mainLoop() {
         glDrawElements(GL_TRIANGLES, 6,  GL_UNSIGNED_SHORT, 0);
         glfwSwapBuffers(window);
     }
+	if (TIME) {
+		timer.endCpuTimer();
+		cout << "----------------------------------------------------------" << endl;
+		cout << "TIME:::" << timer.getCpuElapsedTimeForPreviousOperation() << endl;
+	}
     glfwDestroyWindow(window);
     glfwTerminate();
 }

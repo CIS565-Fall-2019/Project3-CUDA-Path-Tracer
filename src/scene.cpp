@@ -5,6 +5,7 @@
 #include <glm/gtx/string_cast.hpp>
 #include "tiny_obj_loader.h"
 #include <limits>
+
 #define RECOMPUTE_NORMALS true
 
 Scene::Scene(string filename) {

@@ -17,12 +17,16 @@
 #include "interactions.h"
 #include <assert.h>
 
-#define STREAM_COMPACTION true
+// Optimizations
+#define STREAM_COMPACTION false
 #define SORT_MATERIAL false
 #define CACHE_BOUNCE false
+#define RAY_CULLING true
+// Effects
 #define AA true
 #define MOTION_BLUR false
-#define ERRORCHECK 1
+#define ERRORCHECK false
+
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -224,7 +228,19 @@ __global__ void computeIntersections(
 			}
 		}
 		// Check for mesh collision
-		if (face_size && RayAABBintersect(pathSegment.ray, mesh_box[0])) {
+		if (face_size && RAY_CULLING && RayAABBintersect(pathSegment.ray, mesh_box[0])) {
+			for (int i = 0; i < face_size; i++) {
+				t = triangleIntersectionTest(face[i], pathSegment.ray, tmp_intersect, tmp_normal, outside);
+				if (t > 0.0f && t_min > t)
+				{
+					t_min = t;
+					materialid = face[i].materialid;
+					intersect_point = tmp_intersect;
+					normal = tmp_normal;
+				}
+			}
+		}
+		else if (face_size && !RAY_CULLING){
 			for (int i = 0; i < face_size; i++) {
 				t = triangleIntersectionTest(face[i], pathSegment.ray, tmp_intersect, tmp_normal, outside);
 				if (t > 0.0f && t_min > t)
@@ -439,7 +455,6 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		if (STREAM_COMPACTION) {
 			dev_path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, path_termination_test());// split data into completed and non completed
 			num_paths = dev_path_end - dev_paths; // update end point to reflect new pivot
-			cout << num_paths << endl;
 		}
 		if (SORT_MATERIAL) {
 			thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + num_paths, dev_paths, sort_cmp());

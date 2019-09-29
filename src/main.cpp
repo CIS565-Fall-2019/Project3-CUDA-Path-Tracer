@@ -4,6 +4,7 @@
 #define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
 #include "tiny_obj_loader.h"
 
+
 static std::string startTimeString;
 
 // For camera controls
@@ -32,6 +33,7 @@ int height;
 //-------------------------------
 
 int main(int argc, char** argv) {
+	
     startTimeString = currentTimeString();
 
     if (argc < 2) {
@@ -98,7 +100,7 @@ void saveImage() {
     //img.saveHDR(filename);  // Save a Radiance HDR file
 }
 
-void runCuda() {
+int runCuda() {
     if (camchanged) {
         iteration = 0;
         Camera &cam = renderState->camera;
@@ -142,8 +144,10 @@ void runCuda() {
         saveImage();
         pathtraceFree();
         cudaDeviceReset();
-        exit(EXIT_SUCCESS);
+		return 1;
+        //exit(EXIT_SUCCESS);
     }
+	return 0;
 }
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
