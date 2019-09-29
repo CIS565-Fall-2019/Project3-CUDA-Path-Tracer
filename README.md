@@ -19,7 +19,7 @@ This is where I would write about my path tracer... IF I HAD ONE
 
 For an Object file in the scene description, it may be given the type “mesh.” Their transformation parameters act the same way, but you may also specify a “FILE” string. This can be the path to an `.obj` file, or a `.gltf` file (the latter of which must be in the same place as its assets).
 
-This loads all the file’s triangles into our data structures, and can then be rendered sensibly. If they have material characteristics, they are currently ignored. (TODO: fix this, or cut line)
+This loads all the file’s triangles into our data structures, and can then be rendered sensibly. As of now, no material characteristics are loaded in; however, textures are recognized for `.gltf` files.
 
 #### Bounding Volume
 
@@ -49,8 +49,6 @@ Implemented specular reflections with configurable exponent. Pictured below is a
 
 ### TODO: refraction
 
-### TODO: subsurface scattering
-
 ## Configuration Notes
 
 ### CMakeLists changes
@@ -58,6 +56,14 @@ Implemented specular reflections with configurable exponent. Pictured below is a
 I put the `tinyobjloader` library contents into the `external` folder, so I had to include the relevant header and source file in the project, as well as mark their locations to be included and linked.
 
 Additionally, I decided to compile this all with `C++17`, in case I decided to make use of the `std::filesystem` library (a slight quality of life fix over just calling it via `std::experimental::filesystem`)
+
+#### Moving DLLs
+
+Look, I don't like what I did either.
+
+I manually copied the `OpenImageDenoise.dll` and `tbb.dll` from their rightful homes to the directory where my built `Release` executable was, so that it might run.
+
+Certainly, CMake has a way to do this, but as somebody who is not a CMake wizard at this point, this will have to do.
 
 ## Sources
 
