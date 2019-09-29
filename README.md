@@ -37,7 +37,15 @@ Notably, these assets provide a few different attributes. In addition to base co
 
 TODO: Show progression of adding more textures to an object (base, +color, +roughness, +normal, +emissivity)
 
-NOTE: the "metallicRoughness" channels are \[ambientOcclusion, roughness, metallic\]
+![No Textures](progressImages/altar0.png | width=300)
+
+![Color Texture](progressImages/altarC.png | width=300)
+
+![Color and Emissivity Textures](progressImages/altarCE.png | width=300)
+
+![Color, Emissivity, and Metallic Textures](progressImages/altarCEM.png | width=300)
+
+![Color, Emissivity, Metallic, and Normal Textures](progressImages/altarCEMN.png | width=300)
 
 TODO: Performance analysis
 
@@ -47,7 +55,11 @@ Implemented specular reflections with configurable exponent. Pictured below is a
 
 ![Shiny balls with their exponents noted](progressImages/day4ShinyBallAnnotated.png)
 
-### TODO: refraction
+### Refraction
+
+Refraction turned out to be trickier than I anticipated. Notably, it made triangle intersection tests more difficult, because I now had to check my meshes for backface triangles. (A smarter implementation than mine might only do so if the material for the mesh as a whole were refractive.) However, this led to the possibility for very interesting results.
+
+TODO: put in a couple of glass images.
 
 ## Configuration Notes
 
@@ -55,7 +67,11 @@ Implemented specular reflections with configurable exponent. Pictured below is a
 
 I put the `tinyobjloader` library contents into the `external` folder, so I had to include the relevant header and source file in the project, as well as mark their locations to be included and linked.
 
-Additionally, I decided to compile this all with `C++17`, in case I decided to make use of the `std::filesystem` library (a slight quality of life fix over just calling it via `std::experimental::filesystem`)
+I added the [OpenImageDenoiser](https://github.com/OpenImageDenoise/oidn) library to the `external` folder, and so added the line `include_directories(external/oidn/include)` so that the headers could be read sensibly. Additionally, I added the subdirectory `external/oidn`, and linked the `OpenImageDenoise` library to the `target_link_libraries` function. This did not end up doing all the necessary linking (see below), but it helped.
+
+Notably, this required having Intels `tbb` installed; I acheived this by signing up for, and subsequently installing, [Intel Parallel Studio](https://software.intel.com/en-us/parallel-studio-xe). Time will tell if I made the right decision.
+
+Additionally, I decided to compile this all with `C++17`, in case I decided to make use of the `std::filesystem` library (a slight quality of life fix over just calling it via `std::experimental::filesystem`). I admittedly am not sure whether this change actually took.
 
 #### Moving DLLs
 
