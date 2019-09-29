@@ -1,7 +1,7 @@
 #pragma once
 
 #include "intersections.h"
-
+#define FRESNEL 0
 // CHECKITOUT
 /**
  * Computes a cosine-weighted random direction in a hemisphere.
@@ -80,28 +80,64 @@ void scatterRay(
 	glm::vec3 dir = pathSegment.ray.direction;
 	glm::vec3 color(1.0f);
 	thrust::uniform_real_distribution<float> dist(0, 1);
+	float r0 = 0.0, rtheta = 0.0;
 	float prob = dist(rng);
-	if (prob < m.hasReflective) {
-		dir = glm::reflect(dir, normal);
-		color = m.specular.color;
-	}
-	else if (prob - m.hasReflective < m.hasRefractive) {
-		if (glm::dot(normal, dir) > 0.0f) {
-			dir = glm::refract(glm::normalize(dir), -1.0f*glm::normalize(normal), m.indexOfRefraction);
-		} else {
-			dir = glm::refract(glm::normalize(dir), glm::normalize(normal), 1.0f/m.indexOfRefraction);
+	if (FRESNEL) {
+		if (m.hasReflective) {
+			dir = glm::reflect(dir, normal);
+			color = m.specular.color;
 		}
-		color = m.specular.color;
-		if (glm::length(dir) < 0.01f) {
-			color = glm::vec3(0.0f);
-			dir = glm::reflect(glm::normalize(dir), normal);
+		else if (m.hasRefractive) {
+			if (glm::dot(normal, dir) > 0.0f) {
+				r0 = powf((1 - m.indexOfRefraction) / (1 + m.indexOfRefraction), 2.0f);
+			}
+			else {
+				float indexOfRefraction = 1.0f / m.indexOfRefraction;
+				r0 = powf((1 - indexOfRefraction) / (1 + indexOfRefraction), 2.0f);
+			}
+			rtheta = r0 + (1 - r0)*powf(1 - glm::dot(normal, dir), 5);
+			if (rtheta > prob) {
+				dir = glm::reflect(dir, normal);
+			}
+			else {
+				color = m.specular.color;
+				if (glm::dot(normal, dir) > 0.0f) {
+					dir = glm::refract(glm::normalize(dir), -1.0f*glm::normalize(normal), m.indexOfRefraction);
+				}
+				else {
+					dir = glm::refract(glm::normalize(dir), glm::normalize(normal), 1.0f / m.indexOfRefraction);
+				}
+			}
 		}
-
-		
+		else {
+			dir = calculateRandomDirectionInHemisphere(normal, rng);
+			color = m.color;
+		}
 	}
 	else {
-		dir = calculateRandomDirectionInHemisphere(normal, rng);
-		color = m.color;
+		if (prob < m.hasReflective) {
+			dir = glm::reflect(dir, normal);
+			color = m.specular.color;
+		}
+		else if (prob - m.hasReflective < m.hasRefractive) {
+			if (glm::dot(normal, dir) > 0.0f) {
+				dir = glm::refract(glm::normalize(dir), -1.0f*glm::normalize(normal), m.indexOfRefraction);
+			}
+			else {
+				dir = glm::refract(glm::normalize(dir), glm::normalize(normal), 1.0f / m.indexOfRefraction);
+			}
+			color = m.specular.color;
+			if (glm::length(dir) < 0.01f) {
+				color = glm::vec3(0.0f);
+				dir = glm::reflect(glm::normalize(dir), normal);
+			}
+
+
+		}
+		else {
+			dir = calculateRandomDirectionInHemisphere(normal, rng);
+			color = m.color;
+		}
 	}
 		pathSegment.color *= color;
 		pathSegment.ray.direction = glm::normalize(dir);
