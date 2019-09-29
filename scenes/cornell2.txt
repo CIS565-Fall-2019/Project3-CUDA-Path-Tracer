@@ -43,9 +43,9 @@ MATERIAL 4
 RGB         .98 .98 .98
 SPECEX      0
 SPECRGB     .98 .98 .98
-REFL        0.2
-REFR        0.8
-REFRIOR     1.33
+REFL        0.3
+REFR        0.7
+REFRIOR     1.52
 EMITTANCE   0
 
 // Camera
@@ -71,7 +71,7 @@ SCALE       3 .3 3
 // Floor
 OBJECT 1
 cube
-material 1
+material 2
 TRANS       0 0 0
 ROTAT       0 0 0
 SCALE       10 .01 10
@@ -95,7 +95,7 @@ SCALE       .01 10 10
 // Left wall
 OBJECT 4
 cube
-material 2
+material 4
 TRANS       -5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
@@ -103,7 +103,7 @@ SCALE       .01 10 10
 // Right wall
 OBJECT 5
 cube
-material 3
+material 4
 TRANS       5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
