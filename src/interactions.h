@@ -91,7 +91,7 @@ void scatterRay(
 		float refIdx = inside ? m.indexOfRefraction : (1.0f / m.indexOfRefraction);
 
 		if (glm::length(direction) < EPSILON) {
-			color = glm::vec3(0.0f);
+			color *= glm::vec3(0.0f);
 			direction = glm::reflect(direction, normal);
 		}
 

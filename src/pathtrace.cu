@@ -25,6 +25,7 @@
 #define CACHE_FIRST 0
 #define ANTIALIAS 0
 #define MOTION 0
+#define DOF 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -127,6 +128,25 @@ void pathtraceFree() {
     checkCUDAError("pathtraceFree");
 }
 
+__device__ glm::vec3 sampleAperture(float u, float v) {
+	glm::vec2 offset = 2.0f * glm::vec2(u, v) - glm::vec2(1, 1);
+	float theta, r;
+	if (offset.x == 0 && offset.y == 0) {
+		return glm::vec3(0.0f);
+	}
+	else if (glm::abs(offset.x) > glm::abs(offset.y)) {
+		r = offset.x;
+		theta = (PI / 4.0f) * (offset.y / offset.x);
+	}
+	else {
+		r = offset.y;
+		theta = (PI / 2.0f) - (PI / 4.0f) * (offset.x / offset.y);
+	}
+	u = r * glm::cos(theta);
+	v = r * glm::sin(theta);
+	return glm::vec3(u, v, 0.0f);
+}
+
 /**
 * Generate PathSegments with rays from the camera through the screen into the
 * scene, which is the first bounce of rays.
@@ -156,6 +176,15 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		x_ += u01(rng);
 		y_ += u01(rng);
 #endif // ANTIALIAS
+
+#if DOF
+		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, segment.remainingBounces);
+		thrust::uniform_real_distribution<float> u01(0.0f, 1.0f);
+		glm::vec3 lens = cam.lensRadius * sampleAperture(u01(rng), u01(rng));
+		glm::vec3 focus = segment.ray.direction * ( cam.focalDistance / glm::abs(segment.ray.direction.z));
+		segment.ray.origin += lens;
+		segment.ray.direction = glm::normalize(focus - lens);
+#endif
 
 
 		segment.ray.direction = glm::normalize(cam.view
