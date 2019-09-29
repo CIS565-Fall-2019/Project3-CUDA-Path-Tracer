@@ -31,7 +31,7 @@ This loads all the file’s triangles into our data structures, and can then be 
 
 #### Bounding Volume
 
-Simple axis-aligned bounding box for each Shape/Primitive in the mesh file.
+I implemented a simple axis-aligned bounding volume for my loaded meshes. That is to say, I constructed a "box" around each based on the maximum and minimum `x`, `y`, and `z` values for all of my triangle vertices, and did ray intersection tests on the box before attempting to intersect with each triangle in the mesh.
 
 ##### Performance
 
@@ -81,6 +81,8 @@ Here is a series of images of the same scene, with differing level of textures a
 
 TODO: Performance analysis
 
+I also implemented a *very* simple procedural texture for use on my cube primitives (though, in theory, it could be applied to the triangle meshes as well without too much issue).
+
 ### Specular Sampling with Exponent
 
 Implemented specular reflections with configurable exponent. Pictured below is a comparison of various exponential values for specularity. Notice that the very high value is effectively mirror-like; with such a highly specular object, the slight variations we get off the "mirror" direction are small enough to, effectively, not alter the ray at all. In this fashion, if we wished, we could eliminate the idea of "reflectivity" from our material description altogether.
@@ -89,9 +91,17 @@ Implemented specular reflections with configurable exponent. Pictured below is a
 
 ### Refraction
 
-Refraction turned out to be trickier than I anticipated. Notably, it made triangle intersection tests more difficult, because I now had to check my meshes for backface triangles. (A smarter implementation than mine might only do so if the material for the mesh as a whole were refractive.) However, this led to the possibility for very interesting results.
+Refraction turned out to be trickier than I anticipated. Notably, it made triangle intersection tests more difficult, because I now had to check my meshes for backface triangles. (A smarter implementation than mine might only do so if the material for the mesh as a whole were refractive.) However, allowing for refraction on more complex models meant that I could display much more interesting results.
 
-TODO: put in a couple of glass images.
+![Glass Zelda](progressImages/day8glass3.png)
+
+You can see some of the other objects in the scene through Zelda's dress in this image; in particular, the shadow of the ball behind her.
+
+Of course, it's also better with a more interesting background:
+
+![Zelda with Altar](progressImages/oidn_zelda_2000nof.png)
+
+Here, you see the emissive materials behind her come through, distorted but still clear. The "candle" light through her hand is also visible.
 
 ### Material Sorting
 
@@ -103,7 +113,17 @@ Now, that was with only a dozen or so primitives; surely, when dealing with hund
 
 For a more complex scene, such as `scenes/teapotdemo.txt` (containing some 16,000 triangles), without sorting the materials, it took `75s` to get to 200 iterations; with sorting, it took `79s` to get to 200 iterations. Still not a performance boost, but better nonetheless.
 
-When working with a significantly complex scene, such as `scenes/bunnydemo.txt` (containing 144,000 triangles), it took
+When working with a significantly complex scene, such as `scenes/bunnydemo.txt` (containing 144,000 triangles), it took `184s` to get to just 50 iterations (pardon my impatience); with material sorting, it took `186s` total.
+
+I can honestly conclude that it did not make much of a difference in my application; I suspect that what warp divergence I encountered came from the randomness involved in the ray-scattering function, which happened after the material sorting. Additionally, many of the objects in my scenes were spatially very localized as well, which probably cut down on the unsorted divergence.
+
+### Open Image Denoiser
+
+The [OpenImageDenoiser](https://github.com/OpenImageDenoise/oidn) was a particularly interesting (albeit late) addition. It uses machine learning (read: magic) to take some of the gritty noise out of a ray-traced image, and construct it as if it were closer to being converged.
+
+I elected to only feed the image in at the very end of a run, so as to not sully the process of accumulating light up to that point. Notably, running an image for longer improves the final image, but I was able to get smoother images from the beginning than I would have anticipated, feeding just the initial normal and albedo maps into the program. See the following comparison of image qualities of the same scene after a different number of iterations through the path tracer:
+
+TODO: fill in OIDN comparisons
 
 
 ## Configuration Notes
