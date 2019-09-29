@@ -19,9 +19,9 @@ For this project I implemented a path tracer that runs on the GPU. Path tracing 
 I implemented various features of a path tracer, such as different materials, camera effects, geometry, and optimizations.  These features are described in detail below.
 
 # AMY LU PACA IMAGES
-Diffuse                    |  Perfect Specular         | Refractive
+Perfect Specular           |  Refractive               | Diffuse
 :-------------------------:|:-------------------------:|:-------------------------:
-![](img/Alpaca5000sampIOR1.52DOV0.1FL8.png)| ![](img/AlpacaReflective5000sampl.DOV0.1FL8.png) |![](img/DOVBlooper3.png)
+![](img/AlpacaReflective5000sampl.DOV0.1FL8.png)| ![](img/Alpaca5000sampIOR1.52DOV0.1FL8.png) |![](img/AlpacaDiffuse5000sampDOV0.1FL8.png)
 
 ## Features
 ### Materials
@@ -105,13 +105,52 @@ The diagram below illustrates the concept of the rays distributing over a lens a
 ![](img/ThinLensCamera.PNG)
 
 #### Anti-Aliasing
+Anti-aliasing is inteded to smooth out sharp borders in the render that come from discretizing the scene into individual pixels. Without anti-aliasing, we sample the pixel at its top left value, meaning we cast a ray through the top left corner of each pixel at every iteration. However, a straight edge might cut through an individual pixel, creating two contrasting colors within a single pixel. By just sampling one point in the pixel, we will only get one of the colors. This will ultimately result in a step ladder effect. However, if we distribute our samples over the entire pixel, we can get an average of the color within that pixel, softening the shart, stepped edges. 
 
+To accomplish this, I adjusted the ray direction calculation when casting rays from the camera into the scene:
+```
+offsetx = 0
+offsety = 0
+if antialiasing:
+    offsetx = rand(0, 1)
+    offsety = rand(0, 1)
+rayDirection = normalize(camView
+                         - camRight * camPixelLength.x * (x - camResolution * 0.5 + offsetx) 
+                         - campUp * campPixelLength.y * (y - camResolution * 0.5 + offsety)
+```
 ### Optimizations
 #### Stream Compaction
+For each iteration of bouncing rays throughout the scene, we parallelize all of the rays. There are as many rays cast into the scene as their are pixels on the screen, all being run in parallel. The rays bounce around the scene collecting light, but eventually terminate, either after bouncing a certain maximum number of times, hitting a light, or hitting nothing in the scene. Not all of the rays will terminate after the same number of iterations.  Some might hit a light right away, some might hit nothing right away, and some might bounce until their max depth is exceeded and be forced to terminate. Rather than wasting threads on the rays that have terminated early, we use stream compaction to avoid putting in unnecessary work on these terminated rays.
+
+Each ray path has a number of remaining bounces. If this reaches 0, the ray is terminated. After each intersection calculation and shading step, which is one cycle of a ray bounce, I partition the ray paths, putting the ones that have 0 remaining bounces at the end of the buffer of ray paths. I then update the number of paths remaining, subtracting away the terminated rays. Now, when performing the remaining intersection tests and shading operations, we will only operate on the number of remaining paths, saving threads from wasting time on terminated paths. 
 #### Material Sorting
+The time taken to calculate the scattered direction after an intersection depends on the material hit. Each material has different calculations to determine the new ray direction, some longer than others. If we perform the shading operations in any arbitrary order, we may have warps of threads in which some have to perform a specular reflection calculation, some diffuse, and some refraction.  This causes high branch divergence, which results in latency, as the diffuse material threads will be waiting for the refractive material threads to finish before being able to move on to a new intersection. 
+
+To optimize this, after we find our next set of intersections, we sort the intersections and ray paths according to the material hit. This groups the paths by material, so all of the refractive threads will be adjacent to each other, reducing branch divergence and therefore latency. 
 #### First Bounce Cache
+If we are not using depth of field or anti-aliasing, in each iteration, every first bounce of the ray from the camera will intersect the same spot in the scene. Each time we cast a ray from the camera, we cast it through the top left corner of the pixel, which is the same direction in each iteration. Because we are casting the ray from the same origin in the same direction, it will hit the scene in the same place every time. Therefore, we can take advantage of this and cache that initial intersection, reusing it on the first bounce of each iteration rather than recalculating that intersection. 
+
+Note that caching cannot be done in conjunction with anti-aliasing and depth of field. These two features vary the initial ray cast each iteration to acheive some blurring of the pixels, either blurring between pixels to smooth out sharp lines, or blurring at certain distances to create depth of field. Therefore, we must recalculate the first intersections each iteration, as they will not be the same as previous iterations.
 ### Bloopers
 #### OBJ Intersection
+When implementing OBJ intersection, I initially was not sorting triangle intersections by which was closest to camera, so if a triangle came after a triangle in front of it, the triangle in front did not render. In trying to fix this, I ended up with some interessting renders:
+
+![](img/MeshIntersectionBlooper.png) ![](img/OBJIntersectionBlooper1.png)
+
 #### First Bounce Cache
+When working on setting up the first bounce caching, I remembered to turn off anti-aliasing, but I was testing with depth of field on, which created this render:
+
+![](img/cachingBlooper.png)
+
 #### Anti-Aliasing
+Before I figured out the correct way to add the randomized offset to the pixels for anti-aliasing, I had one attempt that ended up warping my scene in a cool way:
+
+![](img/AntiAliasingBlooper2.PNG)
+
+I also tried one version that extremely over-blurred the scene:
+
+![](img/StrongAntiAliasingBlooper.PNG)
 #### Depth of Field
+Before I got the thin lens camera properties setup correctly, the ray jittering had fun effects on the renders, including a very out of focus render, and a very tiny cornell box:
+
+![] (img/DOVBlooper.png) ![](img/DOVBlooper3.png)
