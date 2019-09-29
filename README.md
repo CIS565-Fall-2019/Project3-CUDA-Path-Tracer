@@ -18,7 +18,7 @@ CUDA Path Tracer
     - Refraction with Fresnel effects and total internal reflection \[EXTRA CREDIT\]
   - Stochastic Anti-aliasing \[EXTRA CREDIT\]
   - Motion Blur \[EXTRA CREDIT\]
-  - Arbitrary mesh loading and redering (OBJ) \[EXTRA CREDIT\]
+  - Arbitrary mesh loading and rendering (OBJ) \[EXTRA CREDIT\]
 - Performance improvements
   - Path termination using Stream Compaction
   - Cache first bounce
@@ -55,4 +55,69 @@ The render of an object with refraction wil be as follows.
 
 ### Anti-Aliasing
 
-Depending on the resolution, when images are rendered, the pixels show a stair-step like lines near the edges of objects.
+Depending on the resolution, when images are rendered, the pixels show a stair-step like lines near the edges of objects. This can be reduced by approximating the pixel values around that pixel. This makes the edge more smooth. For thie path tracer, this is implemented by adding some random noise (jitter) to the pixel value when generating rays from the camera. This means, we shoot a ray to a point in an area around the actual pixel randomly sampling from a unifrom distribution. At every iteration, the ray strikes at a different point around the pixel (stochastically) and thus across iterations, creates an average effect at each pixel.
+
+The render with and without antialiasing can be seen in the following figure.
+
+![]()
+
+### Motion Blur
+
+Motion blur shows the effect of an object in motion which results when the image being recorded changes due to long exposure to the camera. The following renders are obtained for an object with ideal diffuse and a refractive object with motion blur.
+
+![]()
+
+### Arbitrary mesh loading and rendering
+
+Different objects are loaded from their OBJ files using the TinyObj library functions. Objects are loaded as a list of triangles represented by their vertices. To render these objects, the intersection of the ray is computed with all the triangles part of the object (mesh) to check if it intersects with the object. If it does, the closest point of intersection among all the triangles is determined.
+
+Different objects were loaded in the scene.
+
+![]()
+
+### Path termination using stream compaction
+
+When rays are either generated from the camera or bounced off some object do not hit any object in the scene the rays are terminated. This means these rays do not bounce further. Since our implementation of path tracing is per ray i.e. we launch threads per ray (rather than per pixel), the threads for such terminated rays are simply idling. So, if we compact the array of rays after every bounce we can save a lot of GPU resources by launching only as many thread as there are active rays.
+
+The following graph shows the remaining active rays after certain number of iterations.
+
+![]()
+
+Time taken to complete 500 iterations
+
+- With stream compaction = 
+- Without stream compaction = 
+
+Stream compaction has a greater effect when the scene is open as opposed to cornell which is a closed scene. With an open scene, the time taken for 1000 iterations with stream compaction is,
+
+- Closed scene = 
+- Open scene = 
+
+The following figure shows that the image takes less iterations to converge when using stream compaction.
+
+![]()
+
+### Cache First Bounce
+
+Since the first ray which is generated from the camera hits the same point, the first bounce will be the same for all iterations. Diffused materials scatter the ray in some random direction with some probability, but this caching does not cause any difference in the render even if we always use the same first bounce. So, I save the first bounce for each ray and load it directly from the cached version at each iteration.
+
+Time taken to complete 500 iterations
+
+- With caching = 
+- Without  = 
+
+### Sort by materials
+
+Sorting rays by the materials it hits allows the threads in a single warp to have more chances of hitting the same material. This reduces warp divergence and is thus expected to improve performance. The imporvement in performance is not visible for simple scenes with less objects. For complex scenes, the image rendering takes lesser time when sorted.
+
+### Stream Compaction with shared memory
+
+I implemented stream compaction using shared memory to improve stream compaction's performance. The stream compaction analysis shown above is done using Thrust's ```thrust::partition()``` function. The work efficient stream compaction implemented in the [previous project]() has a lot of global memory accesses for the up-sweep and down-sweep. This creates a bottleneck as global memory is slow to access and thus reduces efficiency. Using shared memory helps reduce the global memory access by loading required data to shared memory and then doing the required computations. However, since shared memory is limited and threads can not be synced across blocks, so this implementation is not trivial. 
+
+I implemented the stream compaction with shared memory in project 2's repository and it resulted in the following improvement in time for stream compaction.
+
+![]()
+
+The above graph shows how shared memory takes lesser time with increasing array size for stream compaction.
+
+When adding stream compaction with shared memory to the Path Tracer, I was getting some Out of Memory issues for images with 800 x 800 resolution. The path tracer works perfectly with lesser resolution of upto ??
