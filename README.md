@@ -44,7 +44,9 @@ Below is an image with the 4 types of materials inside a Cornell box.
 
 ## Effects
 
-# Motion blur
+### Motion blur
+To perform motion blur, we move the object slightly by some velocity each time we render a frame. This gives the illusion of motion. To showcase this feature, I decided to pull down the red and green walls of the Cornell box. Each wall had a constant velocity going down and stopped once they reached a point. Just for fun, I decided to put a light source inside the transparent orb.
+![Motion blur](./img/motion_blur.png)
 
 ### Anti Aliasing
 
@@ -65,7 +67,7 @@ Fresnel's effect is the idea that even a refractive material has a reflective qu
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | ![](./img/fresnels/refractive_no_fresnel.png)                | ![](./img/fresnels/refractive_fresnels.png)                  |
 
-![](./img/fresnels/diffused.png "Diffuse reference")
+<img src="./img/fresnels/diffused.png" title="Diffuse reference" style="zoom: 50%;" />
 
 ### Meshes
 
@@ -97,7 +99,9 @@ Finally, I decided to load the Stanford dragon mesh. This mesh has a staggering 
 
 ### Debugging Normal view
 
-In order to debug the mesh normals, I ended up implementing a simple normal view mode. In this mode, each surface is colored by the absolute value of their normal. Thus, if the surface is a roof (or floor), it will have a normal in the y axis (0, 1, 0) and thus be colored in green  (RGB coloring). below is a sample image of a cube (made of triangles) with the faces colored using the normals.
+In order to debug the mesh normals, I ended up implementing a simple normal view mode. In this mode, each surface is colored by the absolute value of their normal. Thus, if the surface is a roof (or floor), it will have a normal in the y axis (0, 1, 0) and thus be colored in green  (RGB coloring). below is a sample image of a tilted cube (made of triangles) with the faces colored using the normals. 
+
+![](./img/normal_debugging_view.png)
 
 ## Optimizations
 
@@ -129,7 +133,7 @@ The issue is that the resultant model will be jagged at the internal edges. Belo
 
 This is only noticeable for low polycount objects. For the dragon shown above, I had to compute the normals using my approximation and I couldn't tell the difference.
 
-| Existing normals                                | Own approximation of normals                   |
+| Existing normals                                | Approximation of normals                       |
 | ----------------------------------------------- | ---------------------------------------------- |
 | ![Smooth elephant](./img/elephant_2_smooth.png) | ![Rough elephant](./img/elephant_2_jagged.png) |
 
@@ -137,9 +141,33 @@ This is only noticeable for low polycount objects. For the dragon shown above, I
 
 ### Effect of depth on render
 
-To show the effect of depth on the render, I have included an image which is a composite of 8 images (All 8 are individually present in /img/depth).
+To show the effect of depth on the render, I decided to render a reflective intensive scene. 2 of the walls (red and green) and 6 orbs are reflective, 2 light sources (one is the middle orb), 2 transparent (green) orbs and 1 orb(blue) + 3 walls are diffusive. Because of this setup, the number of remaining rays doesn't reach 0 by a depth of 8, meaning there can be further improvement (in deeper reflections).
+
+| Depth | Render                  | Comment                                                      |
+| ----- | ----------------------- | ------------------------------------------------------------ |
+| 1     | ![](./img/depth/1.png)  | For this render, we see no reflections at all. The no path tracing case. |
+| 2     | ![](./img/depth/2.png)  | We start to see some reflections (only the simplest ones).   |
+| 3     | ![](./img/depth/3.png)  | We can see more reflections on the reflection of the orbs in the walls. |
+| 4     | ![](./img/depth/4.png)  | We now have better refractions.                              |
+| 5     | ![](./img/depth/5.png)  | The reflections of the orbs have some transparency.          |
+| 6     | ![6](./img/depth/6.png) | The reflection of the transparent orbs isn't transparent.    |
+| 7     | ![7](./img/depth/7.png) | The difference is subtle, but is shows up in the 3rd order reflections |
+| 8     | ![](./img/depth/8.png)  | We can keep going, but here is a good stopping point.        |
+
+ 
 
 ### Effect of iterations on render
+
+To see the effect of iterations on render quality, I went with the same image I used above (with a depth of 8) to test the effect of iteration on render for a semi-complex scene. From visual inspection, 2000 seems to be the tipping point, and further iterations have diminishing value.
+
+| Iterations | Render                   |
+| ---------- | ------------------------ |
+| 50         | ![](./img/iter/50.png)   |
+| 250        | ![](./img/iter/250.png)  |
+| 500        | ![](./img/iter/500.png)  |
+| 1000       | ![](./img/iter/1000.png) |
+| 2000       | ![](./img/iter/2000.png) |
+| 5000       | ![](./img/iter/5000.png) |
 
 
 
@@ -151,11 +179,19 @@ I mentioned this before, but sorting is slow! Maybe using my own radix implement
 
 ### Creating meshes with normals  helps
 
-Finding meshes with normals or creating them using CAD Exchanger really saved time during the initial phases.
+Finding meshes with normals or creating them using CAD Exchanger really saved time during the initial phases, by reducing the number of things to debug (not really, but kind of).
 
 ## Bloopers
 
+For the first blooper, this was in the very early stages where the floor and ceiling were reflective, and stole the color from the right and left wall and light.
 
+![Reflections error](./img/bloopers/reflective_materials_screwed.png)
+
+
+
+For the next stumble, for a long time I couldn't figure out why my roof was black. Then I understood I was double adding colors (which made the walls very vivid) and also having a bug in the loop termination condition.
+
+![Black roof](./img/bloopers/black_roof.png)
 
 ## Useful links
 
