@@ -22,7 +22,7 @@ For the first part of this assignment, I worked on simple physically based shadi
 
 **Shading:** Diffuse materials contribute the color of the material to the path and new ray direction is computed by sampling a cosine-weighted hemisphere centered around the intersection point and the intersection normal to the surface. Purely reflective materials contribute the specular color of the material to the path and the new ray direction is computed by reflecting the ray about the intersection surface normal. Here is a Cornell box scene with diffuse walls, ceiling and floor and a reflective sphere in the middle.
 
-![](img/cornellReflect.PNG)
+![](img/cornellReflect.png)
 
 **Stream Compaction:** We can use stream compaction to remove any rays/paths which have terminated because they intersected with nothing. The ray can no longer bounce around the scene at this point so there's no reason to continue doing empty calculations for further depths. I used thrust::partition to accomplish this. We can see in the chart below that at lower trace depths (less than 20), using stream compaction actually causes render time to increase, probably because the overhead of the procedure is not worth the gain. However, at larger trace depths stream compaction is very useful, which makes sense because the more bounces we have to follow on each path, the more removing as many paths as possible benefits computation time.
 
@@ -38,16 +38,16 @@ For the first part of this assignment, I worked on simple physically based shadi
 
 **Refractive Materials:** I added support for refractive materials, both with and without Fresnel effects. For refractive materials, I refract the ray using Snell's Law and use the material's albedo color as a contribution to the path color. If total internal reflection occurs at this point, I instead reflect and use the specular color. For object's which are both reflective and refractive, we can use Fresnel dielectrics. Basically we compute a probability that reflection or refraction happens at this point and use a random number to decide which effect to apply on this bounce. Here is a Cornell box with a refractive sphere using Fresnel dielectrics. Below that is a comparison between a refractive sphere without and with Fresnel, respectively.
 
-![](img/fresnelRefract.PNG)
+![](img/fresnelRefract.png)
 
-![](img/refractComp.PNG)![](img/fresnelComp.PNG)
+![](img/refractComp.png)![](img/fresnelComp.png)
 
 **Antialiasing:** To accomplish this, I simply added a random value between -0.5 and 0.5 to the x and y coordinates of each pixel when the initial rays were being generated. This jitters the ray slightly and over many iterations, it gives us smoother borders between shapes. This doesn't have any performance hit, but it does make it impossible to use the first bounce caching optimization described earlier. Here are two images with and without antialiasing, respectively.
 
-![](img/antiAliasingClose.PNG)![](img/noAntiAliasingClose.PNG)
+![](img/antiAliasingClose.png)![](img/noAntiAliasingClose.png)
 
 **Direct Lighting:** Direct lighting is a different method of path tracing that is often used in conjunction with what we have done so far to give the best, most accurate appearing renders. In direct lighting, instead of bouncing the paths around the scene some number of times, on the first bounce, we direct the ray toward one of the lights in the scene and shade the pixel based on whether or not it is occluded from that light. This method is much faster because we only require one bounce per pixel. Similarly to regular path tracing, direct lighting benefits a lot from being able to parallelize computations per pixel. However, it cannot support a lot of features like global illumination, reflection, and refraction. Reflective and refractive surfaces appear black because they don't get a chance to interact with other surfaces and gain more information. Here is a cornell box with two different colored lights (red on the left and blue on the right) rendered with direct lighting. Below that are two images of a simple cornell box with a diffuse sphere, the first rendered with direct lighting and the second without.
 
-![](img/twoLights.PNG)
+![](img/twoLights.png)
 
-![](img/dirLight.PNG)![](img/noDirLight.PNG)
+![](img/dirLight.png)![](img/noDirLight.png)
