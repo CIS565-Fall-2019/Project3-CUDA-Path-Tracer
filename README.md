@@ -13,6 +13,10 @@ CUDA Path Tracer
   5000 Samples, Refractive material with IOR 1.52, Lens Radius 0.75, Focal Length 6
 </p>
 
+### Resources
+- Piano and Cello models downloaded from [TurboSquid](https://www.turbosquid.com/)
+- Physically Based Rendering: From Theory to Implementation (PBRT)
+
 ## Overview
 For this project I implemented a path tracer that runs on the GPU. Path tracing takes a picture of a 3D scene by casting rays from a camera through each pixel into the scene and tracing them as they bounce around the scene until they terminate. Rays terminate when they hit light, obtaining energy to display color, or when they hit nothing, absorbing no color to hit the camera. The material of the objects that the ray hits in the scene determine the direction of its next bounce. After many iterations of bouncing the rays through the scene, the colors returned to the camera's eye at each pixel gradually converge, creating a realistic image of the scene. 
 
@@ -127,7 +131,7 @@ In order to store the triangle mesh data, I added a MESH type to the geom struct
 ![](img/MirroDragon1091samp.png)
 <p align="center">
   Reflective Dragon <br>
-  1091 Samples
+  1091 Samples, 10000 Triangles
 </p>
 
 ### Camera
