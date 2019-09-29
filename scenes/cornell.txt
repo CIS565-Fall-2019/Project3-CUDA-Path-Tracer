@@ -70,7 +70,7 @@ EMITTANCE   0
 
 //Specular white 
 MATERIAL 7
-RGB         .87 .69 .99
+RGB         .95 .95 .65
 SPECEX      0
 SPECRGB     .98 .98 .98
 REFL        0
@@ -162,9 +162,17 @@ SCALE       3 3 3
 OBJECT 7
 cube
 material 7
-TRANS        0 1 1
+TRANS        0 0.85 1
 ROTAT        0 0 0
 SCALE        2 2 2
+
+// Ceiling light 2
+OBJECT 8
+cube
+material 0
+TRANS       0 10 4
+ROTAT       0 0 0
+SCALE       5 .2 0.5
 
 // Sphere
 //OBJECT 8

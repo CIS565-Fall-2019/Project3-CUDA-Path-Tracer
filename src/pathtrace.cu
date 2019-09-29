@@ -19,13 +19,21 @@
 #include <thrust/partition.h>
 #include <thrust/sort.h>
 
-#define ERRORCHECK    1
+#define ERRORCHECK		1
 
+//=======================
 // FEATURE SWITCH
-#define FIRSTCACHE    1
-#define ANTIALIASING  1
-#define DEPTHOFFIELD  0
-#define MOTIONBLUR    0
+//=======================
+
+//Basic Features
+#define SORTBYMATERIAL	0
+#define FIRSTCACHE		1
+
+// Advance Features
+#define ANTIALIASING	0
+#define MOTIONBLUR		0
+#define DEPTHOFFIELD	0
+
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -416,7 +424,7 @@ __global__ void shadeMaterial (
 				} 
 				
 				// offset ray
-				pathSegments[idx].ray.origin = pathSegments[idx].ray.origin + (pathSegments[idx].ray.direction)*glm::vec3(0.01f);// EPSILON);
+				pathSegments[idx].ray.origin = pathSegments[idx].ray.origin + (pathSegments[idx].ray.direction)*glm::vec3(0.015f);// EPSILON);
 				// clamp color
 				pathSegments[idx].color = glm::clamp(pathSegments[idx].color, glm::vec3(0.0f), glm::vec3(1.0));
 			}
@@ -612,10 +620,13 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	
 		iterationComplete = (num_paths <= 0) || (depth > traceDepth);
 
-		//sort by matrial 
-		//if (iterationComplete == false) {
-		//	thrust::stable_sort_by_key(thrust::device, dev_intersections, dev_intersections+num_paths, dev_paths, materialCmp());
-		//}
+#if SORTBYMATERIAL
+		sort by matrial 
+		if (iterationComplete == false) {
+			thrust::stable_sort_by_key(thrust::device, dev_intersections, dev_intersections+num_paths, dev_paths, materialCmp());
+		}
+#endif
+
 	}
 
 	num_paths = pixelcount;
