@@ -168,6 +168,11 @@ It is also interesting to see the performance difference between the optimized a
 
 ![](img/scene_complexity.png)
 
+Lastly, I ran a comparison with a 200-Object scene with bounding walls and a scene with no walls. As was expected, the scene with no walls performed much better. This is due to the huge number pf rays that become irrelevant after even the first iteration. As can be seen in the charts below, the scene with no bounding walls loses 76% of its rays after the first bounce, while the bounded scene only loses 22% of its rays. <b>By the end of the iteration, the bounded scene still has 44% of its rays, while the unbounded scene has 0.3%.</b>
+
+![](img/walls_time.png)
+![](img/walls_rays.png)
+
 <a name="blp"></a>
 # Bloopers
 
