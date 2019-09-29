@@ -5,6 +5,7 @@
 #include <glm/gtx/string_cast.hpp>
 #include "tiny_obj_loader.h"
 #include <limits>
+#define RECOMPUTE_NORMALS true
 
 Scene::Scene(string filename) {
     cout << "Reading scene from " << filename << " ..." << endl;
@@ -201,6 +202,14 @@ int Scene::loadMaterial(string materialid) {
     }
 }
 
+glm::vec3 calculate_geometric_normals(glm::vec3 p0, glm::vec3 p1, glm::vec3 p2) {
+	glm::vec3 edge10 = p1 - p0;
+
+	glm::vec3 edge20 = p2 - p0;
+
+	return glm::normalize(glm::cross(edge20, edge10));
+}
+
 int Scene::loadObj(string objectid) {
 	int id = atoi(objectid.c_str());
 	if (id != 0) { // We can only load 1 mesh
@@ -245,6 +254,7 @@ int Scene::loadObj(string objectid) {
 		utilityCore::safeGetline(fp_in, line);
 	}
 	glm::mat4 transform = utilityCore::buildTransformationMatrix(translation, rotation, scale);
+	glm::mat4 rotate_transform = utilityCore::buildTransformationMatrix(glm::vec3(0.0f), rotation, glm::vec3(1.0f));
 
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
@@ -295,6 +305,8 @@ int Scene::loadObj(string objectid) {
 				newFace.n[v].z = attrib.normals[3 * idx.normal_index + 2];
 				newFace.n[v] = glm::normalize(newFace.n[v]);
 			}
+			if (RECOMPUTE_NORMALS)
+				newFace.n[0] = newFace.n[1] = newFace.n[1] = calculate_geometric_normals(newFace.v[0], newFace.v[1], newFace.v[2]);
 			index_offset += fv;
 			// Add material ID to mesh face
 			newFace.materialid = materialid;

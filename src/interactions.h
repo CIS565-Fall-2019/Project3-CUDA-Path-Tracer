@@ -2,6 +2,7 @@
 
 #include "intersections.h"
 #define MESH_NORMAL_VIEW false
+#define FRESNELS true
 
 // CHECKITOUT
 /**
@@ -113,12 +114,14 @@ void scatterRay(
 			normal = -intersection.surfaceNormal;
 			refrac_index_ratio = m.indexOfRefraction;
 		}
-		// Check if refraction can occure
-		if (refract(pathSegment.ray.direction, normal, refrac_index_ratio, dir))
-			// Call schlicks to update the probs
-			reflective_prob = schlick(cosine, refrac_index_ratio);
-		else
-			reflective_prob = 1.0f;
+		if (FRESNELS) {
+			// Check if refraction can occure
+			if (refract(pathSegment.ray.direction, normal, refrac_index_ratio, dir))
+				// Call schlicks to update the probs
+				reflective_prob = schlick(cosine, refrac_index_ratio);
+			else
+				reflective_prob = 1.0f;
+		}
 		// Now check if we are going to reflect or refract
 		if (pdf < reflective_prob) { 
 			dir = glm::normalize(glm::reflect(dir, intersection.surfaceNormal));

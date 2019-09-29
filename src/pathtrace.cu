@@ -19,8 +19,8 @@
 
 #define STREAM_COMPACTION true
 #define SORT_MATERIAL false
-#define CACHE_BOUNCE true
-#define AA false
+#define CACHE_BOUNCE false
+#define AA true
 #define MOTION_BLUR false
 #define ERRORCHECK 1
 
@@ -167,10 +167,8 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 	}
 }
 
-// TODO:
-// computeIntersections handles generating ray intersections ONLY.
+// computeIntersections handles generating ray intersections
 // Generating new rays is handled in your shader(s).
-// Feel free to modify the code below.
 __global__ void computeIntersections(
 	int depth
 	, int num_paths
