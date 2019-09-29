@@ -79,7 +79,7 @@ void scatterRay(
 	if (prob < m.hasReflective) {
 		//Reflective Surface
 		pathSegment.ray.direction = glm::normalize(glm::reflect(pathSegment.ray.direction, normal));
-		pathSegment.ray.origin = intersect + EPSILON * normal;
+		pathSegment.ray.origin = intersect + 0.01f * normal;
 		pathSegment.color *= m.specular.color;
 		pathSegment.color *= m.color;
 	}
@@ -94,4 +94,5 @@ void scatterRay(
 	}
 
 	pathSegment.remainingBounces--;
+	pathSegment.color = glm::clamp(pathSegment.color, glm::vec3(0.0f), glm::vec3(1.0f));
 }
