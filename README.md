@@ -41,13 +41,13 @@ This is an implementation of CUDA-based path tracer capable of rendering globall
    - [x] Contiguous rays by material type
    - [x] Cache First Bounce
 
-### Ideal Diffuse Surfaces
+### Ideal Diffusion
 A ray after striking with a material is either reflected, refracted or diffused depending upon the material properties of the object. Diffusion is implemented using Bidirectional Scattering Distribution Function. 
 
-### Perfectly Reflective Surfaces
+### Perfect Reflection
 In case of perfectly reflective surface, the new ray is calculated using `glm::reflect` function.
 
-### Refractive/Transmissive Surfaces
+### Refraction with fresnel effects
 Refraction is calculated using Snell's law and I have used `glm::refract` function to do this. But since most materials are not perfectly sepcular, have implmented fresnel effects using **Schlick's approximation**. Fresnel equations give the proportion of reflected and refracted light and then a random number from 0 to 1 is calculated to choose between specular reflection and refraction.
 
 ### Antialiasing
