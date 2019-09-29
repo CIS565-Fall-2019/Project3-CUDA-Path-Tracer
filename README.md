@@ -7,7 +7,7 @@ CUDA Path Tracer
   - [LinkedIn](https://www.linkedin.com/in/vaibhav-arcot-129829167/)
 * Tested on: Windows 10, i7-7700HQ @ 2.8GHz (3.8 Boost) 32GB, External GTX 1080Ti, 11G (My personal laptop)
 
-![Banner Image](./img/reflective.png)
+![Banner Image](./img/banner.png)
 
 ## Path Tracing overview
 
