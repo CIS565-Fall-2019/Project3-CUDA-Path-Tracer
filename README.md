@@ -10,7 +10,7 @@ CUDA Path Tracer
 
 ## Some nicer renders
 
-![](img/nice_render.png)
+![](img/nice_render.PNG)
 
 ## Performance Analysis
 
