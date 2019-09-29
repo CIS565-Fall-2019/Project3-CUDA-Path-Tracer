@@ -40,7 +40,6 @@ The image of the three guns was a good testbed for bounding box testing; the sce
 I saw, with bounding-box culling, a time of `144s` to reach 500 iterations. Without, the same scene took `236s`. This, additionally, gives evidence that one of the more time-consuming parts of the path-tracer is intersecting each ray with the scene geometry; taking out roughly 2/3 of the intersections tests produced a 61% speedup.
 
 ![Gun Trio](progressImages/rifleTrioFil.png)
-TODO: put three-guns image here
 
 #### Textures
 
@@ -94,7 +93,9 @@ However, all it did was fill in texture memory in the same way that the loaded t
 
 Implemented specular reflections with configurable exponent. Pictured below is a comparison of various exponential values for specularity. Notice that the very high value is effectively mirror-like; with such a highly specular object, the slight variations we get off the "mirror" direction are small enough to, effectively, not alter the ray at all. In this fashion, if we wished, we could eliminate the idea of "reflectivity" from our material description altogether.
 
-![Shiny balls with their exponents noted](progressImages/day4ShinyBallAnnotated.png)
+![Shiny balls with their exponents noted](progressImages/day10shinyAnnotated.png)
+
+Note: I used powers of three solely because they created a reasonable range of shininess across 7 samples; I have no idea if there was any computational speedup or slowdown because of this.
 
 ### Refraction
 
