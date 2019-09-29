@@ -8,6 +8,10 @@ CUDA Path Tracer
   
 * Tested on: Windows 10, i5, Nvidia GTX1660 (Personal)
 
+## Intro to path tracing
+
+what is it
+
 ## Some nicer renders
 
 ![](img/nice_render.PNG)
@@ -22,6 +26,13 @@ The below charts are gathered from the scene shown above. In this scene we have 
 
 The above chart shows the speed up or slow down associated with enabling each algorithm/technique. We see that in general, material sorting adds too much overhead to see any benefits that may be associated. We see caching helps improve performance as we get to make one less call to our function "compute intersections" and we see that stream compaction helps improve performance by quite a bit because we get to remove some dead rays from the scene and do less work each depth calculation. The rest of the features are essentially free as they are not adding many instructions or complexity to the system.
 
+![](img/1_loop_r.png)
+
+![](img/raw_1_loop.png)
+
+
+The above chart shows the speed up or slow down associated with enabling each algorithm/technique for release mode. We see a slightly different story with this as caching stream compaction and material sorting all add overhead to the system. This to me was interesting. I am not sure how some of the code changes to tell this part of the picture.
+
 more information below for each algorithm in the algorithm analysis. 
 
 ## Algorith Analysis
@@ -30,17 +41,21 @@ more information below for each algorithm in the algorithm analysis.
 
 ![](img/Material_Sorting.png)
 
+![](img/Material_Sorting_r.png)
+
 The idea behind material sorting is that we sort our rays by material. All rays with Material ID 1 are contiguous with each other in memory. This can help to reduce thread divergence. If all threads in a warp are computing based off a certain material we would expect that they would mostly behave the same way. For example, all threads with a specular material are all going to reflect. 
 
 In my runs there was not any speedup seen from this. I tried several other runs with more materials and objects in the scene to see if my scene was not complex enough but again saw no real advantage.
 
 I suspect if I added texture mapping or more complex materials the algorithms and branch divergence would be more severe and this is when I would see a benefit.
 
-The chart above shows us how long it takes to actually sort our material. So, each run we add about 100ms to our computation time but do not see a benefit of greater than 100ms. So, our material sorting overhead does not outweigh any beneifts that we may see from creating contiguous material memory and reducing thread divergence.
+The chart above shows us how long it takes to actually sort our material. So, each run in debug mode we add about 100ms to our computation time but do not see a benefit of greater than 100ms. So, our material sorting overhead does not outweigh any beneifts that we may see from creating contiguous material memory and reducing thread divergence. This is een in both debug and release mode.
 
 ### First Bounce Caching
 
 ![](img/Caching.png)
+
+![](img/caching_r.png)
 
 The idea behind first bounce caching is to reduce repetitive computations. Our compute intersections call takes around 250ms and for larger more complex scenes could take longer. Caching allows us to skip the first one.
 
@@ -50,10 +65,14 @@ As we allow more bounces or depth to the scene the benefit of this technique wil
 
 The chart above shows us that with a depth of 1 we do not spend any time computing intersections since we just reuse. The time to copy from this information from CPU to GPU was about .25ms compared to computing the intersection which costed us around 250ms.
 
+In release mode we see no benefit fro mcaching on the cpu side. This can mean that the time spent copying data from the cpu to the gpu is equivalent to the time it takes to execute the function "compute_intersections"
+
 
 ### Stream Compaction 
 
 ![](img/Stream_Compaction.png)
+
+![](img/Stream_Compaction_r.png)
 
 The idea behind stream compaction is to remove dead rays ( rays that are no longer bouncing ) from the scene. Dead rays are either rays that have hit a light object, have exited the scene or make no contribution to the scene. 
 
@@ -64,6 +83,8 @@ To remedy this we use stream compaction. After every bounce we can remove the ra
 This technique sees a significant speedup in performance.
 
 The above chart shows us the time spent doing our sorting we can see almost an exponential decay in time spent as depth increases.
+
+We see this expoenetial decay in both release and debug mode.
 
 ### Anti-aliasing
 

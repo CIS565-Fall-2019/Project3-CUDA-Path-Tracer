@@ -86,6 +86,16 @@ int Scene::loadGeom(string objectid) {
                 newGeom.translation, newGeom.rotation, newGeom.scale);
         newGeom.inverseTransform = glm::inverse(newGeom.transform);
         newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
+		
+		float x = newGeom.translation.x + newGeom.scale.x;
+		float x2 = newGeom.translation.x - newGeom.scale.x;
+		float y = newGeom.translation.y + newGeom.scale.y;
+		float y2 = newGeom.translation.y - newGeom.scale.y;
+		float z = newGeom.translation.z + newGeom.scale.z;
+		float z2  = newGeom.translation.z - newGeom.scale.z;
+
+		// whats the space that is this object occuppies
+		newGeom.space = { x,x2,y,y2,z,z2 };
 
         geoms.push_back(newGeom);
         return 1;

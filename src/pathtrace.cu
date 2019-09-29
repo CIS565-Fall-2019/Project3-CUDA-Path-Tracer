@@ -27,8 +27,8 @@
 #define ERRORCHECK 1
 
 // toggleable part 1 macros
-#define CACHE_ME_OUTSIDE
-#define STREAM_COMPACTION
+//#define CACHE_ME_OUTSIDE
+//#define STREAM_COMPACTION
 //#define MATERIAL_SORT
 //#define ANTIALIASING
 //#define DEPTH_OF_FIELD
@@ -333,8 +333,6 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 
 #endif
 
-		segment.ray.rand_time = u01(rng);
-
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
 	}
@@ -352,11 +350,9 @@ void update_geom(Geom * geoms, int geoms_size, int iter)
 			thrust::default_random_engine rng = makeSeededRandomEngine(i, iter, 5);
 			thrust::uniform_real_distribution<float> u01(-1, 1);
 
-			//printf("speed detected \n");
 			geom.translation = geom.translation + (geom.speed * .05f * u01(rng));
 
-			geom.transform = utilityCore::buildTransformationMatrix(
-				geom.translation, geom.rotation, geom.scale);
+			geom.transform = utilityCore::buildTransformationMatrix(geom.translation, geom.rotation, geom.scale);
 
 			geom.inverseTransform = glm::inverse(geom.transform);
 			geom.invTranspose = glm::inverseTranspose(geom.transform);
@@ -393,7 +389,7 @@ __global__ void computeIntersections(
 
 		glm::vec3 tmp_intersect;
 		glm::vec3 tmp_normal;
-		glm::vec3 speed;
+		glm::dmat3x2 space;
 		// naive parse through global geoms
 
 		for (int i = 0; i < geoms_size; i++)
@@ -420,7 +416,11 @@ __global__ void computeIntersections(
 				hit_geom_index = i;
 				intersect_point = tmp_intersect;
 				normal = tmp_normal;
-				speed = geom.speed; // store the speed of the object
+				space = geom.space; // store the size of what we hit
+				/*if (pathSegment.ray.scattering)
+				{
+					printf("compute\n");
+				}*/
 			}
 		}
 
@@ -434,6 +434,7 @@ __global__ void computeIntersections(
 			intersections[path_index].t = t_min;
 			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
 			intersections[path_index].surfaceNormal = normal;
+			intersections[path_index].space = space;
 			// store this?
 			//intersections[path_index].intersection_point = intersect_point;
 		}
@@ -493,9 +494,8 @@ __global__ void shadeFakeMaterial (
       // like what you would expect from shading in a rasterizer like OpenGL.
       // TODO: replace this! you should be able to start with basically a one-liner
       else{
-		  scatterRay(pathSegments[idx], getPointOnRay(pathSegments[idx].ray,intersection.t),intersection.surfaceNormal, material,intersection.t, rng, intersection.speed);
+		  scatterRay(pathSegments[idx], getPointOnRay(pathSegments[idx].ray,intersection.t),intersection.surfaceNormal, material,intersection.t, rng,intersection.space);
 		  pathSegments[idx].remainingBounces--; // decrement our bounce
-		  pathSegments[idx].depth++;
       }
 
 	  //pathSegments[idx].ray.origin += intersection.speed;
@@ -518,12 +518,6 @@ __global__ void finalGather(int nPaths, glm::vec3 * image, PathSegment * iterati
 	if (index < nPaths)
 	{
 		PathSegment iterationPath = iterationPaths[index];
-		if (iterationPath.depth != 0)
-		{
-			//iterationPath.color /= (float)iterationPath.depth;
-			//printf("depth %d : %f\n",iterationPath.depth, iterationPath.color.x);
-			iterationPath.depth = 0;
-		}
 		image[iterationPath.pixelIndex] += (iterationPath.color);
 	}
 }
@@ -640,6 +634,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 #endif
 
 	while (!iterationComplete) {
+		//printf("depth %d\n", depth);
 
 	// start cuda event timer
 	//nvtxRangeId_t loopBenchmark = nvtxRangeStart("loop start");
@@ -727,7 +722,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	CUDA(cudaEventSynchronize(m_stop));
 
 	CUDA(cudaEventElapsedTime(&m_time_ms, m_start, m_stop));
-	//printf("material time %f \n", m_time_ms);
+	printf("material time %f \n", m_time_ms);
 	m_time_ms = 0;
 
 #endif
@@ -789,7 +784,6 @@ if( depth >= traceDepth)
   iterationComplete = true;
 }
 #endif
- // delete path;
 
 
 	// end the loop
@@ -806,7 +800,7 @@ if( depth >= traceDepth)
 	CUDA(cudaEventElapsedTime(&app_time_ms, start, stop));
 
 
-	printf("time %f \n", app_time_ms);
+	//printf("time %f \n", app_time_ms);
 
 	//printResults(time_ms, depth);
 

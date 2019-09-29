@@ -15,7 +15,8 @@ enum GeomType {
 struct Ray {
     glm::vec3 origin;
     glm::vec3 direction;
-	float rand_time;
+	int scatter_depth;
+	bool scattering;
 };
 
 struct Geom {
@@ -28,6 +29,7 @@ struct Geom {
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
 	glm::vec3 speed;
+	glm::dmat3x2 space;
 };
 
 struct Material {
@@ -66,7 +68,6 @@ struct PathSegment {
 	glm::vec3 color;
 	int pixelIndex;
 	int remainingBounces;
-	int depth;
 };
 
 // Use with a corresponding PathSegment to do:
@@ -76,5 +77,5 @@ struct ShadeableIntersection {
   float t;
   glm::vec3 surfaceNormal;
   int materialId;
-  glm::vec3 speed;
+  glm::dmat3x2 space;
 };

@@ -65,7 +65,9 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-	_loadModel();
+
+
+	//_loadModel();
 
     const char *sceneFile = argv[1];
 
