@@ -37,15 +37,35 @@ Notably, these assets provide a few different attributes. In addition to base co
 
 TODO: Show progression of adding more textures to an object (base, +color, +roughness, +normal, +emissivity)
 
-![No Textures](progressImages/altar0.png | width=300)
+<figure>
+<img src="progressImages/altar0.png" alt="No Textures"
+	title="No Textures" width="300" height="300" />
+ <figcaption>No Textures</figcaption>
+</figure>
+ 
+<figure>
+<img src="progressImages/altarC.png" alt="Color Texture"
+	title="Color Texture" width="300" height="300" />
+ <figcaption>Color Texture</figcaption>
+</figure>
 
-![Color Texture](progressImages/altarC.png | width=300)
+<figure>
+<img src="progressImages/altarCE.png" alt="Color and Emissivity Textures"
+	title="Color and Emissivity Textures" width="300" height="300" />
+ <figcaption>Color and Emissivity Textures</figcaption>
+</figure>
 
-![Color and Emissivity Textures](progressImages/altarCE.png | width=300)
+<figure>
+<img src="progressImages/altarCEM.png" alt="Color, Emissivity, and Metallic Textures"
+	title="Color, Emissivity, and Metallic Textures" width="300" height="300" />
+ <figcaption>Color, Emissivity, and Metallic Textures</figcaption>
+</figure>
 
-![Color, Emissivity, and Metallic Textures](progressImages/altarCEM.png | width=300)
-
-![Color, Emissivity, Metallic, and Normal Textures](progressImages/altarCEMN.png | width=300)
+<figure>
+<img src="progressImages/altarCEMN.png" alt=Color, Emissivity, Metallic, and Normal Textures"
+	title="Color, Emissivity, Metallic, and Normal Textures" width="300" height="300" />
+ <figcaption>Color, Emissivity, Metallic, and Normal Textures</figcaption>
+</figure>
 
 TODO: Performance analysis
 
