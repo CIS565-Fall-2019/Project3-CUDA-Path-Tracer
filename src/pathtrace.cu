@@ -392,7 +392,7 @@ __global__ void shadeMaterial(
 		    // Set up the RNG
 		    // LOOK: this is how you use thrust's RNG! Please look at
 		    // makeSeededRandomEngine as well.
-			thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, 0);
+			thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, pathSegments[idx].remainingBounces);
 			thrust::uniform_real_distribution<float> u01(0, 1);
 
 			Material material = materials[intersection.materialId];
@@ -415,8 +415,6 @@ __global__ void shadeMaterial(
 					material,
 					rng);
 			}
-
-
 		}
 		else {
 			// If there was no intersection, color the ray black.
