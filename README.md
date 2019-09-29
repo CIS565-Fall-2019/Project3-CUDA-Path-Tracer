@@ -14,7 +14,7 @@ CUDA Path Tracer
 </p>
 
 ### Resources
-- Piano and Cello models downloaded from [TurboSquid](https://www.turbosquid.com/)
+- Piano, cello, and alpaca OBJs downloaded from [TurboSquid](https://www.turbosquid.com/)
 - Physically Based Rendering: From Theory to Implementation (PBRT)
 
 ## Overview
