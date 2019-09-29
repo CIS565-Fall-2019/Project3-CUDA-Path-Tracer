@@ -85,7 +85,7 @@ RADIUS      0.2
 OBJECT 0
 cube
 material 0
-TRANS       0 10 -2
+TRANS       0 10 0
 ROTAT       0 0 0
 SCALE       6 .6 6
 

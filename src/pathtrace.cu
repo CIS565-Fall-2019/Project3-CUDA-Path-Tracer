@@ -22,8 +22,9 @@
 
 #define ERRORCHECK 1
 
-#define MATERIAL_SORT 1
-#define CACHE_FIRST 1
+#define COMPACT 1 // don't disable
+#define MATERIAL_SORT 0
+#define CACHE_FIRST 0
 #define ANTIALIAS 0
 #define MOTION 0
 #define DOF 0
@@ -85,7 +86,7 @@ static Geom * dev_geoms = NULL;
 static Material * dev_materials = NULL;
 static PathSegment * dev_paths = NULL;
 static ShadeableIntersection * dev_intersections = NULL;
-// TODO: static variables for device memory, any extra info you need, etc
+// static variables for device memory, any extra info you need, etc
 static ShadeableIntersection * dev_intersections_cache = NULL;
 
 void pathtraceInit(Scene *scene) {
@@ -172,14 +173,14 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		float x_ = x;
 		float y_ = y;
 		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, segment.remainingBounces);
-#if ANTIALIAS && !CACHE_FIRST
-		thrust::uniform_real_distribution<float> u01(-0.5f, 0.5f);
+#if ANTIALIAS
+		thrust::uniform_real_distribution<float> u01(-1.f, 1.f);
 		x_ += u01(rng);
 		y_ += u01(rng);
 #endif // ANTIALIAS
 
 #if DOF
-		glm::vec3 lens = cam.lensRadius * sampleAperture(&rng);
+		glm::vec3 lens = cam.lensRadius * sampleAperture(rng);
 		glm::vec3 focus = segment.ray.direction * ( cam.focalDistance / glm::abs(segment.ray.direction.z));
 		segment.ray.origin += lens;
 		segment.ray.direction = glm::normalize(focus - lens);
@@ -196,7 +197,6 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 	}
 }
 
-// TODO:
 // computeIntersections handles generating ray intersections ONLY.
 // Generating new rays is handled in your shader(s).
 // Feel free to modify the code below.
@@ -289,9 +289,6 @@ __global__ void shadeMaterial(
 			pathSegments[idx].color *= (materialColor * material.emittance);
 			pathSegments[idx].remainingBounces = 0;
 		}
-		// Otherwise, do some pseudo-lighting computation. This is actually more
-		// like what you would expect from shading in a rasterizer like OpenGL.
-		// TODO: replace this! you should be able to start with basically a one-liner
 		else {
 			scatterRay(pathSegments[idx], getPointOnRay(pathSegments[idx].ray, intersection.t), intersection.surfaceNormal, material, rng);
 			pathSegments[idx].remainingBounces--;
@@ -468,8 +465,6 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	depth++;
 
-
-	// TODO:
 	// --- Shading Stage ---
 	// Shade path segments based on intersections and generate new rays by
 	// evaluating the BSDF.
@@ -492,8 +487,10 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		dev_materials
 		);
 
+#if COMPACT // running withough this does not work
 	PathSegment* path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, not_terminated());
 	num_paths = path_end - dev_paths;
+#endif // COMPACT
 
 	iterationComplete = (depth >= traceDepth || num_paths <= 0); // based off stream compaction results.
 	}
