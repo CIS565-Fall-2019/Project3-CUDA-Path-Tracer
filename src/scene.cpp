@@ -5,7 +5,7 @@
 #include <glm/gtx/string_cast.hpp>
 #include "tiny_obj_loader.h"
 #include <limits>
-#define RECOMPUTE_NORMALS true
+#define RECOMPUTE_NORMALS false
 
 Scene::Scene(string filename) {
     cout << "Reading scene from " << filename << " ..." << endl;
@@ -16,13 +16,7 @@ Scene::Scene(string filename) {
         cout << "Error reading from file - aborting!" << endl;
         throw;
     }
-	// Set mesh bounding box values to min and max inf
-	mesh_box.lb.x = std::numeric_limits<float>::max();
-	mesh_box.lb.y = std::numeric_limits<float>::max();
-	mesh_box.lb.z = std::numeric_limits<float>::max();
-	mesh_box.ub.x = std::numeric_limits<float>::min();
-	mesh_box.ub.y = std::numeric_limits<float>::min();
-	mesh_box.ub.z = std::numeric_limits<float>::min();
+
     while (fp_in.good()) {
         string line;
         utilityCore::safeGetline(fp_in, line);
@@ -216,6 +210,13 @@ int Scene::loadObj(string objectid) {
 		cout << "ERROR: Max number of meshes == 1, merge them into 1 mesh!" << endl;
 		return -1;
 	}
+	// Set mesh bounding box values to min and max inf
+	mesh_box.lb.x = std::numeric_limits<float>::max();
+	mesh_box.lb.y = std::numeric_limits<float>::max();
+	mesh_box.lb.z = std::numeric_limits<float>::max();
+	mesh_box.ub.x = std::numeric_limits<float>::min();
+	mesh_box.ub.y = std::numeric_limits<float>::min();
+	mesh_box.ub.z = std::numeric_limits<float>::min();
 	// Figure out path
 	string line, path;
 	utilityCore::safeGetline(fp_in, line);
@@ -299,11 +300,13 @@ int Scene::loadObj(string objectid) {
 				newFace.v[v].z = tmp[2];
 				// Compute update bounding box
 				update_mesh_box(newFace.v[v]);
-				// Normals
-				newFace.n[v].x = attrib.normals[3 * idx.normal_index + 0];
-				newFace.n[v].y = attrib.normals[3 * idx.normal_index + 1];
-				newFace.n[v].z = attrib.normals[3 * idx.normal_index + 2];
-				newFace.n[v] = glm::normalize(newFace.n[v]);
+				if (!RECOMPUTE_NORMALS) {
+					// Normals
+					newFace.n[v].x = attrib.normals[3 * idx.normal_index + 0];
+					newFace.n[v].y = attrib.normals[3 * idx.normal_index + 1];
+					newFace.n[v].z = attrib.normals[3 * idx.normal_index + 2];
+					newFace.n[v] = glm::normalize(newFace.n[v]);
+				}
 			}
 			if (RECOMPUTE_NORMALS)
 				newFace.n[0] = newFace.n[1] = newFace.n[1] = calculate_geometric_normals(newFace.v[0], newFace.v[1], newFace.v[2]);
