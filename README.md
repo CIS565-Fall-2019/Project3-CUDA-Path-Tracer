@@ -49,31 +49,31 @@ Here is a series of images of the same scene, with differing level of textures a
 
 <figure>
 <img src="progressImages/altar0.png" alt="No Textures"
-	title="No Textures" width="300" height="300" />
+	title="No Textures" width="500" height="500" />
  <figcaption>No Textures</figcaption>
 </figure>
  
 <figure>
 <img src="progressImages/altarC.png" alt="Color Texture"
-	title="Color Texture" width="300" height="300" />
+	title="Color Texture" width="500" height="500" />
  <figcaption>Color Texture</figcaption>
 </figure>
 
 <figure>
 <img src="progressImages/altarCE.png" alt="Color and Emissivity Textures"
-	title="Color and Emissivity Textures" width="300" height="300" />
+	title="Color and Emissivity Textures" width="500" height="500" />
  <figcaption>Color and Emissivity Textures</figcaption>
 </figure>
 
 <figure>
 <img src="progressImages/altarCEM.png" alt="Color, Emissivity, and Metallic Textures"
-	title="Color, Emissivity, and Metallic Textures" width="300" height="300" />
+	title="Color, Emissivity, and Metallic Textures" width="500" height="500" />
  <figcaption>Color, Emissivity, and Metallic Textures</figcaption>
 </figure>
 
 <figure>
 <img src="progressImages/altarCEMN.png" alt=Color, Emissivity, Metallic, and Normal Textures"
-	title="Color, Emissivity, Metallic, and Normal Textures" width="300" height="300" />
+	title="Color, Emissivity, Metallic, and Normal Textures" width="500" height="500" />
  <figcaption>Color, Emissivity, Metallic, and Normal Textures</figcaption>
 </figure>
 
@@ -92,6 +92,19 @@ Implemented specular reflections with configurable exponent. Pictured below is a
 Refraction turned out to be trickier than I anticipated. Notably, it made triangle intersection tests more difficult, because I now had to check my meshes for backface triangles. (A smarter implementation than mine might only do so if the material for the mesh as a whole were refractive.) However, this led to the possibility for very interesting results.
 
 TODO: put in a couple of glass images.
+
+### Material Sorting
+
+In order to attempt to reduce warp divergence, and better make use of the GPU resources, I implemented a pass to allow for material sorting between computing intersections and shading the materials.
+
+For a simple scene, such as `scenes/checkersdemo.txt`, I was able to get 200 iterations deep in `20s` without material sorting. With sorting, it took `50s`.
+
+Now, that was with only a dozen or so primitives; surely, when dealing with hundreds or thousands of triangles, the performance will be improved!
+
+For a more complex scene, such as `scenes/teapotdemo.txt` (containing some 16,000 triangles), without sorting the materials, it took `75s` to get to 200 iterations; with sorting, it took `79s` to get to 200 iterations. Still not a performance boost, but better nonetheless.
+
+When working with a significantly complex scene, such as `scenes/bunnydemo.txt` (containing 144,000 triangles), it took
+
 
 ## Configuration Notes
 
@@ -133,5 +146,6 @@ Certainly, CMake has a way to do this, but as somebody who is not a CMake wizard
 * Used [TinyObjLoader](https://github.com/syoyo/tinyobjloader) library for loading `*.obj` files
 * Used [TinyGltf](https://github.com/syoyo/tinygltf) library for loading `*.gltf` files
     * I also lifted their `gltf_loader` files from their raytrace examples. I did not use any other code from the example folder.
+* [OpenImageDenoiser](https://github.com/OpenImageDenoise/oidn) for post-processing
 * Formerly: Ray-triangle intersection algorithm stolen from the Wikipedia article for the [Moller-Trumbore Intersection Algorithm](https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm). Now, using glm.
    
