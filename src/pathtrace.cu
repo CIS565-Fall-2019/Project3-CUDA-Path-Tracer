@@ -24,7 +24,7 @@
 #define MATERIAL_SORT 1
 #define CACHE_FIRST 0
 #define ANTIALIAS 0
-#define MOTION 1
+#define MOTION 0
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -121,7 +121,7 @@ void pathtraceFree() {
   	cudaFree(dev_geoms);
   	cudaFree(dev_materials);
   	cudaFree(dev_intersections);
-    // TODO: clean up any extra device memory you created
+    // clean up any extra device memory you created
 	cudaFree(dev_intersections_cache);
 
     checkCUDAError("pathtraceFree");
@@ -150,7 +150,7 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		float x_ = x;
 		float y_ = y;
 
-#if ANTIALIAS
+#if ANTIALIAS && !CACHE_FIRST
 		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, segment.remainingBounces);
 		thrust::uniform_real_distribution<float> u01(-0.5f, 0.5f);
 		x_ += u01(rng);
