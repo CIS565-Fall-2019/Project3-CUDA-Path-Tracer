@@ -120,7 +120,6 @@ void scatterRay(
 			ni_over_nt = 1.0f / m.indexOfRefraction;
 			cosine = -glm::dot(pathSegment.ray.direction, normal) / glm::length(pathSegment.ray.direction);
 		}
-
 		if (refract(pathSegment.ray.direction, outwardNormal, ni_over_nt, refracted)) {
 			reflect_prob = schlick(cosine, m.indexOfRefraction);
 		}
