@@ -133,6 +133,24 @@ If we are not using depth of field or anti-aliasing, in each iteration, every fi
 Note that caching cannot be done in conjunction with anti-aliasing and depth of field. These two features vary the initial ray cast each iteration to acheive some blurring of the pixels, either blurring between pixels to smooth out sharp lines, or blurring at certain distances to create depth of field. Therefore, we must recalculate the first intersections each iteration, as they will not be the same as previous iterations.
 ### Bloopers
 #### OBJ Intersection
+When implementing OBJ intersection, I initially was not sorting triangle intersections by which was closest to camera, so if a triangle came after a triangle in front of it, the triangle in front did not render. In trying to fix this, I ended up with some interessting renders:
+
+![](img/MeshIntersectionBlooper.png) ![](img/OBJIntersectionBlooper1.png)
+
 #### First Bounce Cache
+When working on setting up the first bounce caching, I remembered to turn off anti-aliasing, but I was testing with depth of field on, which created this render:
+
+![](img/cachingBlooper.png)
+
 #### Anti-Aliasing
+Before I figured out the correct way to add the randomized offset to the pixels for anti-aliasing, I had one attempt that ended up warping my scene in a cool way:
+
+![](img/AntiAliasingBlooper2.PNG)
+
+I also tried one version that extremely over-blurred the scene:
+
+![](img/StrongAntiAliasingBlooper.PNG)
 #### Depth of Field
+Before I got the thin lens camera properties setup correctly, the ray jittering had fun effects on the renders, including a very out of focus render, and a very tiny cornell box:
+
+![] (img/DOVBlooper.png) ![](img/DOVBlooper3.png)
