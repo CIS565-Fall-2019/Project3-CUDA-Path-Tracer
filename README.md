@@ -72,7 +72,32 @@ if outsideEntering:
 Note that my implementation of refraction does not update the color of the path, as the light just passes through the material and gets bent, but does not pick up color from the material itself.
 
 ### OBJ Loading
+In order to render a piece of geometry, there must be a way to find a ray's intersection with that geometry. Basic shapes, such as spheres and boxes, can be described by simple intersection equations, but arbitrary meshes are more complex. To render these, I implemented an OBJ loader that reads in mesh data from and OBJ file using the TinyObj loader. The mesh geometry consists of a list of triangles that make up the form. Triangles have a simple intersection function, so to intersect with the mesh, we can iterate over all triangles in that mesh. 
+
+To intersect with a triangle, we first intersect the ray with the plane of the triangle.  We then use a barycentric model to check if that point is inside the trianlge by summing up the areas fo the point with each triangle edge and making sure they sum to the area of the whole triangle:
+```
+transform the ray origin and direction to object space
+t = dot(trianglePlaneNormal, (trianglePoint1 - rayOrigin)) / dot(trianglePlaneNormal, rayDirection)
+if t < 0: 
+    return no intersection
+pointOnPlane = rayOrigin + t * rayDirection
+
+S = triangleArea
+s1 = area(pointOnPlane, trianglePoint2, trianglePoint3) / S
+s2 = area(pointOnPlane, trianglePoint1, trianglePoint3) / S
+s3 = area(pointOnPlane, trianglePoint1, trianglePoint2) / S
+
+if all si's are between 0 and 1 and they sum to 1:
+    transform the intersection point back to world space
+    use triangle normal and ray direction to determine if hit inside or outside the mesh
+    return length(rayOrigin - worldSpaceIntersectionPoint)
+```
+When iterating through the triangles in a mesh, a single ray might intersect with more than one triangle, as a triangle may be further behind in the mesh but still along the ray direction.  To account for this, I ensure that the intersection found is always the closest one in front of the camera.  
+
+In order to store the triangle mesh data, I added a MESH type to the geom struct, as well as a first triangle index and a last triangle index.  The scene class contains a list of all of the triangles in the scene, which gets passed to the GPU as a buffer. When iterating over all geometry in the scene, if it is a mesh, the mesh then knows which triangles belong to it by indexing into the triangle buffer.  It iterates over the triangle buffer from its first triangle index, inclusive, to its last triangle index, exclusive. 
+
 ### Camera
+Adjusting the direction in which we cast rays into the scene can create various camera effects.  I used this technique to implement depth of field and anti-aliasing.
 #### Depth of Field
 #### Anti-Aliasing
 ### Optimizations
