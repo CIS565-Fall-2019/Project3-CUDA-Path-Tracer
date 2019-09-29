@@ -2,12 +2,12 @@
 
 // A common place to enable or disable certain optimizations or additional options
 
-//// PRESHADER_SORT
+//// PRESHADER_MATERIAL_SORT
 // This enables a step before shader kernels are called that sorts paths by
 // the materials they intersect with. When paths are sorted, kernels benefit
 // from 1) cache coherene and 2) minimal path divergence.
 constexpr bool 
-PRESHADER_SORT = true;
+PRESHADER_MATERIAL_SORT = false;
 
 //// POSTSHADER_PARTITION
 // Postshader Partition looks at all the paths after shading and seperates
@@ -29,12 +29,6 @@ constexpr bool
 ANTIALIASING = false;
 static_assert(true != (CACHE_ENABLED && ANTIALIASING), "Cannot have cahcing and antialiasing enabled together!");
 
-//// GENERATE_TERRAIN
-// This option choses to ignore the scene file and instead generate a random
-// terrain based on noise.
-constexpr bool
-TERRAIN_GENERATION = false;
-
 //// DEPTH_OF_FIELD
 // Simulates a depth of field effect by adjusting ray directions and origins
 // to fall on a thin-lens model concentric disk.
@@ -48,4 +42,4 @@ DEPTH_OF_FIELD = false;
 // Applies a motion blur effect to objects. Geoms will now accept a VELO field containing (x,y,z)
 // velocities. Each ray will contain a temporal jitter that is multiplies against VELO.
 constexpr bool
-MOTION_BLUR = true;
+MOTION_BLUR = false;
