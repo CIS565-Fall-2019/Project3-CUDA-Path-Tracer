@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
 
     printf("\n");
     printf("*****************************\n");
-	/*
+
     printf("** STREAM COMPACTION TESTS **\n");
     printf("*****************************\n");
 
@@ -157,12 +157,10 @@ int main(int argc, char* argv[]) {
 	//ofstream outputFile3("SC_WorkEff.txt");
 	//ofstream outputFile33("SC_WorkEff_NP.txt");
 	
-	for (int sz = 10; sz < 11; sz++) {
+	for (int sz = 20; sz < 21; sz++) {
 
 		//int SIZE = 1 << 20; // feel free to change the size of array
-		//SIZE = 1 << sz;
-
-		SIZE = 16;
+		SIZE = 1 << 25;
 
 		NPOT = SIZE - 3; // Non-Power-Of-Two
 		a = new int[SIZE];
@@ -213,15 +211,15 @@ int main(int argc, char* argv[]) {
 		//printArray(count, c, true);
 		printCmpLenResult(count, expectedCount, b, c);
 
-		//zeroArray(SIZE, c);
-		//printDesc("work-efficient compact, non-power-of-two");
-		//count = StreamCompaction::Efficient::compact(NPOT, c, a);
-		//printElapsedTime(StreamCompaction::Efficient::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
-		////outputFile33 << sz << " " << SIZE << " " << StreamCompaction::Efficient::timer().getGpuElapsedTimeForPreviousOperation() << " " << "(CUDA Measured)" << endl;
-		////printArray(count, c, true);
-		//printCmpLenResult(count, expectedNPOT, b, c);
+		zeroArray(SIZE, c);
+		printDesc("work-efficient compact, non-power-of-two");
+		count = StreamCompaction::Efficient::compact(NPOT, c, a);
+		printElapsedTime(StreamCompaction::Efficient::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
+		//outputFile33 << sz << " " << SIZE << " " << StreamCompaction::Efficient::timer().getGpuElapsedTimeForPreviousOperation() << " " << "(CUDA Measured)" << endl;
+		//printArray(count, c, true);
+		printCmpLenResult(count, expectedNPOT, b, c);
 	}
-	*/
+	
     system("pause"); // stop Win32 console from closing on exit
 	delete[] a;
 	delete[] b;
