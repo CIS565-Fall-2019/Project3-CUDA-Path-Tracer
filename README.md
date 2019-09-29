@@ -10,9 +10,6 @@ CUDA Path Tracer
 
 ## Intro to path tracing
 
-
-
-
 Path tracing is a computer graphics method of three dimensional rendering images. 
 
 Path tracing simulates many effects, such as soft shadows, depth of field, motion blur, sub-sufrace scattering, textures and indirect lighting.
@@ -38,7 +35,7 @@ The above chart shows the speed up or slow down associated with enabling each al
 ![](img/raw_1_loop.png)
 
 
-The above chart shows the speed up or slow down associated with enabling each algorithm/technique for release mode. We see a slightly different story with this as caching stream compaction and material sorting all add overhead to the system. This to me was interesting. I am not sure how some of the code changes to tell this part of the picture.
+The above chart shows the speed up or slow down associated with enabling each algorithm/technique for release mode. We see a slightly different story with this as caching, stream compaction and material sorting all add overhead to the system. This to me was interesting. I am not sure how some of the code changes to tell this part of the picture.
 
 more information below for each algorithm in the algorithm analysis. 
 
@@ -56,7 +53,7 @@ In my runs there was not any speedup seen from this. I tried several other runs 
 
 I suspect if I added texture mapping or more complex materials the algorithms and branch divergence would be more severe and this is when I would see a benefit.
 
-The chart above shows us how long it takes to actually sort our material. So, each run in debug mode we add about 100ms to our computation time but do not see a benefit of greater than 100ms. So, our material sorting overhead does not outweigh any beneifts that we may see from creating contiguous material memory and reducing thread divergence. This is een in both debug and release mode.
+The chart above shows us how long it takes to actually sort our material. So, each run in debug mode we add about 100ms to our computation time but do not see a benefit of greater than 100ms. So, our material sorting overhead does not outweigh any beneifts that we may see from creating contiguous material memory and reducing thread divergence. This is seen in both debug and release mode.
 
 ### First Bounce Caching
 
@@ -72,7 +69,7 @@ As we allow more bounces or depth to the scene the benefit of this technique wil
 
 The chart above shows us that with a depth of 1 we do not spend any time computing intersections since we just reuse. The time to copy from this information from CPU to GPU was about .25ms compared to computing the intersection which costed us around 250ms.
 
-In release mode we see no benefit fro mcaching on the cpu side. This can mean that the time spent copying data from the cpu to the gpu is equivalent to the time it takes to execute the function "compute_intersections"
+In release mode we see no benefit from caching on the cpu side. This can mean that the time spent copying data from the cpu to the gpu is equivalent to the time it takes to execute the function "compute_intersections"
 
 
 ### Stream Compaction 
@@ -87,7 +84,7 @@ In our naive path tracer our kernel launches a thread per ray. After the first b
 
 To remedy this we use stream compaction. After every bounce we can remove the rays that are no longer bouncing. Thus, launching less kernels, thus less work to be done.
 
-This technique sees a significant speedup in performance.
+This technique sees a significant speedup in performance for debug mode but saw too much overhead being created for release mode.
 
 The above chart shows us the time spent doing our sorting we can see almost an exponential decay in time spent as depth increases.
 
@@ -95,11 +92,11 @@ We see this expoenetial decay in both release and debug mode.
 
 ### Anti-aliasing
 
-code can be found in pathtrace.cu in "generate ray from camera"
+code can be found in pathtrace.cu in "generate ray from camera".
 
-anti-aliasing is best done on the gpu because every ray from the camera must be slightly manipulated. Therefore since we have many rays and they are all data dependent it makes sense to compute this on a gpu.
+Anti-aliasing is best done on the gpu because every ray from the camera must be slightly manipulated. Therefore since we have many rays and they are all data dependent it makes sense to compute this on a gpu.
 
-The idea behind anti aliasing is to add some jitter or randomness to the camera rays. Instead of having the rays shoot out the same direction every time we add a slight random offset. This has the rays bounce in different possibly more interesting directions to accumlate color. What we see with the anti aliasing is edges become a bit smoother. This technique is essentially free because all we are doing is adding some randomness to the first rays direction.
+The idea behind anti aliasing is to add some jitter or randomness to the camera rays. Instead of having the rays shoot out the same direction every time, we add a slight random offset. This has the input rays start in a different possibly more interesting directions to accumlate color. What we see with the anti aliasing is edges become a bit smoother. This technique is essentially free because all we are doing is adding some randomness to the first rays direction.
 
 Unfortunately if we use anti aliasing we can not use the First Bounce Cache technique. This is because we are manipulating our first rays just a bit. So the first computation will not always be the same.
 
@@ -113,7 +110,6 @@ The left image sphere is a render with anti aliasing. You will notice that the e
 On the right is a render with no aliasing. You will notice the edges are more abrupt and jagged. 
 
 Both of these images are at the same sample point. 
-
 
 Below is the full image render even from afar the jagged edges are noticeable! ( if your monitor is big enough that is ...)
 
@@ -136,10 +132,9 @@ Anti Aliasing
 
 ## depth of field
 
-code for implementation can be found in pathtrace.cu function "ConcentricSampleDisk"
+code for implementation can be found in pathtrace.cu function "ConcentricSampleDisk".
 
-depth of field is best done on the gpu because every ray from the camera must be slightly manipulated based on our lens and focal point. Therefore since we have many rays and they are all data dependent it makes sense to compute this on a gpu.
-
+Depth of field is best done on the gpu because every ray from the camera must be slightly manipulated based on our lens and focal point. Therefore, since we have many rays and they are all data dependent it makes sense to compute this on a gpu.
 
 From our chart we see depth of field did not add much, if any overhead to the system.
 Similar to anti-aliasing this technique is done once per iteration and makes adjustments to the input rays direction and origin. the compute time for this is pretty minimal there by it is masked away by the heavier functions. 
@@ -167,7 +162,7 @@ Similar to depth of field and anti aliasing motion blur is pretty much free. The
 
 This algorithm has us update the position by a little bit every iteration. So, we just need to loop through however many objects are in the scene and update it based on the speed of the object. Unless there are 1000's of objects in a scene this can and should  be done easily and quickly on the CPU.
 
-Below is an image with alot smaller spheres flying around the scene. Simulating something like electrons around a nucleus.
+Below is an image with alot of smaller spheres flying around the scene. Simulating something like electrons around a nucleus.
 
 
 ![](img/motion_blur_sun.PNG)
@@ -224,33 +219,33 @@ Currently not working
 ### References
 
 Physically Based Rendering second and third edition
-	Used this books algorithms to employ Depth of field
-	Used book for refraction
-	Used book for fresnels
-	Used book for importance sampling
+	- Used this books algorithms to employ Depth of field
+	- Used book for refraction
+	- Used book for fresnels
+	- Used book for importance sampling
 
 https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
-	in help with refraction
+	- in help with refraction
 
 https://en.wikipedia.org/wiki/Snell%27s_law
-	more help with refraction and fresnels
+	- more help with refraction and fresnels
 
 https://computergraphics.stackexchange.com/questions/2482/choosing-reflection-or-refraction-in-path-tracing
-	for help with fresnels
+	- for help with fresnels
 
 https://github.com/ssloy/tinyraytracer/wiki/Part-1:-understandable-raytracing
-	in general helped with the basics of fresnels, reflection, refraction
+	- in general helped with the basics of fresnels, reflection, refraction
 
 Ziad and Hannah, Our TA's for help with motion blur
 
 https://learning.oreilly.com/library/view/physically-based-rendering/9780128007099/B9780128006450500130_2.xhtml
-	Help with importance sampling
+	- Help with importance sampling
 
 https://computergraphics.stackexchange.com/questions/4979/what-is-importance-sampling
-	Help with importance sampling
+	- Help with importance sampling
 
 https://www.scratchapixel.com/lessons/3d-basic-rendering/global-illumination-path-tracing/global-illumination-path-tracing-practical-implementation
-	Help with importance sampling
+	- Help with importance sampling
 
 
 

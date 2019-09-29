@@ -338,7 +338,7 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 	}
 }
 
-void update_geom(Geom * geoms, int geoms_size, int iter)
+void add_blur(Geom * geoms, int geoms_size, int iter)
 {
 	glm::vec3 zero_vec(0.f);
 	for (int i = 0; i < geoms_size; i++)
@@ -623,7 +623,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	cudaMemcpy(host_geoms, dev_geoms, hst_scene->geoms.size() * sizeof(Geom), cudaMemcpyDeviceToHost);
 
 	// update geoms for speed
-	update_geom(host_geoms, hst_scene->geoms.size(),iter );
+	add_blur(host_geoms, hst_scene->geoms.size(),iter );
 
 	// copy back to device
 	cudaMemcpy(dev_geoms, host_geoms, hst_scene->geoms.size() * sizeof(Geom), cudaMemcpyHostToDevice);
