@@ -74,8 +74,24 @@ void scatterRay(
         const Material &m,
         thrust::default_random_engine &rng) {
 
-	pathSegment.color *= m.color;
-	pathSegment.ray.direction = glm::normalize(calculateRandomDirectionInHemisphere(normal, rng));
-	pathSegment.ray.origin = intersect + EPSILON * normal;
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	float prob = u01(rng);
+	if (prob < m.hasReflective) {
+		//Reflective Surface
+		pathSegment.ray.direction = glm::normalize(glm::reflect(pathSegment.ray.direction, normal));
+		pathSegment.ray.origin = intersect + EPSILON * normal;
+		pathSegment.color *= m.specular.color;
+		pathSegment.color *= m.color;
+	}
+	else if (prob < m.hasRefractive) {
+		//Refract Ray, taking care of TIR
+	}
+	else {
+		//Diffuse Surface
+		pathSegment.ray.direction = glm::normalize(calculateRandomDirectionInHemisphere(normal, rng));
+		pathSegment.ray.origin = intersect + EPSILON * normal;
+		pathSegment.color *= m.color;
+	}
+
 	pathSegment.remainingBounces--;
 }
