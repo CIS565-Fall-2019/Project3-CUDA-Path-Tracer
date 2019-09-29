@@ -1,3 +1,11 @@
 [submodule "external/tinyobjloader"]
 	path = external/tinyobjloader
 	url = git@github.com:syoyo/tinyobjloader.git
+[submodule "external/oidn"]
+	path = external/oidn
+	url = https://github.com/OpenImageDenoise/oidn.git
+	branch = master
+[submodule "external/tbb"]
+	path = external/tbb
+	url = https://github.com/intel/tbb.git
+	branch = master
