@@ -446,11 +446,7 @@ namespace StreamCompaction {
 			cudaMemcpy(dev_idata, idata, n*sizeof(int), cudaMemcpyHostToDevice);
 			checkCUDAErrorFn("cudaMemcpyToSymbol from idata to dev_arrayA failed!");
 
-			int n_new = n;
-			if (1 << ilog2ceil(n) != n) {
-				int n_new = (1 << ilog2ceil(n));
-			} // allocate enough memory to thandle non power of two
-			cudaMalloc((void**)&dev_indices, n_new * sizeof(int));
+			cudaMalloc((void**)&dev_indices, n * sizeof(int));
 			checkCUDAErrorFn("cudaMalloc dev_indices failed!");
 
 			cudaMalloc((void**)&dev_odata, n * sizeof(int));
