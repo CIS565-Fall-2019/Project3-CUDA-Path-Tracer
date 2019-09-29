@@ -17,17 +17,17 @@ A Path Tracer is a method of rendering virtual geometry onto the screen. Notably
 
 For example, features such as *caustics* (the more intense light on the floor at the bottom-left of the image), or complex reflections and re-reflections, are easier to get with path-tracing than other methods.
 
-The overall operation is as such: for each pixel in an image, shoot a ray from our camera out, and see what it intersects. If it hit a light source, we're done; otherwise, use the material properties of what we hit to generate a "bounced" ray, and do the same with that one until we either didn't hit anything, or we hit a light source. Multiply the color effects of each of our materials together, and then we get the color that pixel should be. We do that thousands of times, relfecting in different ways each time, until our image becomes something sensible.
-
 This particular implementation is running on the GPU (graphics processing unit) via the CUDA framework, which allows us to parallelize the rigorous task of doing all our calculations for each pixel one at a time. This allows for significant speed-ups over CPU path tracers.
 
 ## Features
 
-### Object loading
+### Arbitary Mesh Loading
 
 For an Object file in the scene description, it may be given the type “mesh.” Their transformation parameters act the same way, but you may also specify a “FILE” string. This can be the path to an `.obj` file, or a `.gltf` file (the latter of which must be in the same place as its assets).
 
-This loads all the file’s triangles into our data structures, and can then be rendered sensibly. As of now, no material characteristics are loaded in; however, textures are recognized for `.gltf` files.
+![Bunny!](progressImages/day4Bunny.png)*classic Bunny obj file*
+
+This loads all the file’s triangles into our data structures, and can then be rendered sensibly. As of now, no material characteristics are loaded in; however, textures are recognized for `.gltf` files, across a few metric types. All of my gltf files came from Sketchfab's automated conversion system, so certain conventions may have become baked into the code.
 
 #### Bounding Volume
 
@@ -131,7 +131,42 @@ The [OpenImageDenoiser](https://github.com/OpenImageDenoise/oidn) was a particul
 
 I elected to only feed the image in at the very end of a run, so as to not sully the process of accumulating light up to that point. Notably, running an image for longer improves the final image, but I was able to get smoother images from the beginning than I would have anticipated, feeding just the initial normal and albedo maps into the program. See the following comparison of image qualities of the same scene after a different number of iterations through the path tracer:
 
-TODO: fill in OIDN comparisons
+
+<figure>
+<img src="progressImages/oidn_zelda_50nof.png" alt="50 iterations, no filter"
+	title="50 iterations, no filter" width="500" height="500" />
+ <figcaption>50 iterations, not filtered</figcaption>
+</figure>
+ 
+<figure>
+<img src="progressImages/oidn_zelda_50fil.png" alt="50 iterations, filtered"
+	title="50 iterations, no filter" width="500" height="500" />
+ <figcaption>50 iterations, filtered</figcaption>
+</figure>
+
+<figure>
+<img src="progressImages/oidn_zelda_200nof.png" alt="200 iterations, no filter"
+	title="200 iterations, no filter" width="500" height="500" />
+ <figcaption>200 iterations, not filtered</figcaption>
+</figure>
+
+<figure>
+<img src="progressImages/oidn_zelda_200fil.png" alt="200 iterations, filtered"
+	title="200 iterations, filtered" width="500" height="500" />
+ <figcaption>200 iterations, filtered</figcaption>
+</figure>
+
+<figure>
+<img src="progressImages/oidn_zelda_2000nof.png" alt="2000 iterations, no filter"
+	title="0200 iterations, no filter" width="500" height="500" />
+ <figcaption>2000 iterations, not filtered</figcaption>
+</figure>
+
+<figure>
+<img src="progressImages/oidn_zelda_2000fil.png" alt="2000 iterations, filtered"
+	title="2000 iterations, filtered" width="500" height="500" />
+ <figcaption>2000 iterations, filtered</figcaption>
+</figure>
 
 
 ## Configuration Notes
