@@ -18,10 +18,10 @@ For this project I implemented a path tracer that runs on the GPU. Path tracing 
 
 I implemented various features of a path tracer, such as different materials, camera effects, geometry, and optimizations.  These features are described in detail below.
 
-# AMY LU PACA IMAGES
+## Amy Lou the Alpaca
 Perfect Specular           |  Refractive               | Diffuse
 :-------------------------:|:-------------------------:|:-------------------------:
-![](img/AlpacaReflective5000sampl.DOV0.1FL8.png)| ![](img/Alpaca5000sampIOR1.52DOV0.1FL8.png) |![](img/AlpacaDiffuse5000sampDOV0.1FL8.png)
+![](img/AlpacaReflective5000sampl.DOV0.1FL8.png)| ![](img/Alpaca5000sampIOR1.52DOV0.1FL8.png) |![](img/AlpacaDiffuseLight5000samp.png)
 
 ## Features
 ### Materials
@@ -140,7 +140,7 @@ When implementing OBJ intersection, I initially was not sorting triangle interse
 #### First Bounce Cache
 When working on setting up the first bounce caching, I remembered to turn off anti-aliasing, but I was testing with depth of field on, which created this render:
 
-![](img/cachingBlooper.png)
+![](img/CachingBlooper.png)
 
 #### Anti-Aliasing
 Before I figured out the correct way to add the randomized offset to the pixels for anti-aliasing, I had one attempt that ended up warping my scene in a cool way:
