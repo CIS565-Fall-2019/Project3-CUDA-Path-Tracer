@@ -385,6 +385,8 @@ __global__ void shadeMaterial(
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	if (idx < num_paths)
 	{
+		if (pathSegments[idx].remainingBounces == 0) return;
+
 		ShadeableIntersection intersection = shadeableIntersections[idx];
 		if (intersection.t > 0.0f) { // if the intersection exists...
 		    // Set up the RNG
