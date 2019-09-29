@@ -19,7 +19,7 @@ Path tracing simulates many effects, such as soft shadows, depth of field, motio
 
 In order to get high quality images from path tracing, a very large number of rays must be traced to avoid visible noisy artifacts. Because each ray is data dependent of the other rays this makes path tracing a great fit for a GPU.
 
-Below is a scene showing a reflective and diffuse spheres as well as shadows and lighting.
+Below is a typical rendeer of  a scene showing a reflective and diffuse spheres as well as shadows and lighting.
 
 ![](img/nice_render.PNG)
 
