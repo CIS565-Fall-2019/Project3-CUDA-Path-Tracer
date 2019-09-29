@@ -10,9 +10,16 @@ CUDA Path Tracer
 
 ## Intro to path tracing
 
-what is it
 
-## Some nicer renders
+
+
+Path tracing is a computer graphics method of three dimensional rendering images. 
+
+Path tracing simulates many effects, such as soft shadows, depth of field, motion blur, sub-sufrace scattering, textures and indirect lighting.
+
+In order to get high quality images from path tracing, a very large number of rays must be traced to avoid visible noisy artifacts. Because each ray is data dependent of the other rays this makes path tracing a great fit for a GPU.
+
+Below is a scene showing a reflective and diffuse spheres as well as shadows and lighting.
 
 ![](img/nice_render.PNG)
 
@@ -209,7 +216,9 @@ During a regular render we would accumulate color per depth. With importance sam
 
 For example, when we have a diffuse bounce we can bounce anywhere in our cosine weighted hemisphere but some spots in this hemisphere shine brighter than others. With importance sampling we can give more weight to these and less weight to areas that are not as interesting. This helps the image converge quicker.
 
-### Pictures
+### Subsurface scattering ( Extra )
+
+Currently not working
 
 
 ### References
