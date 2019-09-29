@@ -124,7 +124,7 @@ In order to store the triangle mesh data, I added a MESH type to the geom struct
   5000 Samples, Refractive material with IOR 1.52, Lens Radius 0.75, Focal Length 6
 </p>
 
-![](img/MirrorDragon1091samp.png)
+![](img/MirroDragon1091samp.png)
 <p align="center">
   Reflective Dragon <br>
   1091 Samples
@@ -140,11 +140,11 @@ The diagram below illustrates the concept of the rays distributing over a lens a
 
 Lens Radius 2 |  Lens Radius 1   
 :-------------------------:|:-------------------------:
-![](DOVLensRad2FL11.5.png)| ![](img/DOVRAD1FL11.5.5000samp.png)
+![](img/DOVLensRad2FL11.5.png)| ![](img/DOVRAD1FL11.5.5000samp.png)
 
 Lens Radius 0.4 |  Lens Radius 0   
 :-------------------------:|:-------------------------:
-![](DOVRAD0.4FL11.5.5000samp.png)| ![](img/DOVRAD0.5000samp.png)
+![](img/DOVRAD0.4FL11.5.5000samp.png)| ![](img/DOVRAD0.5000samp.png)
 
 #### Anti-Aliasing
 Anti-aliasing is inteded to smooth out sharp borders in the render that come from discretizing the scene into individual pixels. Without anti-aliasing, we sample the pixel at its top left value, meaning we cast a ray through the top left corner of each pixel at every iteration. However, a straight edge might cut through an individual pixel, creating two contrasting colors within a single pixel. By just sampling one point in the pixel, we will only get one of the colors. This will ultimately result in a step ladder effect. However, if we distribute our samples over the entire pixel, we can get an average of the color within that pixel, softening the shart, stepped edges. 
@@ -167,7 +167,7 @@ Anti-Aliasing Off |  Anti-Aliasing On
 
 Anti-Aliasing Off |  Anti-Aliasing On   
 :-------------------------:|:-------------------------:
-![](img/AAOffCloseup.png)| ![](img/AAOnCloseup.png)
+![](img/AAOffCloseup.PNG)| ![](img/AAOnCloseup.PNG)
 
 
 ### Optimizations
