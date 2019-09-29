@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-void saveImage() {
+void saveImage(bool appendChar) {
     float samples = iteration;
     // output image file
     image img(width, height);
@@ -96,6 +96,7 @@ void saveImage() {
     std::string filename = renderState->imageName;
     std::ostringstream ss;
     ss << filename << "." << startTimeString << "." << samples << "samp";
+	if (appendChar) ss << "orig";
     filename = ss.str();
 
     // CHECKITOUT
@@ -148,9 +149,10 @@ void runCuda() {
         cudaGLUnmapBufferObject(pbo);
     } else {
 #if USING_OIDN
+		saveImage(true);
 		renderState->image = gvec3_v(runOIDN(renderState->image, renderState->camera.resolution.x, renderState->camera.resolution.y));
 #endif
-		saveImage();
+		saveImage(false);
         pathtraceFree(scene);
         cudaDeviceReset();
         exit(EXIT_SUCCESS);
@@ -161,11 +163,11 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     if (action == GLFW_PRESS) {
       switch (key) {
       case GLFW_KEY_ESCAPE:
-        saveImage();
+        saveImage(false);
         glfwSetWindowShouldClose(window, GL_TRUE);
         break;
       case GLFW_KEY_S:
-        saveImage();
+        saveImage(false);
         break;
       case GLFW_KEY_SPACE:
         camchanged = true;

@@ -341,7 +341,7 @@ __global__ void shadeRealMaterial(
 
 		scatterRay(*incoming, 
 					getPointOnRayEp(incoming->ray, intersection.t), 
-					intersection.surfaceNormal, 
+					&intersection.surfaceNormal, 
 					material, 
 					intersection.leaving, 
 					intersection.uv, 

@@ -211,7 +211,7 @@ __device__
 void scatterRay(
 	PathSegment& segment,
 	gvec3 intersect,
-	gvec3 normal,
+	gvec3* normal,
 	const Material& m,
 	bool leavingMaterial,
 	float2 uv,
@@ -221,13 +221,14 @@ void scatterRay(
 #if TEX_NORM
 	//modify normal if we have a normal map
 	if (m.textureMask & TEXTURE_NORMAL) {
-		normal = modifyNormalWithMap(normal, uv, textureReference);
+		*normal = modifyNormalWithMap(*normal, uv, textureReference);
 	}
 #endif
+	gvec3 finalNormal = *normal;
 
 	gvec3 reverseIncoming = segment.ray.direction;
 	reverseIncoming *= -1;
-	float lightTerm = DOTP(normal, reverseIncoming);
+	float lightTerm = DOTP(finalNormal, reverseIncoming);
 	
 
 	thrust::uniform_real_distribution<float> u01(0, 1);
@@ -278,20 +279,20 @@ void scatterRay(
 	if (leavingMaterial) branchRandom = 1.0;//force refractive on the way out
 
 	if (branchRandom < probDiff) {
-		gvec3 newDirection = calculateRandomDirectionInHemisphere(normal, rng);
+		gvec3 newDirection = calculateRandomDirectionInHemisphere(finalNormal, rng);
 		segment.ray = Ray{ intersect /*+ EPSILON * newDirection*/,  newDirection };
 		segment.color *= diffColor;
 		segment.color *= lightTerm;//scale by that costheta
 	}//if diffuse
 	else if (branchRandom < probDiff + probSpec) {
-		gvec3 newDirection = calculateShinyDirection(segment.ray.direction, normal, exponent, rng);
+		gvec3 newDirection = calculateShinyDirection(segment.ray.direction, finalNormal, exponent, rng);
 		segment.ray = Ray{ intersect /*+ EPSILON * newDirection*/, newDirection };
 		segment.color *= specColor;
 		//segment.color *= lightTerm;//scale by that costheta
 	}//else if specular
 	else if (branchRandom < probDiff + probSpec + probMirror) {
 		//gvec3 newDirection = REFLECT(pathSegment.ray.direction, normal);
-		gvec3 newDirection = normalize(reflectIncomingByNormal(segment.ray.direction, normal));
+		gvec3 newDirection = normalize(reflectIncomingByNormal(segment.ray.direction, finalNormal));
 		segment.ray = Ray{ intersect /*+ EPSILON * newDirection*/, newDirection };
 		segment.color *= specColor;
 		//segment.color *= lightTerm;//scale by that costheta
@@ -308,11 +309,11 @@ void scatterRay(
 			ior2 = m.indexOfRefraction;
 		}
 
-		gvec3 newDirection = normalize(refractIncomingByNormal(segment.ray.direction, normal, ior1, ior2, &wentThrough));
+		gvec3 newDirection = normalize(refractIncomingByNormal(segment.ray.direction, finalNormal, ior1, ior2, &wentThrough));
 		
 		segment.color *= specColor;
 		if (wentThrough) {
-			segment.ray = Ray{ intersect - EPSILON * normal, newDirection };
+			segment.ray = Ray{ intersect - EPSILON * finalNormal, newDirection };
 			if (leavingMaterial) segment.curIOR = 1.0;
 			else segment.curIOR = m.indexOfRefraction;
 		}
