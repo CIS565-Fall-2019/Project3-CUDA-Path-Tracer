@@ -79,33 +79,35 @@ void scatterRay(
 	thrust::uniform_real_distribution<float> u01(0, 1);
 	float result = u01(rng);
 	glm::vec3 direction = pathSegment.ray.direction;
-	glm::vec3 color = m.color;
+	glm::vec3 color(1.0f);
 
 	if (result < m.hasReflective) {
 		direction = glm::reflect(direction, normal);
-		color = m.specular.color;
+		color *= m.specular.color;
 	}
 	else if (result - m.hasReflective < m.hasRefractive) {
 		bool inside = glm::dot(direction, normal) > 0.0f;
 		glm::vec3 newNormal = inside ? -normal : normal;
 		float refIdx = inside ? m.indexOfRefraction : (1.0f / m.indexOfRefraction);
 
-		if (glm::length(direction) < EPSILON) {
+		direction = glm::refract(direction, newNormal, refIdx);
+		if (glm::length(direction) < 0.01f) {
 			color *= glm::vec3(0.0f);
-			direction = glm::reflect(direction, normal);
+			direction = glm::reflect(direction, newNormal);
 		}
 
 		//Schlick's reflection coefficient approximation
 		float R0 = powf((1.0f - refIdx) / (1.0f + refIdx), 2.0f);
-		float R = R0 + (1.0f - R0)*powf(1.0f - glm::dot(pathSegment.ray.direction, normal), 5);
-		direction = R < u01(rng) ? glm::reflect(pathSegment.ray.direction, normal) :glm::refract(direction, newNormal, refIdx);
-		color = m.specular.color;
+		float R = R0 + (1.0f - R0)*powf(1.0f - glm::dot(pathSegment.ray.direction, newNormal), 5);
+		direction = R < u01(rng) ? glm::reflect(pathSegment.ray.direction, newNormal) : direction;
+		color *= m.specular.color;
 	}
 	else {
 		direction = calculateRandomDirectionInHemisphere(normal, rng);
+		color *= m.color;
 	}
 	
 	pathSegment.color *= color;
 	pathSegment.ray.direction = glm::normalize(direction);
-	pathSegment.ray.origin = intersect + direction * EPSILON;
+	pathSegment.ray.origin = intersect + direction * 0.01f;
 }

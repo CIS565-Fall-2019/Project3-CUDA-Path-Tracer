@@ -21,11 +21,12 @@
 #include "interactions.h"
 
 #define ERRORCHECK 1
+
 #define MATERIAL_SORT 1
-#define CACHE_FIRST 0
+#define CACHE_FIRST 1
 #define ANTIALIAS 0
 #define MOTION 0
-#define DOF 1
+#define DOF 0
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -128,8 +129,9 @@ void pathtraceFree() {
     checkCUDAError("pathtraceFree");
 }
 
-__device__ glm::vec3 sampleAperture(float u, float v) {
-	glm::vec2 offset = 2.0f * glm::vec2(u, v) - glm::vec2(1, 1);
+__device__ glm::vec3 sampleAperture(thrust::default_random_engine &rng) {
+	thrust::uniform_real_distribution<float> udof(0.0f, 1.0f);
+	glm::vec2 offset = 2.0f * glm::vec2(udof(rng), udof(rng)) - glm::vec2(1, 1);
 	float theta, r;
 	if (offset.x == 0 && offset.y == 0) {
 		return glm::vec3(0.0f);
@@ -142,8 +144,8 @@ __device__ glm::vec3 sampleAperture(float u, float v) {
 		r = offset.y;
 		theta = (PI / 2.0f) - (PI / 4.0f) * (offset.x / offset.y);
 	}
-	u = r * glm::cos(theta);
-	v = r * glm::sin(theta);
+	float u = r * glm::cos(theta);
+	float v = r * glm::sin(theta);
 	return glm::vec3(u, v, 0.0f);
 }
 
@@ -169,22 +171,19 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 
 		float x_ = x;
 		float y_ = y;
-
-#if ANTIALIAS && !CACHE_FIRST
 		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, segment.remainingBounces);
+#if ANTIALIAS && !CACHE_FIRST
 		thrust::uniform_real_distribution<float> u01(-0.5f, 0.5f);
 		x_ += u01(rng);
 		y_ += u01(rng);
 #endif // ANTIALIAS
 
 #if DOF
-		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, segment.remainingBounces);
-		thrust::uniform_real_distribution<float> u01(0.0f, 1.0f);
-		glm::vec3 lens = cam.lensRadius * sampleAperture(u01(rng), u01(rng));
+		glm::vec3 lens = cam.lensRadius * sampleAperture(&rng);
 		glm::vec3 focus = segment.ray.direction * ( cam.focalDistance / glm::abs(segment.ray.direction.z));
 		segment.ray.origin += lens;
 		segment.ray.direction = glm::normalize(focus - lens);
-#endif
+#endif // DOF
 
 
 		segment.ray.direction = glm::normalize(cam.view
