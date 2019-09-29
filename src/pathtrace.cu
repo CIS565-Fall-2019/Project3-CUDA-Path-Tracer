@@ -16,6 +16,7 @@
 #include "pathtrace.h"
 #include "intersections.h"
 #include "interactions.h"
+#include "efficient.h"
 
 #define ERRORCHECK 1
 
@@ -75,6 +76,7 @@ static glm::vec3 * dev_image = NULL;
 static Geom * dev_geoms = NULL;
 static Material * dev_materials = NULL;
 static PathSegment * dev_paths = NULL;
+static int* dev_alive_paths = NULL;
 static ShadeableIntersection * dev_intersections = NULL;
 static ShadeableIntersection * dev_first_intersections = NULL;
 static ShadeableIntersection * dev_intersections_orig = NULL;
@@ -90,6 +92,7 @@ void pathtraceInit(Scene *scene) {
 	cudaMemset(dev_image, 0, pixelcount * sizeof(glm::vec3));
 
 	cudaMalloc(&dev_paths, pixelcount * sizeof(PathSegment));
+	cudaMalloc(&dev_alive_paths, pixelcount * sizeof(int));
 
 	cudaMalloc(&dev_geoms, scene->geoms.size() * sizeof(Geom));
 	cudaMemcpy(dev_geoms, scene->geoms.data(), scene->geoms.size() * sizeof(Geom), cudaMemcpyHostToDevice);
@@ -126,7 +129,7 @@ void pathtraceFree() {
 * motion blur - jitter rays "in time"
 * lens effect - jitter ray origin positions based on a lens
 */
-__global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, PathSegment* pathSegments)
+__global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, PathSegment* pathSegments, int* alive_paths)
 {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -138,6 +141,7 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 
 
 		PathSegment & segment = pathSegments[index];
+		alive_paths[index] = index;
 
 		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, segment.remainingBounces);
 		thrust::uniform_real_distribution<float> u01(-0.5f, 0.5f);
@@ -160,7 +164,6 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 	}
 }
 
-// TODO:
 // computeIntersections handles generating ray intersections ONLY.
 // Generating new rays is handled in your shader(s).
 // Feel free to modify the code below.
@@ -168,15 +171,19 @@ __global__ void computeIntersections(
 	int depth
 	, int num_paths
 	, PathSegment * pathSegments
+	, int* alive_paths
 	, Geom * geoms
 	, int geoms_size
 	, ShadeableIntersection * intersections,
 	int iter)
 {
-	int path_index = blockIdx.x * blockDim.x + threadIdx.x;
+	int alive_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (path_index < num_paths)
+	if (alive_idx < num_paths)
 	{
+		//printf("%d\n", alive_idx);
+		int path_index = alive_paths[alive_idx];
+		//printf("%d\n", path_index);
 		PathSegment pathSegment = pathSegments[path_index];
 
 		float t;
@@ -300,18 +307,21 @@ __global__ void diffuseShader(
 	, int num_paths
 	, ShadeableIntersection * shadeableIntersections
 	, PathSegment * pathSegments
-	, Material * materials
+	, int* alive_paths
+	, Material * materials, int depth
 )
 {
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	if (idx < num_paths)
+	int alive_idx = blockIdx.x * blockDim.x + threadIdx.x;
+	if (alive_idx < num_paths)
 	{
+		int idx = alive_paths[alive_idx];
+
 		ShadeableIntersection intersection = shadeableIntersections[idx];
 		if (intersection.t > 0.0f) { // if the intersection exists...
 		  // Set up the RNG
 		  // LOOK: this is how you use thrust's RNG! Please look at
 		  // makeSeededRandomEngine as well.
-			thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, 0);
+			thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, depth);
 			thrust::uniform_real_distribution<float> u01(0, 1);
 
 			Material material = materials[intersection.materialId];
@@ -340,6 +350,8 @@ __global__ void diffuseShader(
 			pathSegments[idx].color = glm::vec3(0.0f);
 			pathSegments[idx].remainingBounces = 0;
 		}
+
+		if (pathSegments[idx].remainingBounces == 0) alive_paths[alive_idx] = -1;
 	}
 }
 
@@ -402,7 +414,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	// * Finally, add this iteration's results to the image. This has been done
 	//   for you.
 
-	generateRayFromCamera <<<blocksPerGrid2d, blockSize2d >>>(cam, iter, traceDepth, dev_paths);
+	generateRayFromCamera <<<blocksPerGrid2d, blockSize2d >>>(cam, iter, traceDepth, dev_paths, dev_alive_paths);
 	checkCUDAError("generate camera ray");
 
 	int depth = 0;
@@ -419,6 +431,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			depth
 			, num_paths
 			, dev_paths
+			, dev_alive_paths
 			, dev_geoms
 			, hst_scene->geoms.size()
 			, dev_first_intersections
@@ -442,6 +455,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 				depth
 				, num_paths
 				, dev_paths
+				, dev_alive_paths
 				, dev_geoms
 				, hst_scene->geoms.size()
 				, dev_intersections
@@ -464,12 +478,14 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		
 
 		diffuseShader<<<numblocksPathSegmentTracing, blockSize1d>>>(iter, 
-			num_paths, dev_intersections, dev_paths, dev_materials);
+			num_paths, dev_intersections, dev_paths, dev_alive_paths, dev_materials, depth);
 
 
-		dev_path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, isTerminated());
-		num_paths = dev_path_end - dev_paths;
+		//dev_path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, isTerminated());
+		//num_paths = dev_path_end - dev_paths;
+		num_paths = StreamCompaction::Efficient::compactShared(num_paths, dev_alive_paths);
 
+		//printf("Hey %d\n", num_paths);
 		iterationComplete = (num_paths == 0) || depth > traceDepth; //
 	}
 
