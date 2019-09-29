@@ -11,14 +11,15 @@ CUDA Path Tracer
 
 ## Path Tracing overview
 
-This repo is a path tracer written entirely in C++ and CUDA accelerated.
+This repo is a path tracer written entirely in C++ and CUDA accelerated. The idea of a path tracer is to simulate the effect light and materials have on other objects in the scene. 
 
 All images shown were created by running 5000 iterations unless otherwise specified, and all scene files and meshes are provided
 
-### Dependencies
+### Dependencies & CMake changes
 
 * CUDA 10+
 * [tinyobjloader](https://github.com/syoyo/tinyobjloader) (Included in repo)
+* Added *common.h* to the CMakeList.txt
 
 ### Features
 * Reflective and diffused materials
@@ -38,7 +39,7 @@ The Cornell box is a simple stage, consisting of 5 diffusive walls (1 red, 1 gre
 
 ## Different Materials
 
-Below is an image with the 4 types of materials inside a Cornell box.
+Below is an image with the 4 types of materials inside a Cornell box. The small dodecicosacron is a diffusive material, one orb is reflective and one is transparent. Finally, a cube is used as a light for the scene.
 
 ![All Materials](./img/all_materials.png)
 
@@ -123,9 +124,9 @@ The final optimization is for collision detection with meshes. Each of the meshe
 
 ### Results
 
-To test the optimizations, I ran 500 iterations on 2 difference scenes (below). Both scenes contain a mesh object (including the cube) to be able to test the ray culling optimization.
+To test the optimizations, I ran 500 iterations on 2 difference scenes (below). Both scenes contain a mesh object (including the cube) to be able to test the ray culling optimization. The second scene was created to allow a good number of the rays to be compacted.
 
-|                 Scene 1 after 500 iterations                 |                 Scene 2after 500 iterations                  |
+|                 Scene 1 after 500 iterations                 |                 Scene 2 after 500 iterations                 |
 | :----------------------------------------------------------: | :----------------------------------------------------------: |
 | <img src="./img/profile_scene_1.png" alt="Scene 1 example" style="zoom: 33%;" /> | <img src="./img/profile_scene_2.png" alt="Scene 2 example" style="zoom: 33%;" /> |
 
