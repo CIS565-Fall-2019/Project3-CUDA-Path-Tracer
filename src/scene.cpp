@@ -51,14 +51,16 @@ int Scene::loadMesh(string filename, Geom& geom) {
 	}
 
 	if (!ret) {
-		cout << "Failed to parse glTF " <<  filename << endl;
+		cout << "Failed to parse glTF " << filename << endl;
 		return 0;
 	}
 
 	for (int i = 0; i < model.meshes.size(); i++) {
 		tinygltf::Mesh& mesh = model.meshes[i];
 		for (int j = 0; j < mesh.primitives.size(); j++) {
-			tinygltf::Primitive& prim = mesh.primitives[i];
+			tinygltf::Primitive& prim = mesh.primitives[j];
+			
+			Geom newGeom = geom;
 
 			// positions
 			const tinygltf::Accessor& posAccessor = model.accessors[prim.attributes["POSITION"]];
@@ -67,8 +69,8 @@ int Scene::loadMesh(string filename, Geom& geom) {
 			const float* positions = reinterpret_cast<const float*>(&posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset]);
 
 			// get per-component min and max pos for bounding box of geom
-			geom.minPos = glm::vec3(posAccessor.minValues[0], posAccessor.minValues[1], posAccessor.minValues[2]);
-			geom.maxPos = glm::vec3(posAccessor.maxValues[0], posAccessor.maxValues[1], posAccessor.maxValues[2]);
+			newGeom.minPos = glm::vec3(posAccessor.minValues[0], posAccessor.minValues[1], posAccessor.minValues[2]);
+			newGeom.maxPos = glm::vec3(posAccessor.maxValues[0], posAccessor.maxValues[1], posAccessor.maxValues[2]);
 
 			// normals
 			const tinygltf::Accessor& norAccessor = model.accessors[prim.attributes["NORMAL"]];
@@ -83,7 +85,7 @@ int Scene::loadMesh(string filename, Geom& geom) {
 			const float* uvs = reinterpret_cast<const float*>(&uvBuffer.data[uvBufferView.byteOffset + uvAccessor.byteOffset]);
 			
 			// indices
-			geom.trianglesStart = currTriCount;
+			newGeom.trianglesStart = currTriCount;
 			const tinygltf::Accessor& indicesAccessor = model.accessors[prim.indices];
 			const tinygltf::BufferView& indicesBufferView = model.bufferViews[indicesAccessor.bufferView];
 			const tinygltf::Buffer& indicesBuffer = model.buffers[indicesBufferView.buffer];
@@ -96,54 +98,83 @@ int Scene::loadMesh(string filename, Geom& geom) {
 				break;
 			case TINYGLTF_COMPONENT_TYPE_SHORT:
 				break;
-			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: {
+				const unsigned short* indicesUShort = reinterpret_cast<const unsigned short*>(&indicesBuffer.data[indicesBufferView.byteOffset + indicesAccessor.byteOffset]);
+				for (size_t i = 0; i < indicesAccessor.count; i += 3) {
+					Triangle tri;
+					int index0 = indicesUShort[i];
+					int index1 = indicesUShort[i + 1];
+					int index2 = indicesUShort[i + 2];
+
+					// positions
+					glm::vec3 pos0 = glm::vec3(positions[(index0 * 3) + 0], positions[(index0 * 3) + 1], positions[(index0 * 3) + 2]);
+					glm::vec3 pos1 = glm::vec3(positions[(index1 * 3) + 0], positions[(index1 * 3) + 1], positions[(index1 * 3) + 2]);
+					glm::vec3 pos2 = glm::vec3(positions[(index2 * 3) + 0], positions[(index2 * 3) + 1], positions[(index2 * 3) + 2]);
+					tri.positions[0] = pos0;
+					tri.positions[1] = pos1;
+					tri.positions[2] = pos2;
+
+					// normals
+					tri.normal = glm::normalize(glm::cross(pos1 - pos0, pos2 - pos1));
+
+					// uvs
+					glm::vec2 uv1 = glm::vec2(positions[(index0 * 2) + 0], positions[(index0 * 2) + 1]);
+					glm::vec2 uv2 = glm::vec2(positions[(index1 * 2) + 0], positions[(index1 * 2) + 1]);
+					glm::vec2 uv3 = glm::vec2(positions[(index2 * 2) + 0], positions[(index2 * 2) + 1]);
+					tri.uvs[0] = uv1;
+					tri.uvs[1] = uv2;
+					tri.uvs[2] = uv3;
+
+					triangles.push_back(tri);
+					currTriCount++;
+
+				}
+				newGeom.trianglesEnd = currTriCount;
 				break;
+			}
 			case TINYGLTF_COMPONENT_TYPE_INT:
 				break;
-			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+			case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: {
+				const unsigned int* indices = reinterpret_cast<const unsigned int*>(&indicesBuffer.data[indicesBufferView.byteOffset + indicesAccessor.byteOffset]);
+				for (size_t i = 0; i < indicesAccessor.count; i += 3) {
+					Triangle tri;
+					int index0 = indices[i];
+					int index1 = indices[i + 1];
+					int index2 = indices[i + 2];
+
+					// positions
+					glm::vec3 pos0 = glm::vec3(positions[(index0 * 3) + 0], positions[(index0 * 3) + 1], positions[(index0 * 3) + 2]);
+					glm::vec3 pos1 = glm::vec3(positions[(index1 * 3) + 0], positions[(index1 * 3) + 1], positions[(index1 * 3) + 2]);
+					glm::vec3 pos2 = glm::vec3(positions[(index2 * 3) + 0], positions[(index2 * 3) + 1], positions[(index2 * 3) + 2]);
+					tri.positions[0] = pos0;
+					tri.positions[1] = pos1;
+					tri.positions[2] = pos2;
+
+					// normals
+					tri.normal = glm::normalize(glm::cross(pos1 - pos0, pos2 - pos1));
+
+					// uvs
+					glm::vec2 uv1 = glm::vec2(positions[(index0 * 2) + 0], positions[(index0 * 2) + 1]);
+					glm::vec2 uv2 = glm::vec2(positions[(index1 * 2) + 0], positions[(index1 * 2) + 1]);
+					glm::vec2 uv3 = glm::vec2(positions[(index2 * 2) + 0], positions[(index2 * 2) + 1]);
+					tri.uvs[0] = uv1;
+					tri.uvs[1] = uv2;
+					tri.uvs[2] = uv3;
+
+					triangles.push_back(tri);
+					currTriCount++;
+
+				}
+				newGeom.trianglesEnd = currTriCount;
 				break;
+			}
 			case TINYGLTF_COMPONENT_TYPE_FLOAT:
-				cout << "hey" << endl;
 				break;
 			}
 
-			const unsigned short* indices = reinterpret_cast<const unsigned short*>(&indicesBuffer.data[indicesBufferView.byteOffset + indicesAccessor.byteOffset]);
-			for (size_t i = 0; i < indicesAccessor.count; i+=3) {
-				Triangle tri;
-				int index0 = indices[i];
-				int index1 = indices[i + 1];
-				int index2 = indices[i + 2];
-
-				// positions
-				glm::vec3 pos0 = glm::vec3(positions[(index0 * 3) + 0], positions[(index0 * 3) + 1], positions[(index0 * 3) + 2]);
-				glm::vec3 pos1 = glm::vec3(positions[(index1 * 3) + 0], positions[(index1 * 3) + 1], positions[(index1 * 3) + 2]);
-				glm::vec3 pos2 = glm::vec3(positions[(index2 * 3) + 0], positions[(index2 * 3) + 1], positions[(index2 * 3) + 2]);
-				tri.positions[0] = pos0;
-				tri.positions[1] = pos1;
-				tri.positions[2] = pos2;
-
-				// normals
-				tri.normal = glm::normalize(glm::cross(pos1 - pos0, pos2 - pos1));
-
-				// uvs
-				glm::vec2 uv1 = glm::vec2(positions[(index0 * 2) + 0], positions[(index0 * 2) + 1]);
-				glm::vec2 uv2 = glm::vec2(positions[(index1 * 2) + 0], positions[(index1 * 2) + 1]);
-				glm::vec2 uv3 = glm::vec2(positions[(index2 * 2) + 0], positions[(index2 * 2) + 1]);
-				tri.uvs[0] = uv1;
-				tri.uvs[1] = uv2;
-				tri.uvs[2] = uv3;
-
-				triangles.push_back(tri);
-				currTriCount++;
-		
-			}
-			geom.trianglesEnd = currTriCount;
-				
-
+			geoms.push_back(newGeom);
 		}
 	}
-
-
 
 	return 1;
 }
@@ -200,6 +231,11 @@ int Scene::loadGeom(string objectid) {
             utilityCore::safeGetline(fp_in, line);
         }
 
+        newGeom.transform = utilityCore::buildTransformationMatrix(
+                newGeom.translation, newGeom.rotation, newGeom.scale);
+        newGeom.inverseTransform = glm::inverse(newGeom.transform);
+        newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
+
 		if (!line.empty() && fp_in.good() && newGeom.type == MESH) {
 			vector<string> tokens = utilityCore::tokenizeString(line);
 			if (strcmp(tokens[0].c_str(), "FILENAME") == 0) {
@@ -208,12 +244,9 @@ int Scene::loadGeom(string objectid) {
 			}
 		}
 
-        newGeom.transform = utilityCore::buildTransformationMatrix(
-                newGeom.translation, newGeom.rotation, newGeom.scale);
-        newGeom.inverseTransform = glm::inverse(newGeom.transform);
-        newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
-
-        geoms.push_back(newGeom);
+		if (newGeom.type != MESH) {
+			geoms.push_back(newGeom);
+		}
         return 1;
     }
 }

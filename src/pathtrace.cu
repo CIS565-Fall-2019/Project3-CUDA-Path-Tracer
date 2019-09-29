@@ -26,8 +26,8 @@
 // only have one of these at a time
 #define BOKEH_CIRCLE 0
 #define BOKEH_SQUARE 0
-#define BOKEH_DIAMOND 1
-#define BOKEH_TRIANGLE 0
+#define BOKEH_DIAMOND 0
+#define BOKEH_TRIANGLE 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -230,13 +230,11 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 
 #elif BOKEH_TRIANGLE
 		// pick 3 points of triangle
-		//glm::vec2 a = glm::vec2(1.f, 0.f);
 		glm::vec2 a = glm::vec2(0.5, 0.f);
-		//glm::vec2 b = glm::vec2(-0.5f, 0.866f);
 		glm::vec2 b = glm::vec2(-0.5f, 0.f);
 		glm::vec2 c = glm::vec2(0.f, 0.866f);
 
-		lensPoint = pointInTriangle(a, b, c, xi) * cam.lensRadius;
+		lensPoint = pointInTriangle(a, b, c, xi) * 2.f * cam.lensRadius; // * 2 so area is closer to area of square/diamond
 #endif
 		// compute point on plane of focus
 		glm::vec3 focusPoint = segment.ray.origin + segment.ray.direction * (cam.focalDistance / glm::abs(segment.ray.direction.z));
@@ -250,10 +248,6 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 	}
 }
 
-// TODO:
-// computeIntersections handles generating ray intersections ONLY.
-// Generating new rays is handled in your shader(s).
-// Feel free to modify the code below.
 __global__ void computeIntersections(int depth, int num_paths, PathSegment *pathSegments, 
 	Geom *geoms, int geoms_size, Triangle *triangles, ShadeableIntersection *intersections) {
 	int path_index = blockIdx.x * blockDim.x + threadIdx.x;

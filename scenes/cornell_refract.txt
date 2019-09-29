@@ -135,3 +135,11 @@ material 5
 TRANS       2 2 1
 ROTAT       15 35 0
 SCALE       2 2 2
+
+// Cube
+OBJECT 8
+cube
+material 5
+TRANS       3 6 0
+ROTAT       0 0 0
+SCALE       2 2 2
