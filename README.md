@@ -104,7 +104,7 @@ The rays always start at the pixel they belong to and shoot out at the same loca
 
 
 
-A performance comparison of these optimizations can be seen below:
+A performance comparison of these optimizations can be seen below (Lower is better):
 
 ![](img/perf.JPG) 
 
