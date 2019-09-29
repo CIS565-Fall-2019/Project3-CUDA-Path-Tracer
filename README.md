@@ -132,6 +132,7 @@ The [OpenImageDenoiser](https://github.com/OpenImageDenoise/oidn) was a particul
 I elected to only feed the image in at the very end of a run, so as to not sully the process of accumulating light up to that point. Notably, running an image for longer improves the final image, but I was able to get smoother images from the beginning than I would have anticipated, feeding just the initial normal and albedo maps into the program. See the following comparison of image qualities of the same scene after a different number of iterations through the path tracer:
 
 
+
 <figure>
 <img src="progressImages/oidn_zelda_50nof.png" alt="50 iterations, no filter"
 	title="50 iterations, no filter" width="500" height="500" />
@@ -144,6 +145,8 @@ I elected to only feed the image in at the very end of a run, so as to not sully
  <figcaption>50 iterations, filtered</figcaption>
 </figure>
 
+
+
 <figure>
 <img src="progressImages/oidn_zelda_200nof.png" alt="200 iterations, no filter"
 	title="200 iterations, no filter" width="500" height="500" />
@@ -155,6 +158,7 @@ I elected to only feed the image in at the very end of a run, so as to not sully
 	title="200 iterations, filtered" width="500" height="500" />
  <figcaption>200 iterations, filtered</figcaption>
 </figure>
+
 
 <figure>
 <img src="progressImages/oidn_zelda_2000nof.png" alt="2000 iterations, no filter"
