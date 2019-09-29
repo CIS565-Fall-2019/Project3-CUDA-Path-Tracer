@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
     // Initialize CUDA and GL components
     init();
 
-    // GLFW main loop
+    // GLFW main loop  -- in preview.cpp, will runCuda for many times until we close window
     mainLoop();
 
     return 0;
@@ -98,6 +98,7 @@ void saveImage() {
     //img.saveHDR(filename);  // Save a Radiance HDR file
 }
 
+//main function
 void runCuda() {
     if (camchanged) {
         iteration = 0;
