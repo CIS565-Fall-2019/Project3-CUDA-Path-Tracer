@@ -7,13 +7,10 @@ CUDA Path Tracer
   * [LinkedIn](https://www.linkedin.com/in/taylor-k-7b2110191/), [twitter](https://twitter.com/nelms_taylor), etc.
 * Tested on: Windows 10, Intel i3 Coffee Lake 4-core 3.6GHz processor, 16GB RAM, NVidia GeForce GTX1650 4GB
 
-![Altar with multiple types of texture mapping](progressImages/day7AltarTexture3crop.png)
-
-![A Challenger Approaches!](progressImages/day6MetalZelda.png)
-
 ## Path Tracer
 
-This is where I would write about my path tracer... IF I HAD ONE
+![Glass Zelda on a Textured Altar](progressImages/oidn_zelda_2000fil.png)
+
 
 ### Object loading
 
@@ -25,6 +22,8 @@ This loads all the file’s triangles into our data structures, and can then be 
 
 Simple axis-aligned bounding box for each Shape/Primitive in the mesh file.
 
+##### Performance
+
 TODO: performance analysis
 
 #### Textures
@@ -35,7 +34,7 @@ Notably, these assets provide a few different attributes. In addition to base co
 
 ![Altar mesh with base color and emissivity implemented](progressImages/day7AltarTexture2.png)
 
-TODO: Show progression of adding more textures to an object (base, +color, +roughness, +normal, +emissivity)
+Here is a series of images of the same scene, with differing level of textures applied to them.
 
 <figure>
 <img src="progressImages/altar0.png" alt="No Textures"
@@ -66,6 +65,8 @@ TODO: Show progression of adding more textures to an object (base, +color, +roug
 	title="Color, Emissivity, Metallic, and Normal Textures" width="300" height="300" />
  <figcaption>Color, Emissivity, Metallic, and Normal Textures</figcaption>
 </figure>
+
+##### Performance
 
 TODO: Performance analysis
 
