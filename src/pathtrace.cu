@@ -18,7 +18,9 @@
 #include "intersections.h"
 #include "interactions.h"
 
+#if USING_OIDN
 #include <OpenImageDenoise/oidn.h>
+#endif
 
 #define ERRORCHECK 1
 

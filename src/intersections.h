@@ -50,7 +50,9 @@ __host__ __device__ float triangleIntersectionTest(Triangle tri, Ray r,
 	gvec3 results, results2;
 	//doing two tests: against the triangle, and then the reverse-triangle (not ideal, but needed for refraction)
 	bool didHit = glm::intersectRayTriangle(r.origin, r.direction, tri.vert0, tri.vert1, tri.vert2, results);
+#if ANY_REFRACTIVE
 	bool didHitReverse = glm::intersectRayTriangle(r.origin, r.direction, tri.vert0, tri.vert2, tri.vert1, results2);
+#endif
 
 	float alpha, beta;
 
@@ -60,11 +62,13 @@ __host__ __device__ float triangleIntersectionTest(Triangle tri, Ray r,
 		beta = results.y;
 		backface = false;
 	}
+#if ANY_REFRACTIVE
 	else if (didHitReverse) {
 		alpha = results2.x;
 		beta = results2.y;
 		backface = true;
 	}
+#endif
 	else return -1;
 
 	float t = results.z;
