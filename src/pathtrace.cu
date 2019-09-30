@@ -64,34 +64,30 @@ thrust::default_random_engine makeSeededRandomEngine(int iter, int index, int de
 	return thrust::default_random_engine(h);
 }
 
-//__global__ void kernMotionBlur(int n, Geom* dev_geoms, int iter) {
-//
-//	//geom.transform = geom.initialTransform * 0.1f + 0.9f*glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
-//	//	0.0f, 1.0f, 0.0f, 0.05f * iter,
-//	//	0.0f, 0.0f, 1.0f, 0.0f,
-//	//	0.0f, 0.0f, 0.0f, 1.0f) * geom.initialTransform;
-//
-//	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-//
-//	if (idx > n) return;
-//
-//	
-//	if (dev_geoms[idx].type == SPHERE) {
-//		//printf("%f %f %f\n", dev_geoms[idx].translation.x, dev_geoms[idx].translation.y, dev_geoms[idx].translation.z);
-//		//dev_geoms[idx].translation -= glm::vec3(0.001f);
-//		//dev_geoms[idx].transform = buildTransformationMatrix(dev_geoms[idx].translation, dev_geoms[idx].rotation, dev_geoms[idx].scale);
-//		
-//		float vel = 0.01;
-//		dev_geoms[idx].transform = dev_geoms[idx].initialTransform + glm::mat4(
-//			1.0, 0.0, 0.0, 0.0,
-//			0.0, 1.0, 0.0, iter*vel,
-//			0.0, 0.0, 1.0, 0.0,
-//			0.0, 0.0, 0.0, 1.0) * dev_geoms[idx].transform;
-//
-//		dev_geoms[idx].inverseTransform = glm::inverse(dev_geoms[idx].transform);
-//		dev_geoms[idx].invTranspose = glm::inverseTranspose(dev_geoms[idx].transform);
-//	}
-//}
+__global__ void kernMotionBlur(int n, Geom* dev_geoms, int iter) {
+
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if (idx > n) return;
+
+	
+	if (dev_geoms[idx].type == SPHERE) {
+		//printf("%f %f %f\n", dev_geoms[idx].translation.x, dev_geoms[idx].translation.y, dev_geoms[idx].translation.z);
+		float vel = 0.001;
+		dev_geoms[idx].translation -= glm::vec3(vel);
+		dev_geoms[idx].transform = buildTransformationMatrix(dev_geoms[idx].translation, dev_geoms[idx].rotation, dev_geoms[idx].scale);
+		
+		//float vel = 0.01;
+		//dev_geoms[idx].transform = dev_geoms[idx].initialTransform + glm::mat4(
+		//	1.0, 0.0, 0.0, iter*vel,
+		//	0.0, 1.0, 0.0, iter*vel,
+		//	0.0, 0.0, 1.0, 0.0,
+		//	0.0, 0.0, 0.0, 1.0) * dev_geoms[idx].transform;
+
+		dev_geoms[idx].inverseTransform = glm::inverse(dev_geoms[idx].transform);
+		dev_geoms[idx].invTranspose = glm::inverseTranspose(dev_geoms[idx].transform);
+	}
+}
 
 
 //Kernel that writes the image to the OpenGL PBO directly.
@@ -260,7 +256,7 @@ __global__ void computeIntersections(
 			}
 			else if (geom.type == SPHERE)
 			{
-
+				// Motion Blur atttempt
 				//float vel = 0.0001;
 				//geom.transform = 0.9f*geom.initialTransform + 0.1f*(float)iter * glm::mat4(
 				//	1.0, 0.0, 0.0, 0.0,
@@ -496,9 +492,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		cudaDeviceSynchronize();
 	}
 
-//#if MOTION_BLUR
-//	kernMotionBlur << <1, hst_scene->geoms.size() >>> (hst_scene->geoms.size(), dev_geoms, iter);
-//#endif
+#if MOTION_BLUR
+	kernMotionBlur << <1, hst_scene->geoms.size() >>> (hst_scene->geoms.size(), dev_geoms, iter);
+#endif
 
 	cudaEvent_t start, stop;
 	cudaEventCreate(&start);
@@ -569,7 +565,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	float milliseconds = 0;
 	cudaEventElapsedTime(&milliseconds, start, stop);
 	
-	printf("%.4f\n", milliseconds);
+	//printf("%.4f\n", milliseconds);
 
 	num_paths = pixelcount;
 
