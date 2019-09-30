@@ -86,14 +86,15 @@ void scatterRay(
 		glm::vec3 attenuation(1.0f, 1.0f, 1.0f);
 		float reflect_prob;
 		float cosine;
-		float ref_idx = (glm::dot(pathSegment.ray.direction, normal) > 0) ? 1.0f / m.indexOfRefraction : m.indexOfRefraction;
+		float ref_idx = (glm::dot(pathSegment.ray.direction, normal) > 0) ?  m.indexOfRefraction: 1.0f / m.indexOfRefraction;
 		glm::vec3 refract = glm::normalize(glm::refract(pathSegment.ray.direction, normal, ref_idx));
         float r0 = powf((1.f - ref_idx) / (1.f + ref_idx), 2.f);
-        float rTheta = r0 + (1 - r0) * powf(1 - glm::abs(glm::dot(pathSegment.ray.direction, normal)), 5.f);
+        float cosTheta = r0 + (1 - r0) * powf(1 - glm::abs(glm::dot(pathSegment.ray.direction, normal)), 5.f);
 		pathSegment.color *= m.specular.color;
-
-		pathSegment.ray.direction = glm::normalize(refract);
-		pathSegment.ray.origin = intersect + EPSILON * -normal;
+		bool flip = cosTheta < u01(rng);
+		pathSegment.ray.direction = flip ? reflect : refract;
+		glm::vec3 new_normal = flip ? normal : -normal;
+		pathSegment.ray.origin = intersect + EPSILON * new_normal;
 
 	}
    else if (random_num < m.hasReflective) {

@@ -11,7 +11,7 @@ Davis Polito
 ![Graph Showing effect of stream compaction](/img/stream.png)
 This graph shows that as we remove the number of walls, making the scene more open, stream compaction is able to increase the speed of our project by drastically reducing the number of paths we must check intersection for. 
 
-#Material Sorting
+##Material Sorting
 Without sorting
 ![Without Sorting](/img/nosort.png)
 with sorting
@@ -32,3 +32,5 @@ These two bloopers occured due to stream compacting before shading and computing
 ![Stream Compaction too Early](/img/bloop3.png)
 This blooper occured due to poor seeding for the random number generation
 ![Random Number seeding in Error](/img/bloop1.png)
+This one is fun I moved sorting outside the while loop and this happened because I guess each iteration has it being drawn in different places. 
+![Moved sorting](/img/movedSorting.png) 

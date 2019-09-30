@@ -18,7 +18,7 @@
 
 #define ERRORCHECK 1
 #define CACHE 1
-#define SORT 0
+#define SORT 1
 #define COMPACT 1
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -426,8 +426,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 #if SORT
 	 	//thrust::sort_by_key(intersection_sorting, intersection_sorting, paths_sorting + num_paths, sort_by_material());
-	  // thrust::sort_by_key(intersection_sorting, intersection_sorting + num_paths, paths_sorting, sort_by_material());
-			thrust::sort(intersection_sorting, intersection_sorting + num_paths, sort_by_material());
+	     thrust::sort_by_key(intersection_sorting, intersection_sorting + num_paths, paths_sorting, sort_by_material());
+		//	thrust::sort(intersection_sorting, intersection_sorting + num_paths, sort_by_material());
 	
 #endif
 
