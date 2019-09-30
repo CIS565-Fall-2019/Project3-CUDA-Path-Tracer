@@ -150,6 +150,14 @@ When working with a significantly complex scene, such as `scenes/bunnydemo.txt` 
 
 I can honestly conclude that it did not make much of a difference in my application; I suspect that what warp divergence I encountered came from the randomness involved in the ray-scattering function, which happened after the material sorting. Additionally, many of the objects in my scenes were spatially very localized as well, which probably cut down on the unsorted divergence.
 
+### First-Intersection Caching
+
+It was useful to save the first camera-ray and scene intersection across iterations. I did not have the chance to do an extensive performance analysis, but an off-the-cuff trial on `scenes/altardemo.txt` showd that with the optimization, running 1000 iterations took `98s`, as opposed to `111s` without. Given a max depth of `12` on that scene, that's a pretty reasonable speedup.
+
+### Stream Compaction
+
+I made use of stream compaction to get rid of the terminated paths as I went through the depth of each iteration, removing those that had hit nothing or an emitter. I used the `thrust` libraries to do so, and unfortunately, I did not get a chance to examine the performance implications of doing so. I imagine they are significant.
+
 ### Open Image Denoiser
 
 The [OpenImageDenoiser](https://github.com/OpenImageDenoise/oidn) was a particularly interesting (albeit late) addition. It uses machine learning (read: magic) to take some of the gritty noise out of a ray-traced image, and construct it as if it were closer to being converged.
