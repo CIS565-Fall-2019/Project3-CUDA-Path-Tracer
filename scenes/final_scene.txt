@@ -63,7 +63,7 @@ MATERIAL 6
 RGB         0 0.501 0.501
 SPECEX      0
 SPECRGB     0 0.501 0.501
-REFL        0
+REFL        0.4
 REFR        0
 REFRIOR     0
 EMITTANCE   0
@@ -78,9 +78,9 @@ REFRIOR     1.5
 EMITTANCE   0
 
 MATERIAL 8
-RGB         0.5 0.5 0.0
+RGB         0.364 0.227 0.101
 SPECEX      0
-SPECRGB     0.5 0.50 0.0
+SPECRGB     0.364 0.227 0.101
 REFL        0.7
 REFR        0.3
 REFRIOR     0
