@@ -53,6 +53,7 @@ During the rays bounce in the scene, it's often the case that a ray will be term
 
 
 ### References
-
-[PBRT online edition](http://www.pbr-book.org/)
-[Schlick's approximation]([https://en.wikipedia.org/wiki/Schlick%27s_approximation](https://en.wikipedia.org/wiki/Schlick%27s_approximation))
+* [PBRT online edition](http://www.pbr-book.org/)
+* [Schlick's approximation - Wikipedia](https://en.wikipedia.org/wiki/Schlick%27s_approximation)
+* [Thrust :: CUDA Toolkit Documentation - Nvidia's GPU](http://docs.nvidia.com/cuda/thrust/index.html)
+* Thanks Mark Xu for explaining the Stream Compaction 
