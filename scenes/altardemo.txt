@@ -26,7 +26,7 @@ SPECRGB     0 0 0
 REFL        0
 REFR        0
 REFRIOR     0
-EMITTANCE   0
+EMITTANCE   1.2
 
 //shiny orange
 MATERIAL 3
@@ -60,14 +60,14 @@ EMITTANCE   30
 
 // Camera
 CAMERA
-RES         800 800
-FOVY        45
-ITERATIONS  5000
+RES         800 600
+FOVY        35
+ITERATIONS  2000
 DEPTH       12
 FILE        altar
-//EYE         0.0 5 10.5
-EYE         10.5 5 2 //for the reflective bump map
-LOOKAT      0 5 0
+EYE         0.0 -1 10.5
+//EYE         10.5 5 2 //for the reflective bump map
+LOOKAT      0 3 0
 UP          0 1 0
 
 // Floor
@@ -76,7 +76,7 @@ cube
 material 1
 TRANS       0 0 0
 ROTAT       0 0 0
-SCALE       20 .01 10
+SCALE       40 .01 20
 
 // Light (R)
 OBJECT 1
@@ -100,7 +100,7 @@ cube
 material 1
 TRANS       0 5 -5
 ROTAT       0 90 0
-SCALE       .01 10 20
+SCALE       .01 10 40
 
 // ALTAR
 OBJECT 4

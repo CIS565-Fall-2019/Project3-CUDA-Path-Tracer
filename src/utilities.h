@@ -12,10 +12,10 @@
 
 // Performance and Feature Switches
 
-#define SORTING_MATERIAL 0//dpes not help performance
+#define SORTING_MATERIAL 0//does not help performance
 #define CACHING_FIRST 1
-#define ANTIALIASING 1
-#define USING_OIDN 1
+#define ANTIALIASING 0
+#define USING_OIDN 0
 #define ANY_REFRACTIVE 0
 #define BOUNDING_BOXES 1
 
