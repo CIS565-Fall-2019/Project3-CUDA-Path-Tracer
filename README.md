@@ -18,8 +18,7 @@ CUDA Path Tracer
 
 - [Introduction](  )
 - [Implementation Details]( )
-- [Basic Features]( )
-- [Advance Features]( )
+- [Features]( )
 - [Performacne Analysis]( )
 - [Extra Credit]( )
 
@@ -35,26 +34,39 @@ This is implemented by computing a single bounce at each time-step for all the r
 The ray starts with an identity color which is modified multiplicatively as it hits differnet materials in the scene.
 The bounce direction and colour intensity depend on various material properties and the angle of incidence. We simulate four types of materials i.e. Emissive, Diffused, Reflective, Refractive and their combinations.
 
-### Basic Features
-The following basic features are implemented:
-   - Shading using [BSDF](https://en.wikipedia.org/wiki/Bidirectional_scattering_distribution_function)
+### Features
+
+#### Basic Features
+   - [x] BSDF Shading (Diffused, Reflective, Emissive)
+   - [x] Basic Stream Compaction to remove dead rays 
+   - [x] Material type sort 
+   - [x] First bounce intersection caching 
+#### Advance Features
+   - [x] BSDF Shading (Refractive, Percentage Combinations)
+   - [x] Stochasitc Sampled Anti Aliasing
+   - [x] Work Efficient Stream Compaction usnig Shared Memory 
+   - [x] Motion Blur
+   - [ ] Depth of Field
+   - [ ] Loading OBJ files
+
+
+1. Shading using [BSDF](https://en.wikipedia.org/wiki/Bidirectional_scattering_distribution_function)
       - Diffuse Reflection: Reflects all rays randomly in the normal facing semi-sphere.
       - Specular Reflection: Reflects the incoming ray about the normal where angle of incidence is equal to the angle of relection (mirror like behaviour).
       - Refraction: Allows ray to pass through the media based on the ratio of the refractive index of the two mediums [snell's law](https://en.wikipedia.org/wiki/Snell%27s_law)
+
+      <p float="left">
+        <img src="build/cornell_refraction.png" width="280" alt="Refraction" />
+        <img src="build/cornell_reflection.png" width="280" alt="Reflection"/>
+        <img src="build/cornell_diffuese.png" width="280" alt="Diffuese"/>   
+      </p>      
+
       - Emissive Media: Rays in our computation terminate at these materials since they emit light.
-      - Percentage combinations of properties.   
-      
-<p float="left">
-  <img src="build/cornell_refraction.png" width="300" />
-  <img src="build/cornell_reflection.png" width="300" />
-  <img src="build/cornell_diffuese.png" width="300" />   
-</p>      
+      - Percentage combinations/Probabiltiy splits between properties.   
 
-      
-<p float="left">
-  <img src="build/cornell_Refract-Reflect-50-50.png" width="300" />
-  <img src="build/cornell_emmisive.png" width="300" />
-  <img src="build/cornell_emmisive.png" width="300" />
-</p> 
-
+      <p float="left">
+        <img src="build/cornell_Refract-Reflect-50-50.png" width="280" alt="Refract-Reflect-50-50" />
+        <img src="build/cornell_emmisive.png" width="280" alt="Emmisive" />
+        <img src="build/cornell_70-30_ref_rel.png" width="280" alt="Refract-Reflect-30-70" />
+      </p> 
 
