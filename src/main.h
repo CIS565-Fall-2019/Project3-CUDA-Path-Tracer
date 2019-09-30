@@ -13,6 +13,8 @@
 #include <sstream>
 #include <stdlib.h>
 #include <string>
+#include <chrono>
+#include <vector>
 
 #include "sceneStructs.h"
 #include "image.h"
@@ -32,6 +34,8 @@ extern int iteration;
 extern int width;
 extern int height;
 
+void logTimePoint();
+void writeTimePoints(std::string filename);
 void runCuda();
 void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
 void mousePositionCallback(GLFWwindow* window, double xpos, double ypos);

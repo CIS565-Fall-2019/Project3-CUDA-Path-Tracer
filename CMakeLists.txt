@@ -11,7 +11,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Enable C++11 for host code
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -62,6 +62,10 @@ set(GLM_ROOT_DIR "external")
 find_package(GLM REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
 
+include_directories(external/tinyobjloader)
+include_directories(external/gltfraytracexample)
+include_directories(external/oidn/include)
+
 set(headers
     src/main.h
     src/image.h
@@ -73,6 +77,9 @@ set(headers
     src/sceneStructs.h
     src/preview.h
     src/utilities.h
+    src/texture.h
+    external/gltfraytracexample/gltf-loader.h
+    external/tinyobjloader/tiny_obj_loader.h
     )
 
 set(sources
@@ -84,6 +91,9 @@ set(sources
     src/scene.cpp
     src/preview.cpp
     src/utilities.cpp
+    src/texture.cpp
+    external/gltfraytracexample/gltf-loader.cc
+    external/tinyobjloader/tiny_obj_loader.cc
     )
 
 list(SORT headers)
@@ -93,9 +103,12 @@ source_group(Headers FILES ${headers})
 source_group(Sources FILES ${sources})
 
 #add_subdirectory(stream_compaction)  # TODO: uncomment if using your stream compaction
+add_subdirectory(external/oidn)
 
 cuda_add_executable(${CMAKE_PROJECT_NAME} ${sources} ${headers})
 target_link_libraries(${CMAKE_PROJECT_NAME}
     ${LIBRARIES}
+    OpenImageDenoise
     #stream_compaction  # TODO: uncomment if using your stream compaction
     )
+

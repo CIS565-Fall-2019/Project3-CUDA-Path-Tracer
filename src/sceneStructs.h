@@ -4,66 +4,88 @@
 #include <vector>
 #include <cuda_runtime.h>
 #include "glm/glm.hpp"
+#include "utilities.h"
 
 #define BACKGROUND_COLOR (glm::vec3(0.0f))
 
 enum GeomType {
     SPHERE,
     CUBE,
+	TRIANGLE,
+	MESH,
 };
 
 struct Ray {
-    glm::vec3 origin;
-    glm::vec3 direction;
+    gvec3 origin;
+    gvec3 direction;
 };
 
 struct Geom {
     enum GeomType type;
     int materialid;
-    glm::vec3 translation;
-    glm::vec3 rotation;
-    glm::vec3 scale;
-    glm::mat4 transform;
-    glm::mat4 inverseTransform;
-    glm::mat4 invTranspose;
+    gvec3 translation;
+    gvec3 rotation;
+    gvec3 scale;
+    gmat4 transform;
+    gmat4 inverseTransform;
+    gmat4 invTranspose;
+	int triangleIndex;
+	int triangleCount;
+};//conceit that this is either a primitive or a primitive acting as a bounding box to contain a boatload of triangles
+
+struct Triangle {
+	int materialid;
+	gvec3 vert0;
+	gvec3 vert1;
+	gvec3 vert2;
+	//gvec3 normal;
+	gvec3 norm0;//for interpolation
+	gvec3 norm1;//for interpolation
+	gvec3 norm2;//for interpolation
+	float2 uv0;
+	float2 uv1;
+	float2 uv2;
 };
 
 struct Material {
-    glm::vec3 color;
+    gvec3 color;
     struct {
         float exponent;
-        glm::vec3 color;
+        gvec3 color;
     } specular;
-    float hasReflective;
+    float hasReflective;//currently using as "proportion of specular that is precisely mirror-like"
     float hasRefractive;
     float indexOfRefraction;
     float emittance;
+	int8_t textureId;//index of texture to draw from
+	uint8_t textureMask;//presence/absence of texture data to override other attributes
 };
 
 struct Camera {
-    glm::ivec2 resolution;
-    glm::vec3 position;
-    glm::vec3 lookAt;
-    glm::vec3 view;
-    glm::vec3 up;
-    glm::vec3 right;
-    glm::vec2 fov;
-    glm::vec2 pixelLength;
+    ivec2 resolution;
+    gvec3 position;
+    gvec3 lookAt;
+    gvec3 view;
+    gvec3 up;
+    gvec3 right;
+    gvec2 fov;
+    gvec2 pixelLength;
 };
 
 struct RenderState {
     Camera camera;
     unsigned int iterations;
     int traceDepth;
-    std::vector<glm::vec3> image;
+    gvec3_v image;
     std::string imageName;
 };
 
 struct PathSegment {
 	Ray ray;
-	glm::vec3 color;
+	gvec3 color;
 	int pixelIndex;
 	int remainingBounces;
+	float curIOR;
 };
 
 // Use with a corresponding PathSegment to do:
@@ -71,6 +93,19 @@ struct PathSegment {
 // 2) BSDF evaluation: generate a new ray
 struct ShadeableIntersection {
   float t;
-  glm::vec3 surfaceNormal;
+  gvec3 surfaceNormal;
+  float2 uv;
   int materialId;
+  bool leaving;
 };
+
+//vector typedefs
+typedef std::vector<Ray>            Ray_v;
+typedef std::vector<Geom>           Geom_v;
+typedef std::vector<Material>       Material_v;
+typedef std::vector<Camera>         Camera_v;
+typedef std::vector<PathSegment>    PathSegment_v;
+typedef std::vector<Triangle>		Triangle_v;
+
+
+

@@ -4,6 +4,10 @@
 #include <thrust/execution_policy.h>
 #include <thrust/random.h>
 #include <thrust/remove.h>
+#include <thrust/partition.h>
+#include <device_launch_parameters.h>
+#include <device_functions.h>
+#include <texture_indirect_functions.h>
 
 #include "sceneStructs.h"
 #include "scene.h"
@@ -13,6 +17,10 @@
 #include "pathtrace.h"
 #include "intersections.h"
 #include "interactions.h"
+
+#if USING_OIDN
+#include <OpenImageDenoise/oidn.h>
+#endif
 
 #define ERRORCHECK 1
 
@@ -30,13 +38,15 @@ void checkCUDAErrorFn(const char *msg, const char *file, int line) {
     if (file) {
         fprintf(stderr, " (%s:%d)", file, line);
     }
-    fprintf(stderr, ": %s: %s\n", msg, cudaGetErrorString(err));
+    fprintf(stderr, ": %d: %s: %s\n", line, msg, cudaGetErrorString(err));
 #  ifdef _WIN32
     getchar();
 #  endif
     exit(EXIT_FAILURE);
 #endif
 }
+
+
 
 __host__ __device__
 thrust::default_random_engine makeSeededRandomEngine(int iter, int index, int depth) {
@@ -67,12 +77,24 @@ __global__ void sendImageToPBO(uchar4* pbo, glm::ivec2 resolution,
     }
 }
 
+static cudaTextureObject_t texobj0, texobj1, texobj2, texobj3, texobj4, texobj5, texobj6, texobj7;
+
+typedef struct textureWrapper {
+	cudaTextureObject_t contents[8];
+} TextureWrapper;
+
+static TextureWrapper texObjects = { texobj0, texobj1, texobj2, texobj3,
+									 texobj4, texobj5, texobj6, texobj7 };
+
+
 static Scene * hst_scene = NULL;
 static glm::vec3 * dev_image = NULL;
 static Geom * dev_geoms = NULL;
+static Triangle* dev_tris = NULL;
 static Material * dev_materials = NULL;
-static PathSegment * dev_paths = NULL;
-static ShadeableIntersection * dev_intersections = NULL;
+static PathSegment* dev_paths = NULL;
+static ShadeableIntersection* dev_intersections = NULL;
+static ShadeableIntersection* dev_intersections_first = NULL;
 // TODO: static variables for device memory, any extra info you need, etc
 // ...
 
@@ -89,24 +111,41 @@ void pathtraceInit(Scene *scene) {
   	cudaMalloc(&dev_geoms, scene->geoms.size() * sizeof(Geom));
   	cudaMemcpy(dev_geoms, scene->geoms.data(), scene->geoms.size() * sizeof(Geom), cudaMemcpyHostToDevice);
 
+	cudaMalloc(&dev_tris, scene->triangles.size() * sizeof(Triangle));
+	cudaMemcpy(dev_tris, scene->triangles.data(), scene->triangles.size() * sizeof(Triangle), cudaMemcpyHostToDevice);
+
   	cudaMalloc(&dev_materials, scene->materials.size() * sizeof(Material));
   	cudaMemcpy(dev_materials, scene->materials.data(), scene->materials.size() * sizeof(Material), cudaMemcpyHostToDevice);
 
   	cudaMalloc(&dev_intersections, pixelcount * sizeof(ShadeableIntersection));
   	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
+	cudaMalloc(&dev_intersections_first, pixelcount * sizeof(ShadeableIntersection));
+	cudaMemset(dev_intersections_first, 0, pixelcount * sizeof(ShadeableIntersection));
+
+	for (int i = 0; i < scene->textures.size(); i++) {
+		scene->textures[i].putOntoDevice(i);
+	}//for
     // TODO: initialize any extra device memeory you need
 
     checkCUDAError("pathtraceInit");
+
 }
 
-void pathtraceFree() {
+void pathtraceFree(Scene* scene) {
     cudaFree(dev_image);  // no-op if dev_image is null
   	cudaFree(dev_paths);
   	cudaFree(dev_geoms);
+	cudaFree(dev_tris);
   	cudaFree(dev_materials);
   	cudaFree(dev_intersections);
-    // TODO: clean up any extra device memory you created
+	cudaFree(dev_intersections_first);
+
+	for (int i = 0; i < scene->textures.size(); i++) {
+		scene->textures[i].freeFromDevice(i);
+	}//for
+
+	//TODO: free textures off device?
 
     checkCUDAError("pathtraceFree");
 }
@@ -124,18 +163,34 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
+
 	if (x < cam.resolution.x && y < cam.resolution.y) {
+
 		int index = x + (y * cam.resolution.x);
 		PathSegment & segment = pathSegments[index];
 
 		segment.ray.origin = cam.position;
-    segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
+		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
+		segment.curIOR = 1.0;
+		
 
-		// TODO: implement antialiasing by jittering the ray
+		float xfloat = (float)x;
+		float yfloat = (float)y;
+
+#if ANTIALIASING
+		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, 0);
+		thrust::uniform_real_distribution<float> u01(-0.5, 0.5);
+		float xFac = u01(rng);
+		float yFac = u01(rng);
+		xfloat += xFac;
+		yfloat += yFac;
+#endif
+
 		segment.ray.direction = glm::normalize(cam.view
-			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f)
-			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f)
+			- cam.right * cam.pixelLength.x * (xfloat - (float)cam.resolution.x * 0.5f)
+			- cam.up * cam.pixelLength.y * (yfloat - (float)cam.resolution.y * 0.5f)
 			);
+
 
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
@@ -147,247 +202,556 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 // Generating new rays is handled in your shader(s).
 // Feel free to modify the code below.
 __global__ void computeIntersections(
-	int depth
-	, int num_paths
-	, PathSegment * pathSegments
-	, Geom * geoms
-	, int geoms_size
-	, ShadeableIntersection * intersections
-	)
-{
+		int depth,
+		int num_paths,
+		PathSegment * pathSegments,
+		Geom * geoms,
+		Triangle* tris,
+		int geoms_size,
+		ShadeableIntersection * intersections){
+
 	int path_index = blockIdx.x * blockDim.x + threadIdx.x;
+	if (path_index >= num_paths) return;
 
-	if (path_index < num_paths)
-	{
-		PathSegment pathSegment = pathSegments[path_index];
+	PathSegment& pathSegment = pathSegments[path_index];
 
-		float t;
-		glm::vec3 intersect_point;
-		glm::vec3 normal;
-		float t_min = FLT_MAX;
-		int hit_geom_index = -1;
-		bool outside = true;
+	float t;
+	gvec3 intersect_point;
+	gvec3 normal;
+	float t_min = FLT_MAX;
+	int hit_geom_index = -1;
+	int hit_tri_index = -1;
+	bool outside = true;
 
-		glm::vec3 tmp_intersect;
-		glm::vec3 tmp_normal;
+	bool tmp_outside = true;
+	gvec3 tmp_intersect;
+	gvec3 tmp_normal;
+	int tmp_tri_index;
+	float2 tmp_uv = { -1.0, -1.0 };
+	float2 min_uv = { -1.0, -1.0 };
 
-		// naive parse through global geoms
+	// naive parse through global geoms
 
-		for (int i = 0; i < geoms_size; i++)
-		{
-			Geom & geom = geoms[i];
+	for (int i = 0; i < geoms_size; i++) {
+		Geom& geom = geoms[i];
+		tmp_uv = { -1.0, -1.0 };
 
-			if (geom.type == CUBE)
-			{
-				t = boxIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+		if (geom.type == CUBE) {
+			t = boxIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, tmp_outside, &tmp_uv);
+		}
+		else if (geom.type == SPHERE) {
+			t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, tmp_outside, &tmp_uv);
+		}
+		else if (geom.type == MESH) {
+			t = meshIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, tmp_outside, tris, &tmp_tri_index, &tmp_uv);
+		}
+		/*
+		else if (geom.type == TRIANGLE) {
+			t = triangleIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal);
+		}
+		*/
+
+		// Compute the minimum t from the intersection tests to determine what
+		// scene geometry object was hit first.
+		if (t > 0.0f && t_min > t) {
+			t_min = t;
+			hit_geom_index = i;
+			intersect_point = tmp_intersect;
+			normal = tmp_normal;
+			outside = tmp_outside;
+			min_uv = tmp_uv;
+			if (geom.type == MESH) {
+				hit_tri_index = tmp_tri_index;
 			}
-			else if (geom.type == SPHERE)
-			{
-				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
-			}
-			// TODO: add more intersection tests here... triangle? metaball? CSG?
-
-			// Compute the minimum t from the intersection tests to determine what
-			// scene geometry object was hit first.
-			if (t > 0.0f && t_min > t)
-			{
-				t_min = t;
-				hit_geom_index = i;
-				intersect_point = tmp_intersect;
-				normal = tmp_normal;
+			else {
+				hit_tri_index = -1;
 			}
 		}
+	}//for each geom
 
-		if (hit_geom_index == -1)
-		{
-			intersections[path_index].t = -1.0f;
-		}
-		else
-		{
-			//The ray hits something
-			intersections[path_index].t = t_min;
+	if (hit_geom_index == -1) {
+		intersections[path_index].t = -1.0f;
+	}
+	else {
+		//The ray hits something
+		intersections[path_index].t = t_min;
+		intersections[path_index].surfaceNormal = normal;
+		intersections[path_index].leaving = !outside;
+		intersections[path_index].uv = min_uv;
+		if (hit_tri_index > -1) {
+			int myMaterial = tris[hit_tri_index].materialid;
+			intersections[path_index].materialId = myMaterial;
+		}//if
+		else {
 			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
-			intersections[path_index].surfaceNormal = normal;
-		}
+		}//else
 	}
 }
 
-// LOOK: "fake" shader demonstrating what you might do with the info in
-// a ShadeableIntersection, as well as how to use thrust's random number
-// generator. Observe that since the thrust random number generator basically
-// adds "noise" to the iteration, the image should start off noisy and get
-// cleaner as more iterations are computed.
-//
-// Note that this shader does NOT do a BSDF evaluation!
-// Your shaders should handle that - this can allow techniques such as
-// bump mapping.
-__global__ void shadeFakeMaterial (
-  int iter
-  , int num_paths
-	, ShadeableIntersection * shadeableIntersections
-	, PathSegment * pathSegments
-	, Material * materials
-	)
-{
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < num_paths)
-  {
-    ShadeableIntersection intersection = shadeableIntersections[idx];
-    if (intersection.t > 0.0f) { // if the intersection exists...
-      // Set up the RNG
-      // LOOK: this is how you use thrust's RNG! Please look at
-      // makeSeededRandomEngine as well.
-      thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, 0);
-      thrust::uniform_real_distribution<float> u01(0, 1);
+__global__ void shadeRealMaterial(
+	int iter,
+	int num_paths,
+	ShadeableIntersection* shadeableIntersections,
+	PathSegment* pathSegments,
+	Material* materials, TextureWrapper twrap) {
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-      Material material = materials[intersection.materialId];
-      glm::vec3 materialColor = material.color;
+	cudaTextureObject_t textureReference;
 
-      // If the material indicates that the object was a light, "light" the ray
-      if (material.emittance > 0.0f) {
-        pathSegments[idx].color *= (materialColor * material.emittance);
-      }
-      // Otherwise, do some pseudo-lighting computation. This is actually more
-      // like what you would expect from shading in a rasterizer like OpenGL.
-      // TODO: replace this! you should be able to start with basically a one-liner
-      else {
-        float lightTerm = glm::dot(intersection.surfaceNormal, glm::vec3(0.0f, 1.0f, 0.0f));
-        pathSegments[idx].color *= (materialColor * lightTerm) * 0.3f + ((1.0f - intersection.t * 0.02f) * materialColor) * 0.7f;
-        pathSegments[idx].color *= u01(rng); // apply some noise because why not
-      }
-    // If there was no intersection, color the ray black.
-    // Lots of renderers use 4 channel color, RGBA, where A = alpha, often
-    // used for opacity, in which case they can indicate "no opacity".
-    // This can be useful for post-processing and image compositing.
-    } else {
-      pathSegments[idx].color = glm::vec3(0.0f);
-    }
-  }
-}
+	if (idx >= num_paths) return;
+
+	ShadeableIntersection intersection = shadeableIntersections[idx];
+	PathSegment* incoming = &pathSegments[idx];
+	if (intersection.t > 0.0f) { // if the intersection exists...
+	  // Set up the RNG
+
+		thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, 0);
+		thrust::uniform_real_distribution<float> u01(0, 1);
+
+		Material material = materials[intersection.materialId];
+		gvec3 materialColor = material.color;
+
+		if (material.textureId >= 0) {
+			textureReference = twrap.contents[material.textureId];
+		}
+
+		// If the material indicates that the object was a light, "light" the ray
+
+		if (material.emittance > 0.0f) {
+
+#if TEX_EMISSIVE
+			if (material.textureMask & TEXTURE_EMISSIVE) {
+				float4 emissiveText = tex2DLayered<float4>(textureReference, intersection.uv.x, intersection.uv.y, TEXTURE_LAYER_EMISSIVE);
+				gvec3 emissiveColor = gvec3(emissiveText.x, emissiveText.y, emissiveText.z);
+				if (glm::length(emissiveColor) > 0.04) {
+					incoming->color *= emissiveColor * material.emittance;
+					incoming->remainingBounces = 0;//stop bouncing here!
+					return;
+				}//if we're emitting light
+			}//checking for emissive
+			else {
+#endif
+				incoming->color *= (materialColor * material.emittance);
+				incoming->remainingBounces = 0;//stop bouncing here!
+				return;
+#if TEX_EMISSIVE
+			}
+#endif
+		}
+
+		incoming->remainingBounces--;
+
+		scatterRay(*incoming, 
+					getPointOnRayEp(incoming->ray, intersection.t), 
+					&intersection.surfaceNormal, 
+					material, 
+					intersection.leaving, 
+					intersection.uv, 
+					textureReference, rng);
+
+
+	}//if we have an intersection
+	else {
+		incoming->color = gvec3(0.0f);
+		incoming->remainingBounces = 0;
+	}//no hit
+}//shadeRealMaterial
+
 
 // Add the current iteration's output to the overall image
 __global__ void finalGather(int nPaths, glm::vec3 * image, PathSegment * iterationPaths)
 {
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 
-	if (index < nPaths)
-	{
+	if (index < nPaths){
 		PathSegment iterationPath = iterationPaths[index];
 		image[iterationPath.pixelIndex] += iterationPath.color;
 	}
 }
 
+/*thrust construct for telling whether we're out of bounces*/
+struct hasRemainingBounces {
+	__host__ __device__ bool operator()(const PathSegment x) {
+		return x.remainingBounces != 0;
+	}
+};
+
+/*thrust construct for sorting by material id*/
+struct materialIdLess {
+	__host__ __device__ bool operator()(const ShadeableIntersection& a, const ShadeableIntersection& b) {
+		if (a.t < 0 && b.t > 0) return true;//might be extraneous
+		if (b.t < 0 && a.t > 0) return false;//might be extraneous
+		return(a.materialId < b.materialId);
+	}
+};
+
 /**
- * Wrapper for the __global__ call that sets up the kernel calls and does a ton
- * of memory management
+ Wrapper for the __global__ call that sets up the kernel calls and does a ton
+ of memory management
  */
-void pathtrace(uchar4 *pbo, int frame, int iter) {
-    const int traceDepth = hst_scene->state.traceDepth;
-    const Camera &cam = hst_scene->state.camera;
-    const int pixelcount = cam.resolution.x * cam.resolution.y;
+void pathtrace(uchar4* pbo, int frame, int iter) {
+	const int traceDepth = hst_scene->state.traceDepth;
+	const Camera& cam = hst_scene->state.camera;
+	const int pixelcount = cam.resolution.x * cam.resolution.y;
 
 	// 2D block for generating ray from camera
-    const dim3 blockSize2d(8, 8);
-    const dim3 blocksPerGrid2d(
-            (cam.resolution.x + blockSize2d.x - 1) / blockSize2d.x,
-            (cam.resolution.y + blockSize2d.y - 1) / blockSize2d.y);
+	const dim3 blockSize2d(8, 8);
+	const dim3 blocksPerGrid2d(
+		(cam.resolution.x + blockSize2d.x - 1) / blockSize2d.x,
+		(cam.resolution.y + blockSize2d.y - 1) / blockSize2d.y);
 
 	// 1D block for path tracing
 	const int blockSize1d = 128;
 
-    ///////////////////////////////////////////////////////////////////////////
 
-    // Recap:
-    // * Initialize array of path rays (using rays that come out of the camera)
-    //   * You can pass the Camera object to that kernel.
-    //   * Each path ray must carry at minimum a (ray, color) pair,
-    //   * where color starts as the multiplicative identity, white = (1, 1, 1).
-    //   * This has already been done for you.
-    // * For each depth:
-    //   * Compute an intersection in the scene for each path ray.
-    //     A very naive version of this has been implemented for you, but feel
-    //     free to add more primitives and/or a better algorithm.
-    //     Currently, intersection distance is recorded as a parametric distance,
-    //     t, or a "distance along the ray." t = -1.0 indicates no intersection.
-    //     * Color is attenuated (multiplied) by reflections off of any object
-    //   * TODO: Stream compact away all of the terminated paths.
-    //     You may use either your implementation or `thrust::remove_if` or its
-    //     cousins.
-    //     * Note that you can't really use a 2D kernel launch any more - switch
-    //       to 1D.
-    //   * TODO: Shade the rays that intersected something or didn't bottom out.
-    //     That is, color the ray by performing a color computation according
-    //     to the shader, then generate a new ray to continue the ray path.
-    //     We recommend just updating the ray's PathSegment in place.
-    //     Note that this step may come before or after stream compaction,
-    //     since some shaders you write may also cause a path to terminate.
-    // * Finally, add this iteration's results to the image. This has been done
-    //   for you.
-
-    // TODO: perform one iteration of path tracing
-
-	generateRayFromCamera <<<blocksPerGrid2d, blockSize2d >>>(cam, iter, traceDepth, dev_paths);
+	//makes our initial path segments in dev_paths; contains the ray, a color, a pixelIndex, and bounce count for each
+	generateRayFromCamera <<<blocksPerGrid2d, blockSize2d >>> (cam, iter, traceDepth, dev_paths);
 	checkCUDAError("generate camera ray");
 
 	int depth = 0;
 	PathSegment* dev_path_end = dev_paths + pixelcount;
-	int num_paths = dev_path_end - dev_paths;
+	int num_paths = dev_path_end - dev_paths;//ok, clever use of pointer math...
 
+	int total_paths = num_paths;
 	// --- PathSegment Tracing Stage ---
 	// Shoot ray into scene, bounce between objects, push shading chunks
 
-  bool iterationComplete = false;
+	bool iterationComplete = false;
 	while (!iterationComplete) {
 
-	// clean shading chunks
-	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
+		// clean shading chunks
+		cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
-	// tracing
-	dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
-	computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (
-		depth
-		, num_paths
-		, dev_paths
-		, dev_geoms
-		, hst_scene->geoms.size()
-		, dev_intersections
-		);
-	checkCUDAError("trace one bounce");
-	cudaDeviceSynchronize();
-	depth++;
+#if CACHING_FIRST && !ANTIALIASING
+		// tracing
+		dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
+		if (depth == 0 && iter == 1) {
+			computeIntersections <<<numblocksPathSegmentTracing, blockSize1d >>> (
+				depth,
+				num_paths,
+				dev_paths,
+				dev_geoms,
+				dev_tris,
+				hst_scene->geoms.size(),
+				dev_intersections_first);
+			checkCUDAError("trace one bounce");
+			cudaDeviceSynchronize();
+			cudaMemcpy(dev_intersections, dev_intersections_first, num_paths * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+		}//if the first set of intersections
+		else if (depth == 0) {
+			cudaMemcpy(dev_intersections, dev_intersections_first, num_paths * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+		}//use the cached intersections
+		else {
+			computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
+				depth,
+				num_paths,
+				dev_paths,
+				dev_geoms,
+				dev_tris,
+				hst_scene->geoms.size(),
+				dev_intersections);
+			checkCUDAError("trace one bounce");
+			cudaDeviceSynchronize();
+		}
+#else
+		// tracing
+		dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
+		computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
+			depth,
+			num_paths,
+			dev_paths,
+			dev_geoms,
+			dev_tris,
+			hst_scene->geoms.size(),
+			dev_intersections);
+		checkCUDAError("trace one bounce");
+		cudaDeviceSynchronize();
+#endif
+
+		depth++;
+
+#if SORTING_MATERIAL
+		thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + num_paths, dev_paths, materialIdLess());
+#endif
+
+		shadeRealMaterial <<<numblocksPathSegmentTracing, blockSize1d >>> (
+			iter,
+			num_paths,
+			dev_intersections,
+			dev_paths,
+			dev_materials,
+			texObjects);
+		checkCUDAError("shadeRealMaterial");
+		cudaDeviceSynchronize();
+
+		PathSegment* newEnd = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, hasRemainingBounces());
+		num_paths = newEnd - dev_paths;
 
 
-	// TODO:
-	// --- Shading Stage ---
-	// Shade path segments based on intersections and generate new rays by
-  // evaluating the BSDF.
-  // Start off with just a big kernel that handles all the different
-  // materials you have in the scenefile.
-  // TODO: compare between directly shading the path segments and shading
-  // path segments that have been reshuffled to be contiguous in memory.
+		if (num_paths == 0) iterationComplete = true;
+		//iterationComplete = true; // TODO: should be based off stream compaction results.
+	}//while !iterationComplete
 
-  shadeFakeMaterial<<<numblocksPathSegmentTracing, blockSize1d>>> (
-    iter,
-    num_paths,
-    dev_intersections,
-    dev_paths,
-    dev_materials
-  );
-  iterationComplete = true; // TODO: should be based off stream compaction results.
+	// Assemble this iteration and apply it to the image
+	dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
+	finalGather <<<numBlocksPixels, blockSize1d >>> (total_paths, dev_image, dev_paths);
+	checkCUDAError("finalGather");
+
+	///////////////////////////////////////////////////////////////////////////
+
+	// Send results to OpenGL buffer for rendering
+	sendImageToPBO <<<blocksPerGrid2d, blockSize2d >>> (pbo, cam.resolution, iter, dev_image);
+
+	// Retrieve image from GPU
+	cudaMemcpy(hst_scene->state.image.data(), dev_image,
+		pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+
+	checkCUDAError("pathtrace");
+}
+
+#if USING_OIDN
+
+/**
+Important! does a malloc. Must free afterwards
+*/
+float3* makeImageBuffer(gvec3_v image, int width, int height) {
+
+	float3* retval = (float3*) malloc(width * height * sizeof(float3));
+
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			int index = (i * width) + j;
+			retval[index] = { image[index].x, image[index].y, image[index].z };
+		}
 	}
 
-  // Assemble this iteration and apply it to the image
-  dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
-	finalGather<<<numBlocksPixels, blockSize1d>>>(num_paths, dev_image, dev_paths);
+	return retval;
 
-    ///////////////////////////////////////////////////////////////////////////
+}//makeImageBuffer
 
-    // Send results to OpenGL buffer for rendering
-    sendImageToPBO<<<blocksPerGrid2d, blockSize2d>>>(pbo, cam.resolution, iter, dev_image);
+gvec3_v vectorFromOutBuffer(float3* outBuffer, int width, int height) {
 
-    // Retrieve image from GPU
-    cudaMemcpy(hst_scene->state.image.data(), dev_image,
-            pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+	gvec3_v retval = gvec3_v();
 
-    checkCUDAError("pathtrace");
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			int index = (i * width) + j;
+			retval.push_back( gvec3(outBuffer[index].x,
+									outBuffer[index].y,
+									outBuffer[index].z));
+		}
+	}
+
+	return retval;
+}//vectorFromOutBuffer
+
+gvec3_v runOIDN(gvec3_v image, int width, int height) {
+
+	//make necessary buffers
+	float3* imageBuffer = makeImageBuffer(image, width, height);
+	float3* outBuffer = (float3*)malloc(width * height * sizeof(float3));
+	float3* normalBuffer = (float3*)malloc(width * height * sizeof(float3));
+	float3* albedoBuffer = (float3*)malloc(width * height * sizeof(float3));
+
+	//fill buffers with the good stuff
+	getOIDNMaps(albedoBuffer, normalBuffer);
+
+	//Runs the denoiser
+	OIDNDevice device = oidnNewDevice(OIDN_DEVICE_TYPE_DEFAULT);
+	oidnCommitDevice(device);
+	OIDNFilter filter = oidnNewFilter(device, "RT"); // generic ray tracing filter
+
+
+	oidnSetSharedFilterImage(filter, "color", imageBuffer,
+		OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
+	oidnSetSharedFilterImage(filter, "albedo", albedoBuffer,
+		OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0); // optional
+	oidnSetSharedFilterImage(filter, "normal", normalBuffer,
+		OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
+	oidnSetSharedFilterImage(filter, "output", outBuffer,
+		OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
+	oidnSetFilter1b(filter, "hdr", true); // image is HDR
+
+	oidnCommitFilter(filter);
+
+	// Filter the image
+	oidnExecuteFilter(filter);
+
+	// Check for errors
+	const char* errorMessage;
+	if (oidnGetDeviceError(device, &errorMessage) != OIDN_ERROR_NONE)
+		printf("Error: %s\n", errorMessage);
+
+	//transfer raw buffer into a gvec3_v
+	gvec3_v retval = vectorFromOutBuffer(outBuffer, width, height);
+
+
+	//cleanup
+	oidnReleaseFilter(filter);
+	oidnReleaseDevice(device);
+
+
+	//free buffers
+	free(outBuffer);
+	free(imageBuffer);
+	free(normalBuffer);
+	free(albedoBuffer);
+
+
+	return retval;
 }
+
+__global__ void transferToOIDNBuffers(PathSegment* pathSegments, ShadeableIntersection* intersections, float3* albedos, float3* normals, int num_paths) {
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if (idx >= num_paths) return;
+
+	ShadeableIntersection intersection = intersections[idx];
+	PathSegment segment = pathSegments[idx];
+
+	if (intersection.t < 0.0) {
+		normals[idx].x = 0.0f;
+		normals[idx].y = 0.0f;
+		normals[idx].z = 0.0f;
+		albedos[idx].x = 0.0f;
+		albedos[idx].y = 0.0f;
+		albedos[idx].z = 0.0f;
+	}//if
+	else {
+		normals[idx].x = intersection.surfaceNormal.x;
+		normals[idx].y = intersection.surfaceNormal.y;
+		normals[idx].z = intersection.surfaceNormal.z;
+		albedos[idx].x = segment.color.x;
+		albedos[idx].y = segment.color.y;
+		albedos[idx].z = segment.color.z;
+	}//else
+
+}//transferToOIDNBuffers
+
+void getOIDNMaps(float3* albedoMap, float3* normalMap) {
+
+	//run the path tracing stuff
+	const int traceDepth = hst_scene->state.traceDepth;
+	const Camera& cam = hst_scene->state.camera;
+	const int pixelcount = cam.resolution.x * cam.resolution.y;
+
+	//allocate device pointers for transferring color/normal
+	float3* dev_albedo;
+	float3* dev_normal;
+	cudaMalloc(&dev_albedo, pixelcount * sizeof(float3));
+	checkCUDAError("cudamalloc");
+	cudaMalloc(&dev_normal, pixelcount * sizeof(float3));
+	checkCUDAError("cudamalloc");
+
+	// 2D block for generating ray from camera
+	const dim3 blockSize2d(8, 8);
+	const dim3 blocksPerGrid2d(
+		(cam.resolution.x + blockSize2d.x - 1) / blockSize2d.x,
+		(cam.resolution.y + blockSize2d.y - 1) / blockSize2d.y);
+
+	// 1D block for path tracing
+	const int blockSize1d = 128;
+
+
+	//makes our initial path segments in dev_paths; contains the ray, a color, a pixelIndex, and bounce count for each
+	generateRayFromCamera << <blocksPerGrid2d, blockSize2d >> > (cam, 0, traceDepth, dev_paths);
+	checkCUDAError("generate camera ray");
+
+	int depth = 0;
+	PathSegment* dev_path_end = dev_paths + pixelcount;
+	int num_paths = dev_path_end - dev_paths;//ok, clever use of pointer math...
+
+	int total_paths = num_paths;
+
+	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
+
+	dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
+	computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
+		depth,
+		num_paths,
+		dev_paths,
+		dev_geoms,
+		dev_tris,
+		hst_scene->geoms.size(),
+		dev_intersections);
+	checkCUDAError("trace one bounce");
+
+	cudaDeviceSynchronize();
+
+	shadeRealMaterial << <numblocksPathSegmentTracing, blockSize1d >> > (
+		0,
+		num_paths,
+		dev_intersections,
+		dev_paths,
+		dev_materials,
+		texObjects);
+	checkCUDAError("shadeRealMaterial");
+
+	cudaDeviceSynchronize();
+
+	transferToOIDNBuffers <<<numblocksPathSegmentTracing, blockSize1d >>> (dev_paths, dev_intersections, dev_albedo, dev_normal, pixelcount);
+	checkCUDAError("put in correct buffer");
+	
+	cudaMemcpy(normalMap, dev_normal, pixelcount * sizeof(float3), cudaMemcpyDeviceToHost);
+	checkCUDAError("cudamemcpy");
+	cudaMemcpy(albedoMap, dev_albedo, pixelcount * sizeof(float3), cudaMemcpyDeviceToHost);
+	checkCUDAError("cudamemcpy");
+
+	cudaFree(dev_albedo);
+	cudaFree(dev_normal);
+
+}
+#endif
+
+cudaArray* Texture::putOntoDevice(int textureIndex) {
+	cudaChannelFormatDesc f4 = cudaCreateChannelDesc<float4>();
+	cudaExtent extents = make_cudaExtent(width, height, 4);
+	cudaMalloc3DArray(&cu_3darray, &f4, extents, cudaArrayLayered);
+	cudaError_t err = cudaGetLastError();
+
+
+	float4* h_data = (float4*)malloc(width * height * 4 * sizeof(float4));
+	fillIntoF4Array(h_data);
+
+	cudaMemcpy3DParms myparms = { 0 };
+	myparms.srcPos = make_cudaPos(0, 0, 0);
+	myparms.dstPos = make_cudaPos(0, 0, 0);
+	myparms.srcPtr = make_cudaPitchedPtr(h_data, width * sizeof(float4), width, height);
+	myparms.dstArray = cu_3darray;
+	myparms.extent = extents;
+	myparms.kind = cudaMemcpyHostToDevice;
+	cudaMemcpy3D(&myparms);
+	checkCUDAError("3dmemcpy!");
+
+	//check cuda error
+
+	cudaResourceDesc    texRes;
+	memset(&texRes, 0, sizeof(cudaResourceDesc));
+	texRes.resType = cudaResourceTypeArray;
+	texRes.res.array.array = cu_3darray;
+	cudaTextureDesc texDescr;
+	memset(&texDescr, 0, sizeof(cudaTextureDesc));
+	texDescr.normalizedCoords = true;
+	texDescr.filterMode = cudaFilterModeLinear;
+	texDescr.addressMode[0] = cudaAddressModeClamp;
+	texDescr.addressMode[1] = cudaAddressModeClamp;
+	texDescr.addressMode[2] = cudaAddressModeClamp;
+	texDescr.readMode = cudaReadModeElementType;
+
+	cudaCreateTextureObject(&(texObjects.contents[textureIndex]), &texRes, &texDescr, NULL);
+	//cudaCreateTextureObject(&texobj0, &texRes, &texDescr, NULL);
+	err = cudaGetLastError();
+	if (err != cudaSuccess) {
+		printf("Error on the creating texture objects! Err %d\n", err);
+		exit(-1);
+	}
+
+	free(h_data);//no need to keep it locally anymore
+
+	return cu_3darray;
+}//putOntoDevice
+
+void Texture::freeFromDevice(int textureIndex) {
+	cudaDestroyTextureObject(texObjects.contents[textureIndex]);
+	cudaFreeArray(cu_3darray);
+}//freeFromDevice

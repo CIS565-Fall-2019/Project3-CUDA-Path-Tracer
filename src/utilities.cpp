@@ -8,8 +8,31 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <iostream>
 #include <cstdio>
+#include <cmath>
 
 #include "utilities.h"
+
+gvec3 normalized(const gvec3 input){
+    float mag = magnitude(input);
+    if (!mag) return gvec3(1.0f, 0.0f, 0.0f);//avoid div-by-0
+    return gvec3(input.x / mag, input.y / mag, input.z / mag);
+}//normalize
+
+inline void normalize(gvec3* input){
+    float mag = magnitude(*input);
+    if (!mag) return;//maybe do nothing if passed 0 vector??
+    input-> x /= mag;
+    input-> y /= mag;
+    input-> z /= mag;
+}//normalize
+
+inline float magnitude(const gvec3 input){
+    return sqrt(input.x * input.x + input.y * input.y + input.z * input.z);
+}//magnitude
+inline float magnitude(const gvec4 input){
+    return sqrt(input.x * input.x + input.y * input.y + input.z * input.z + input.w * input.w);
+}//magnitude
+
 
 float utilityCore::clamp(float f, float min, float max) {
     if (f < min) {
