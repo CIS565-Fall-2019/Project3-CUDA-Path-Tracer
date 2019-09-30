@@ -60,18 +60,18 @@ Most features have been implemented with toggleable options.
       - Refraction: Allows ray to pass through the media based on the ratio of the refractive index of the two mediums [snell's law](https://en.wikipedia.org/wiki/Snell%27s_law)
 
       <p float="left">
-        <img src="build/cornell_refraction.png" width="280" alt="Refraction" />
-        <img src="build/cornell_reflection.png" width="280" alt="Reflection"/>
-        <img src="build/cornell_diffuese.png" width="280" alt="Diffuese"/>   
+        <img src="build/cornell_refraction.png" width="260" alt="Refraction" />
+        <img src="build/cornell_reflection.png" width="260" alt="Reflection"/>
+        <img src="build/cornell_diffuese.png" width="260" alt="Diffuese"/>   
       </p>      
 
       - Emissive Media: Rays in our computation terminate at these materials since they emit light.
       - Percentage combinations/Probabiltiy splits between properties.   
 
       <p float="left">
-        <img src="build/cornell_Refract-Reflect-50-50.png" width="280" alt="Refract-Reflect-50-50" />
-        <img src="build/cornell_emmisive.png" width="280" alt="Emmisive" />
-        <img src="build/cornell_70-30_ref_rel.png" width="280" alt="Refract-Reflect-30-70" />
+        <img src="build/cornell_Refract-Reflect-50-50.png" width="260" alt="Refract-Reflect-50-50" />
+        <img src="build/cornell_emmisive.png" width="260" alt="Emmisive" />
+        <img src="build/cornell_70-30_ref_rel.png" width="260" alt="Refract-Reflect-30-70" />
       </p> 
 
 2. Stream Compaction: We reorganise the rays that have terminated, either by hitting a source of light, or reaching maximum depth, by using stream compaction so that more cuda aprs can exit early when they find all theri theireads terminated. This reduces unnecessary compute per bounce operation and in turn speeds up the rendering. 
@@ -89,12 +89,15 @@ Most features have been implemented with toggleable options.
 
 5. Motion Blur: We implemtned motion blur by adding a veolity to an object of choice. As a result at each iteration, the object was rendered at a slightly translated location appearing giving the motion blur effect. 
 
-Motion Blur Screen Captures|    
-:-------------------------:|:-------------------------:
-![]("img/mb1.PNG")  |  ![]("img/mb2.PNG")
-:-------------------------:|:-------------------------:
-![]("img/mb3.PNG")  |  ![]("img/mb4.PNG")
-
+Motion Blur Screen Captures 
+  <p float="left">
+    <img src="img/mb1.PNG" width="300" />
+    <img src="img/mb2.PNG" width="300" /> 
+  </p>    
+  <p float="left">
+    <img src="img/mb3.PNG" width="300" />
+    <img src="img/mb4.PNG" width="300" />
+  </p>    
 
 ### Analysis
 
@@ -110,10 +113,10 @@ Motion Blur Screen Captures|
         <img src="img/CLosedOpen.PNG" width="600"/>
  </p>
 
-Relatively Closed Scene           |   Relatively Open Scene(with walls removed) 
-:-------------------------:|:-------------------------:
-![]("img/cornell.2019-09-30_04-21-28z.5000samp.png")  |  ![]("img/cornell.2019-09-30_04-28-55z.5000samp.png")
-
+ <p float="center">
+      <img src="img/cornell.2019-09-30_04-21-28z.5000samp.png"width="300"/>
+      <img src="img/cornell.2019-09-30_04-28-55z.5000samp.png"width="300"/>
+ </p>
 
 ### Bloopers
 
