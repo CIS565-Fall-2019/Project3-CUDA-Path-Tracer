@@ -10,7 +10,7 @@ CUDA Path Tracer
 
 
  <p align="center">
-  <img src="build/cornell.2019-09-30_04-21-28z.5000samp.png">
+  <img src="img/cornell_cover.png">
 </p>
 
 
@@ -47,10 +47,14 @@ The following basic features are implemented:
 <p float="left">
   <img src="build/cornell_refraction.png" width="100" />
   <img src="build/cornell_reflection.png" width="100" />
-  <img src="build/cornell_diffuese.png" width="100" /> 
-  <img src="build/cornell_Refract-Reflect-50-50.png" width="100" />
+  <img src="build/cornell_diffuese.png" width="100" />   
 </p>      
 
-
+      
+<p float="left">
+  <img src="build/cornell_Refract-Reflect-50-50.png" width="100" />
+  <img src="build/cornell_emmisive.png" width="100" />
+  <img src="build/cornell_emmisive.png" width="100" />
+</p> 
 
 
