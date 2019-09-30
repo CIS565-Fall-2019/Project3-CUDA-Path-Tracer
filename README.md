@@ -24,14 +24,14 @@ CUDA Path Tracer
     - Ideal diffuse and shading
     - Perfect Specular reflection
     - Refraction with Fresnel effects and total internal reflection \[EXTRA CREDIT\]
-  - Stochastic Anti-aliasing \[EXTRA CREDIT\]
-  - Motion Blur \[EXTRA CREDIT\]
-  - Arbitrary mesh loading and rendering (OBJ) \[EXTRA CREDIT\]
+  - Stochastic Anti-aliasing \[EXTRA FEATURE\]
+  - Motion Blur \[EXTRA FEATURE\]
+  - Arbitrary mesh loading and rendering (OBJ) \[EXTRA FEATURE\]
 - Performance improvements
   - Path termination using Stream Compaction
   - Cache first bounce
   - Sort by materials
-  - Stream Compaction using shared memory \[EXTRA CREDIT\]
+  - Stream Compaction using shared memory \[EXTRA FEATURE\]
 
 ### Shading different materials
 
