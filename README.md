@@ -213,7 +213,7 @@ For example, when we have a diffuse bounce we can bounce anywhere in our cosine 
 
 ### Subsurface scattering ( Extra )
 
-Currently not working
+Currently a work in progress.
 
 
 ### References
@@ -246,6 +246,11 @@ https://computergraphics.stackexchange.com/questions/4979/what-is-importance-sam
 
 https://www.scratchapixel.com/lessons/3d-basic-rendering/global-illumination-path-tracing/global-illumination-path-tracing-practical-implementation
 	- Help with importance sampling
+	
+	
+## Cmakelist
+
+modified defualt for use with tinygfl but did not get it working so regular Cmake file can be used.
 
 
 
