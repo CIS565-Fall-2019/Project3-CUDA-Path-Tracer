@@ -107,29 +107,36 @@ The following graph shows the remaining active rays after certain number of iter
 
 ![](img/sc_rem_bounces.PNG)
 
-Time taken to complete 500 iterations
+Time taken to complete 1 iteration (Measured across 10 iterations)
 
-- With stream compaction = 
-- Without stream compaction = 
+- Without stream compaction = 0.0343 sec
+- With stream compaction = 0.0735 sec
 
 Stream compaction has a greater effect when the scene is open as opposed to cornell which is a closed scene. With an open scene, the time taken for 1000 iterations with stream compaction is,
 
-- Closed scene = 
-- Open scene = 
+- Closed scene = 0.0735 sec
+- Open scene = 0.0303 sec
 
 
 ### Cache First Bounce
 
 Since the first ray which is generated from the camera hits the same point, the first bounce will be the same for all iterations. Diffused materials scatter the ray in some random direction with some probability, but this caching does not cause any difference in the render even if we always use the same first bounce. So, I save the first bounce for each ray and load it directly from the cached version at each iteration.
 
-Time taken to complete 500 iterations
+Time taken to complete 1 iteration (Measured across 10 iterations)
 
-- With caching = 
-- Without  = 
+- Without caching  = 0.0761 sec
+- With caching = 0.0741 sec
 
 ### Sort by materials
 
 Sorting rays by the materials it hits allows the threads in a single warp to have more chances of hitting the same material. This reduces warp divergence and is thus expected to improve performance. The imporvement in performance is not visible for simple scenes with less objects. For complex scenes, the image rendering takes lesser time when sorted.
+
+Time taken to complete 1 iteration (Measured across 10 iterations)
+
+- Without Sorting = 0.0770 sec
+- With Sorting = 0.214 sec
+
+Since the scene had very few materials, sorting actually did not help as it should. However, if the scene is quite complex, then material sorting should make it much more efficient per iteration.
 
 ### Stream Compaction with shared memory
 
