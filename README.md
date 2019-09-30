@@ -20,9 +20,9 @@ CUDA Path Tracer
         5.	 [Motion Blur](#motion-blur)
         6.	 [Open Image AI Denoiser](#denoiser)
 3.	 [Optimization Features](#optimization)
-        	1.	 [Stream Compaction](#stream)
-            2.	 [Material Sorting](#material-sort)
-            3.	 [Cache First Bounce](#cache)
+	 	1.	 [Stream Compaction](#stream)
+        2.	 [Material Sorting](#material-sort)
+        3.	 [Cache First Bounce](#cache)
 4.	 [References](#references)
 
 <a name = "overview"/>
