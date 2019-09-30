@@ -16,12 +16,12 @@ CUDA Path Tracer
 
 ### Index
 
-- [Introduction](  )
-- [Implementation Details]( )
-- [Features]( )
-- [Description]( )
-- [Analysis]( )
-- [Some Results and Bloopers]( )
+- [Introduction]( https://github.com/chhavisharma/Project3-CUDA-Path-Tracer/blob/master/README.md#introduction )
+- [Implementation Details]( https://github.com/chhavisharma/Project3-CUDA-Path-Tracer/blob/master/README.md#implementation-details )
+- [Features](https://github.com/chhavisharma/Project3-CUDA-Path-Tracer/blob/master/README.md#features )
+- [Description]( https://github.com/chhavisharma/Project3-CUDA-Path-Tracer/blob/master/README.md#description )
+- [Analysis]( https://github.com/chhavisharma/Project3-CUDA-Path-Tracer/blob/master/README.md#analysis )
+- [Some More Results and Bloopers](https://github.com/chhavisharma/Project3-CUDA-Path-Tracer/blob/master/README.md#bloopers)
 
 ### Introduction 
 
@@ -89,15 +89,21 @@ Most features have been implemented with toggleable options.
 
 5. Motion Blur: We implemtned motion blur by adding a veolity to an object of choice. As a result at each iteration, the object was rendered at a slightly translated location appearing giving the motion blur effect. 
 
+ <p float="center">
+        <img src="build/mb11.png" width="420"/>
+        <img src="build/mb22.png" width="420"/>
+ </p>
+ 
 Motion Blur Screen Captures 
   <p float="left">
-    <img src="img/mb1.PNG" width="300" />
-    <img src="img/mb2.PNG" width="300" /> 
+    <img src="img/mb1.PNG" width="420" />
+    <img src="img/mb2.PNG" width="420" /> 
   </p>    
   <p float="left">
-    <img src="img/mb3.PNG" width="300" />
-    <img src="img/mb4.PNG" width="300" />
+    <img src="img/mb3.PNG" width="420" />
+    <img src="img/mb4.PNG" width="420" />
   </p>    
+
 
 ### Analysis
 
@@ -110,7 +116,7 @@ Motion Blur Screen Captures
 - Opening up the scene by removing two walls allows more light to escape. Stream compaction in a closed scene senario would not help much if there aren't many premature terminated rays. In case of more open scenes, stream comaption allows more warps of threads to exit and not idle.
 
  <p float="center">
-        <img src="img/CLosedOpen.PNG" width="600"/>
+        <img src="img/CLosedOpen.png" width="600"/>
  </p>
 
  <p float="center">
@@ -118,10 +124,9 @@ Motion Blur Screen Captures
       <img src="img/cornell.2019-09-30_04-28-55z.5000samp.png" width="300"/>
  </p>
 
-### Bloopers
+### More Rsults and Bloopers
 
-1. Incorrect Motion Blur
-
+1. Bloopers (Mostly motion blur)
   <p float="center">
         <img src="img/cornell.2019-09-28_03-45-01z.232samp.png" width="600"/>
   </p>
@@ -132,8 +137,16 @@ Motion Blur Screen Captures
         <img src="img/cornell.2019-09-28_05-15-10z.5000samp.png" width="600"/>
   </p>
 
-2. Incorrect new-direction Update 
+2. Additional Results
+    
     <p float="center">
-        <img src="img/cornell.2019-09-28_05-15-10z.5000samp.png" width="600"/>
-  </p>
+        <img src="build/cornell.2019-09-30_05-12-34z.4512samp.png" width="700"/>
+    </p>
 
+     <p align="center">
+      <img src="img/cornell_cover.png">
+    </p>
+
+     <p align="center">
+      <img src="img/cornell.2019-09-29_23-59-06z.2393samp.png">
+    </p>
