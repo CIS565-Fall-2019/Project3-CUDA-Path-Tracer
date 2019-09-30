@@ -87,19 +87,19 @@ void scatterRay(
 	}
 	else if (result - m.hasReflective < m.hasRefractive) {
 		bool inside = glm::dot(direction, normal) > 0.0f;
-		glm::vec3 newNormal = inside ? -normal : normal;
+		glm::vec3 norm = inside ? -normal : normal;
 		float refIdx = inside ? m.indexOfRefraction : (1.0f / m.indexOfRefraction);
 
-		direction = glm::refract(direction, newNormal, refIdx);
+		direction = glm::refract(direction, norm, refIdx);
 		if (glm::length(direction) < 0.01f) {
 			color *= glm::vec3(0.0f);
-			direction = glm::reflect(direction, newNormal);
+			direction = glm::reflect(direction, norm);
 		}
 
 		//Schlick's reflection coefficient approximation
 		float R0 = powf((1.0f - refIdx) / (1.0f + refIdx), 2.0f);
-		float R = R0 + (1.0f - R0)*powf(1.0f - glm::dot(pathSegment.ray.direction, newNormal), 5);
-		direction = R < u01(rng) ? glm::reflect(pathSegment.ray.direction, newNormal) : direction;
+		float R = R0 + (1.0f - R0)*powf(1.0f - glm::dot(pathSegment.ray.direction, norm), 5);
+		direction = R < u01(rng) ? glm::reflect(pathSegment.ray.direction, norm) : direction;
 		color *= m.specular.color;
 	}
 	else {

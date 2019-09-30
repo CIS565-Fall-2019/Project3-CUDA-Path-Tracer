@@ -22,9 +22,9 @@
 
 #define ERRORCHECK 1
 
-#define COMPACT 1 // don't disable
-#define MATERIAL_SORT 0
-#define CACHE_FIRST 0
+#define COMPACT 0 // print rays left
+#define MATERIAL_SORT 1
+#define CACHE_FIRST 1
 #define ANTIALIAS 0
 #define MOTION 0
 #define DOF 0
@@ -170,13 +170,11 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		segment.ray.origin = cam.position;
 		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
 
-		float x_ = x;
-		float y_ = y;
 		thrust::default_random_engine rng = makeSeededRandomEngine(iter, index, segment.remainingBounces);
 #if ANTIALIAS
-		thrust::uniform_real_distribution<float> u01(-1.f, 1.f);
-		x_ += u01(rng);
-		y_ += u01(rng);
+		thrust::uniform_real_distribution<float> u01(-1.0f, 1.0f);
+		x += u01(rng);
+		y += u01(rng);
 #endif // ANTIALIAS
 
 #if DOF
@@ -188,8 +186,8 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 
 
 		segment.ray.direction = glm::normalize(cam.view
-			- cam.right * cam.pixelLength.x * (x_ - (float)cam.resolution.x * 0.5f)
-			- cam.up * cam.pixelLength.y * (y_ - (float)cam.resolution.y * 0.5f)
+			- cam.right * cam.pixelLength.x * (x - (float)cam.resolution.x * 0.5f)
+			- cam.up * cam.pixelLength.y * (y - (float)cam.resolution.y * 0.5f)
 			);
 
 		segment.pixelIndex = index;
@@ -487,9 +485,11 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		dev_materials
 		);
 
-#if COMPACT // running withough this does not work
 	PathSegment* path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, not_terminated());
 	num_paths = path_end - dev_paths;
+
+#if COMPACT 
+	std::cout << "Depth: " << depth << " Rays: " << num_paths   << "\n";
 #endif // COMPACT
 
 	iterationComplete = (depth >= traceDepth || num_paths <= 0); // based off stream compaction results.
