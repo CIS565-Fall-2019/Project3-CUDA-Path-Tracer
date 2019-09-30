@@ -27,13 +27,12 @@
 
 #define ERRORCHECK 1
 
-const int STREAM_COMPACT = 0;
+const int STREAM_COMPACT = 1;
 const int SORT_BY_MATERIAL = 0;
 const int CACHE__FIRST_BOUNCE = 1;
 const int MOTION_BLUR = 0;
 const int STREAM_COMPACT_SHARED = 0;
 const int MESH_LOADING = 0;
-
 const int ANTI_ALIASING = 1;
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -258,10 +257,11 @@ __global__ void computeIntersections(
 			else if (geom.type == SPHERE)
 			{
 				if (MOTION_BLUR) {
-					float lerp_index = glm::sin(iter / 250.0f);
-					glm::mat4 start = geom.originalTransform;
-					glm::mat4 offset(1.f); offset[2] += glm::vec4(0.f, 1.0f, 0.f, 0.f);
-					geom.transform = start + lerp_index * offset;
+					geom.translation.x += 1.f;
+					geom.transform = utilityCore::buildTransformationMatrix(
+						geom.translation, geom.rotation, geom.scale);
+
+					//geom.transform = start + glm::sin(iter) * offset;
 
 					geom.inverseTransform = glm::inverse(geom.transform);
 					geom.invTranspose = glm::transpose(glm::inverse(geom.transform));
@@ -460,6 +460,7 @@ __global__ void finalGather(int nPaths, glm::vec3 * image, PathSegment * iterati
  */
 void pathtrace(uchar4 *pbo, int frame, int iter) {
     const int traceDepth = hst_scene->state.traceDepth;
+	//const int traceDepth = 50;
     const Camera &cam = hst_scene->state.camera;
     const int pixelcount = cam.resolution.x * cam.resolution.y;
 
@@ -502,6 +503,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
     //   for you.
 
     // TODO: perform one iteration of path tracing
+	auto start = chrono::high_resolution_clock::now();
 
 	generateRayFromCamera << <blocksPerGrid2d, blockSize2d >> > (cam, iter, traceDepth, dev_paths, dev_path_indices);
 	checkCUDAError("generate camera ray");
@@ -520,7 +522,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 	dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
 
-	printf("Compute intersections \n");
+	
 	// tracing
 	if (CACHE__FIRST_BOUNCE && !ANTI_ALIASING) {
 		if (depth == 0) {
@@ -574,7 +576,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			);
 		checkCUDAError("trace one bounce");
 	}
-	printf("Compute intersection done \n");
+	
 
 	cudaDeviceSynchronize();
 	depth++;
@@ -595,7 +597,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		thrust::sort_by_key(thrust::device, thrust_dev_intersections, thrust_dev_intersections + num_paths, thrust_dev_paths);
 	}
 
-	printf("Shading \n");
+	
   shadeRealMaterial<<<numblocksPathSegmentTracing, blockSize1d>>> (
 	  depth,
     iter,
@@ -605,20 +607,23 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
     dev_materials,
 	dev_path_indices
   );
-  printf("Shading done \n");
+  
   if (STREAM_COMPACT) {
 	  dev_path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, is_alive());
 	  num_paths = dev_path_end - dev_paths;
+
   }else if (STREAM_COMPACT_SHARED) {
-	  printf("Compacting\n");
 	  num_paths = StreamCompaction::Shared::compact(num_paths, dev_path_indices, 1024);
-	  printf("num_paths: %d\n", num_paths);
   }
-  
   if (depth > traceDepth || num_paths == 0) {
 
 	  iterationComplete = true; // TODO: should be based off stream compaction results.
   }
+}
+auto finish = chrono::high_resolution_clock::now();
+chrono::duration<double> elapsed = chrono::duration_cast<chrono::duration<double>>(finish - start);
+if (iter <= 10) {
+	printf("%f\n", elapsed.count());
 }
 	num_paths = pixelcount;
   // Assemble this iteration and apply it to the image

@@ -85,7 +85,7 @@ ROTAT       0 0 90
 SCALE       .01 10 10
 
 // Back wall
-OBJECT 3
+OBJECT 9
 cube
 material 1
 TRANS       0 5 -5
@@ -93,7 +93,7 @@ ROTAT       0 90 0
 SCALE       .01 10 10
 
 // Left wall
-OBJECT 4
+OBJECT 9
 cube
 material 2
 TRANS       -5 5 0
@@ -101,7 +101,7 @@ ROTAT       0 0 0
 SCALE       .01 10 10
 
 // Right wall
-OBJECT 5
+OBJECT 9
 cube
 material 3
 TRANS       5 5 0
@@ -109,7 +109,7 @@ ROTAT       0 0 0
 SCALE       .01 10 10
 
 // Sphere
-OBJECT 6
+OBJECT 3
 sphere
 material 4
 TRANS       -1 4 -1
