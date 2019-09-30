@@ -188,11 +188,10 @@ __global__ void computeIntersections(
 			else if (geom.type == SPHERE)
 			{
 				#if MOTION_BLUR
-					float spherical_interpolation = glm::sin(iter / 250.f);
 					glm::mat4 start = geom.initial_transform;
 					glm::mat4 off(1.f); 
 					off[2] += glm::vec4(0.f, MOTION_BLUR_OFFSET, 0.f, 0.f);
-					geom.transform = start + off * spherical_interpolation;
+					geom.transform = start + off * (iter / 300.f);
 					geom.inverseTransform = glm::inverse(geom.transform);
 					geom.invTranspose = glm::transpose(glm::inverse(geom.transform));
 				#endif
@@ -307,6 +306,7 @@ struct is_complete
  * of memory management
  */
 void pathtrace(uchar4 *pbo, int frame, int iter) {
+	auto start = std::chrono::high_resolution_clock::now();
 	const int traceDepth = hst_scene->state.traceDepth;
 	const Camera &cam = hst_scene->state.camera;
 	const int pixelcount = cam.resolution.x * cam.resolution.y;
@@ -363,7 +363,6 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	bool iterationComplete = false;
 	while (!iterationComplete) {
-		auto start = std::chrono::high_resolution_clock::now();
 		ShadeableIntersection* dev_cur_intersections = dev_intersections;
 		// clean shading chunks
 		cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
@@ -411,7 +410,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		#if MATERIAL_BASED_SORT 
 			thrust::device_ptr<ShadeableIntersection> thrust_dev_intersections(dev_intersections);
 			thrust::device_ptr<PathSegment> thrust_dev_paths(dev_paths);
-			thrust::sort_by_key(thrust::device, thrust_dev_intersections, thrust_dev_intersections + num_paths, thrust_dev_paths, iter);
+			thrust::sort_by_key(thrust::device, thrust_dev_intersections, thrust_dev_intersections + num_paths, thrust_dev_paths);
 		#endif
 		shadeMaterial << <numblocksPathSegmentTracing, blockSize1d >> > (
 			iter,
@@ -427,11 +426,6 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		#endif
 		if((depth == traceDepth) || num_paths == 0)
 			iterationComplete = true;
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - start;
-		if (iter == 1)
-			std::cout << elapsed.count() << "\n";
-
 	}
 	num_paths = pixelcount;
 
@@ -449,6 +443,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
 
 	checkCUDAError("pathtrace");
-
-	
+	auto finish = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> elapsed = finish - start;
+	if (iter <= 10)
+		std::cout << elapsed.count() << "\n";
 }
