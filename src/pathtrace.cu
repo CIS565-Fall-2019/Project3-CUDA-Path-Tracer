@@ -21,9 +21,9 @@
 #include "interactions.h"
 
 #define ERRORCHECK 1
-#define SORTMATERIAL 0
+#define SORTMATERIAL 1
 #define STREAMCOMPACT 1
-#define BLURGEOM 0
+#define BLURGEOM 1
 #define CACHE 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -160,7 +160,7 @@ __global__ void blurGeom(Geom *geoms, int geoms_size, int num_paths, glm::vec3 o
 		float dt = iter * 0.00001f;
 		for (int i = 0; i < geoms_size; ++i) {
 			Geom & geom = geoms[i];
-			if (geom.type == SPHERE) {
+			if (geom.type == SPHERE || geom.type == SPHEREANDCUBE) {
 				geom.translation -= glm::clamp(offset * dt, glm::vec3(0.0f), offset);
 				geom.transform[3] = glm::vec4(geom.translation, geom.transform[3].w);
 				geom.inverseTransform = glm::inverse(geom.transform);
@@ -220,6 +220,8 @@ __global__ void computeIntersections(
 			else if (geom.type == SPHEREANDCUBE) {
 				t = sphereAndCube(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
+			// TODO: add more intersection tests here... triangle? metaball? CSG?
+
 			// Compute the minimum t from the intersection tests to determine what
 			// scene geometry object was hit first.
 			if (t > 0.0f && t_min > t)

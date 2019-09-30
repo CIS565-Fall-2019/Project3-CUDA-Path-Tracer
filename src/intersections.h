@@ -210,7 +210,7 @@ __host__ __device__ float sphereCubeUnion(Geom spherecube, Ray r,
 	glm::vec3 sphereIntersection, sphereNormal;
 	bool cubeOutside, sphereOutside;
 	float tCube, tSphere;
-	tSphere = sphereIntersectionTestRadius(spherecube, r, sphereIntersection, sphereNormal, sphereOutside, 0.55);
+	tSphere = sphereIntersectionTestRadius(spherecube, r, sphereIntersection, sphereNormal, sphereOutside, 0.65);
 	tCube = boxIntersectionTest(spherecube, r, cubeIntersection, cubeNormal, cubeOutside);
 	if (tSphere <= tCube) {
 		intersectionPoint = sphereIntersection;
