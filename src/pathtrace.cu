@@ -21,7 +21,7 @@
 #include "interactions.h"
 
 #define ERRORCHECK 1
-#define SORTMATERIAL 0
+#define SORTMATERIAL 1
 #define STREAMCOMPACT 1
 #define BLURGEOM 1
 #define CACHE 0
@@ -210,9 +210,6 @@ __global__ void computeIntersections(
 			}
 			else if (geom.type == SPHERE)
 			{
-			#ifdef BLURSPHERE
-				glm::mat4
-			#endif //BLURSPHERE
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
 			// TODO: add more intersection tests here... triangle? metaball? CSG?
@@ -391,9 +388,11 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		// tracing
 		dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
 		
-		#ifdef BLURGEOM
-				blurGeom << <numblocksPathSegmentTracing, blockSize1d >> > (dev_geoms, hst_scene->geoms.size(), num_paths, glm::vec3(-1e-6f, -1e-6f, 0.0), iter);
+		#if BLURGEOM
+				blurGeom << <numblocksPathSegmentTracing, blockSize1d >> > (dev_geoms, hst_scene->geoms.size(), num_paths, glm::vec3(-1e-5f, -1e-5f, 0.0), iter);
 		#endif //BLURGEOM
+
+				ShadeableIntersection* curr_Intersections = dev_intersections;
 
 		if (depth == 0 && CACHE) {
 			if (iter == 1) {
@@ -403,11 +402,15 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 					, dev_paths
 					, dev_geoms
 					, hst_scene->geoms.size()
-					, dev_intersections_cache
+					, dev_intersections
 					);
+				cudaMemcpy(dev_intersections_cache, dev_intersections, pixelcount * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
+				checkCUDAError("CUDA memcpy cache to intersections failed");
 			}
-			cudaMemcpy(dev_intersections, dev_intersections_cache, pixelcount * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
-			checkCUDAError("CUDA memcpy cache to intersections failed");
+			else {
+				//reload
+				curr_Intersections = dev_intersections_cache;
+			}
 		}
 		else {
 			computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (
@@ -422,15 +425,6 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		}
 		cudaDeviceSynchronize();
 
-		// TODO:
-		// --- Shading Stage ---
-		// Shade path segments based on intersections and generate new rays by
-		// evaluating the BSDF.
-		// Start off with just a big kernel that handles all the different
-		// materials you have in the scenefile.
-		// TODO: compare between directly shading the path segments and shading
-		// path segments that have been reshuffled to be contiguous in memory.
-
 		#if SORTMATERIAL
 		thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + num_paths, dev_paths, compareMaterials());
 		#endif // SORTMATERIAL
@@ -438,7 +432,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		shadeFakeMaterial<<<numblocksPathSegmentTracing, blockSize1d>>> (
 			iter,
 			num_paths,
-			dev_intersections,
+			curr_Intersections,
 			dev_paths,
 			dev_materials
 		);
