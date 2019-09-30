@@ -37,6 +37,17 @@ The following features are enabled in the path tracer:
 ### BSDF Evaluation for Perfectly Specular, Diffusion Sufraces and Refraction Surfaces: 
 BSDF evaluation has been done for perfectly specular, diffusion and refractive surfaces. The evaluation was also done for specular surfaces where random combinations of reflection and refraction takes place. For reflection, I have used `glm::reflect` while for refraction, I have calculated the the value of index of refraction by assuming that one of the two medium will be air, caclulating the normal and using `glm::refract` function for caclulating the refracted ray. I'm also taking care of total internal reflection scenario. Also, the Fresnel effect is added into the shading using [Schlick's approximation](https://en.wikipedia.org/wiki/Schlick%27s_approximation). 
 
+<p align="center">
+    Perfectly Specular       |      Perfect Refraction      |     Diffusion
+</p>
+
+<p align="center">
+  <img src="img/img_perfect_specular.png" width="250" alt="Perfectly Specular" />
+  <img src="img/img_prefect_refraction.png" width="250" alt="Perfect Refraction"/> 
+ <img src="img/image_diffusion.png" width="250" alt="Diffusion"/> 
+</p> 
+
+
 For diffusing, I have used the already defined cosign weighted distribution function for evaluating the new ray, which is the ransom permutation of the hemisphere. The images showing the effects of all these are:
 
 For different combinations of relective and refractive probabilies, here are the effects shown in the images:
