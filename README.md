@@ -115,4 +115,5 @@ In this we cache the first bounce because (if we are not using anti aliasing or 
  <a name = "analysis">
  
  ## Performance Analysis
+<img src="img/FinalPerformanceAnalysis.jpg" width="600"/>
  
