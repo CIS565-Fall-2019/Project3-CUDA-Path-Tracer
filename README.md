@@ -12,6 +12,8 @@ Tested on: Windows 10, i5-6500 @ 3.20GHz 16GB, GTX 1660 (personal computer)
 
 The purpose of this project was to create a GPU-parallelized path tracer using CUDA.
 
+![](/img/pathtracer.gif) 
+
 Note: Rather than putting one large performance analysis section at the end of this readme, analysis will be done per feature if applicable.
 
 ## Features
@@ -22,7 +24,11 @@ Each ray shot out from the camera will continue to bounce around a scene, accumu
 
 ![](img/numRaysGraph.png)
 
-We can see the number of rays to be processed decreases substantially on each bounce, thus freeing up threads (and decreasing warp divergence).
+We can see the number of rays to be processed decreases substantially on each bounce, thus freeing up threads (and decreasing warp divergence). 
+
+The effect of stream compaction can also be seen when we compare the performance on a scene that is closed (bounded by geometry on all sides, a closed cornell box) vs. a scene that is open (not bounded on all sides). A closed scene should take longer to render since no matter where a ray bounces, it will always intersect geometry, as opposed to an open scene in which many rays terminate by not hitting any geometry.
+
+![](img/closedVsOpenGraph.png)
 
 ### First Bounce Caching
 
@@ -44,7 +50,9 @@ Unfortunately, it seems like material sorting did not improve performance for th
 
 This path tracer also supports the rendering of arbitrary meshes using the glTF format, with help from [tiny glTF](https://github.com/syoyo/tinygltf). 
 
-One toggleable performance optimziation is the use of a bounding box for each mesh (which is made easy to calculate since the glTF format already stores the per-component min and max positions). Rather than attempting to find an intersection with a mesh by immediately checking an intersection with its potentially many triangles, we first check if a ray intersects the mesh's bounding box, and return false if it does not.
+![](img/aphrodite_1025samp.png)
+
+One toggleable performance optimization is the use of a bounding box for each mesh (which is made easy to calculate since the glTF format already stores the per-component min and max positions). Rather than attempting to find an intersection with a mesh by immediately checking an intersection with its potentially many triangles, we first check if a ray intersects the mesh's bounding box, and return false if it does not.
 
 The graph below shows the effect of using a bounding box on the runtime of a single iteration (i.e. 1 spp):
 
@@ -54,7 +62,7 @@ As expected, the use of a bounding box decreases the time it takes to run a sing
 
 ### Depth of Field
 
-We can create a physically-based depth of field effect in our renders using a thin lens approximation. Rather than the typical pinhole camera model, which has a lens with a radius of zero, we use a thin lens camera, which has a neglibile thickness but a non-zero radius. Rather than each ray from the camera starting from the same place, we jitter the ray's starting place to be somewhere on the camera lens.
+We can create a physically-based depth of field effect in our renders using a thin lens approximation. Rather than the typical pinhole camera model, which has a lens with a radius of zero, we use a thin lens camera, which has a neglibile thickness but a non-zero radius. Rather than each ray from the camera starting from the same place, we jitter the ray's starting place to be somewhere on the camera lens. You can see an example of this effect in the render at the very top of this readme.
 
 ### Bokeh
 
@@ -84,5 +92,6 @@ The anti-aliasing used in this project is an easy-to-implement way to improve vi
 
 ## Bloopers
 
-Me trying some wild things with refraction:
-![](img/skull_blooper.png)
+| Me trying some wild things with refraction | Never did figure out what happened here |
+| ------------- | ----------- |
+| ![](img/skull_blooper.png) | ![](img/huh.png) | 
