@@ -9,7 +9,7 @@ CUDA Path Tracer
 
 ## Path Tracer
 
-![Glass Zelda on a Textured Altar](progressImages/oidn_zelda_2000fil.png)
+![Glass Zelda on a Textured Altar](progressImages/demoRenderFil.png)
 
 A Path Tracer is a method of rendering virtual geometry onto the screen. Notably, they do so by simulating how light moves around a scene. This is in contrast to traditional rendering methods, which transform the geometry more directly from world-space to screen-space. While path tracers are slower than traditional renderers, they are able to natively perform much more impressive feats overall.
 
