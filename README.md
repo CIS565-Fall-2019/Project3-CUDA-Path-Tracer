@@ -192,7 +192,7 @@ If we are not using depth of field or anti-aliasing, in each iteration, every fi
 
 Note that caching cannot be done in conjunction with anti-aliasing and depth of field. These two features vary the initial ray cast each iteration to acheive some blurring of the pixels, either blurring between pixels to smooth out sharp lines, or blurring at certain distances to create depth of field. Therefore, we must recalculate the first intersections each iteration, as they will not be the same as previous iterations.
 
-#### Performance Stats
+### Performance Analysis
 The following charts compare the timer per iteration for each of the optimizations on their own, and all together. I tested this with different scene complexities, first with one diffuse sphere, so all the materials except the light are diffuse, next with one specular sphere, so an extra material. Then with one specular and one refractive, so all 4 types of materials in the scene (including light). 
 ![](img/PerformanceStatsSpheres.PNG)
 
