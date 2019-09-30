@@ -20,6 +20,13 @@
 
 #define ERRORCHECK 1
 
+
+#define MOTION_BLUR 0
+#define ANTI_ALIAS 1
+#define STREAM_COMPACT 0
+#define STREAM_COMPACT_THRUST 1 // toggle either stream compact
+#define SORT_BY_MATERIAL 0
+
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
 void checkCUDAErrorFn(const char *msg, const char *file, int line) {
@@ -181,9 +188,8 @@ __global__ void computeIntersections(
 
 	if (alive_idx < num_paths)
 	{
-		//printf("%d\n", alive_idx);
 		int path_index = alive_paths[alive_idx];
-		//printf("%d\n", path_index);
+		if (path_index < 0) return;
 		PathSegment pathSegment = pathSegments[path_index];
 
 		float t;
@@ -209,14 +215,15 @@ __global__ void computeIntersections(
 			else if (geom.type == SPHERE)
 			{
 
-				//geom.transform = geom.originalTransform * 0.1f + 0.9f*glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
-				//	0.0f, 1.0f, 0.0f, 0.05f * iter,
-				//	0.0f, 0.0f, 1.0f, 0.0f,
-				//	0.0f, 0.0f, 0.0f, 1.0f) * geom.originalTransform;
+#if MOTION_BLUR
+				geom.transform = geom.initialTransform * 0.1f + 0.9f*glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
+					0.0f, 1.0f, 0.0f, 0.05f * iter,
+					0.0f, 0.0f, 1.0f, 0.0f,
+					0.0f, 0.0f, 0.0f, 1.0f) * geom.initialTransform;
 
-				//geom.inverseTransform = glm::inverse(geom.transform);
-				//geom.invTranspose = glm::inverseTranspose(geom.transform);
-				
+				geom.inverseTransform = glm::inverse(geom.transform);
+				geom.invTranspose = glm::inverseTranspose(geom.transform);
+#endif			
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 
 			}
@@ -315,6 +322,7 @@ __global__ void diffuseShader(
 	if (alive_idx < num_paths)
 	{
 		int idx = alive_paths[alive_idx];
+		if (idx < 0) return;
 
 		ShadeableIntersection intersection = shadeableIntersections[idx];
 		if (intersection.t > 0.0f) { // if the intersection exists...
@@ -473,20 +481,27 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		// Start off with just a big kernel that handles all the different
 		// materials you have in the scenefile.
 
-
-		//thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + num_paths, dev_paths, compareIntersections());
-		
+#if SORT_BY_MATERIAL
+		thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + num_paths, dev_paths, compareIntersections());
+#endif 
 
 		diffuseShader<<<numblocksPathSegmentTracing, blockSize1d>>>(iter, 
 			num_paths, dev_intersections, dev_paths, dev_alive_paths, dev_materials, depth);
 
-
-		//dev_path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, isTerminated());
-		//num_paths = dev_path_end - dev_paths;
+#if STREAM_COMPACT
 		num_paths = StreamCompaction::Efficient::compactShared(num_paths, dev_alive_paths);
+#endif
 
-		//printf("Hey %d\n", num_paths);
-		iterationComplete = (num_paths == 0) || depth > traceDepth; //
+#if STREAM_COMPACT_THRUST
+		//dev_path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, isTerminated());
+		int* dev_alive_paths_end = thrust::partition(thrust::device, dev_alive_paths, dev_alive_paths + num_paths, isTerminated());
+		num_paths = dev_alive_paths_end - dev_alive_paths;
+#endif
+
+		if (iter == 1) {
+			printf("Live Paths: %d\n", num_paths);
+		}
+		iterationComplete = (num_paths == 0) || depth > traceDepth;
 	}
 
 	num_paths = pixelcount;
@@ -503,7 +518,6 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	// Retrieve image from GPU
 	cudaMemcpy(hst_scene->state.image.data(), dev_image,
 			pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
-
 
 	checkCUDAError("pathtrace");
 }

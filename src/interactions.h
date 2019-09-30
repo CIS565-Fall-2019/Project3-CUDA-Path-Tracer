@@ -112,8 +112,12 @@ void scatterRay(
 }
 
 struct isTerminated {
-	__host__ __device__ bool operator() (const PathSegment& p) {
-		return (p.remainingBounces > 0);
+	//__host__ __device__ bool operator() (const PathSegment& p) {
+	//	return (p.remainingBounces > 0);
+	//}
+
+	__host__ __device__ bool operator() (int p) {
+		return (p >= 0);
 	}
 };
 

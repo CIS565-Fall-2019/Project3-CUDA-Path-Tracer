@@ -6,7 +6,7 @@ SPECRGB     0 0 0
 REFL        0
 REFR        0
 REFRIOR     0
-EMITTANCE   3
+EMITTANCE   5
 
 // Diffuse white
 MATERIAL 1
@@ -43,44 +43,17 @@ MATERIAL 4
 RGB         .98 .98 .98
 SPECEX      0
 SPECRGB     .98 .98 .98
-REFL        0.8
-REFR        0.2
-REFRIOR     1.33
-EMITTANCE   0
-
-MATERIAL 5
-RGB         .98 .98 0
-SPECEX      0
-SPECRGB     0 .9 0.9
-REFL        0.3
-REFR        0.8
-REFRIOR     1.5
-EMITTANCE   0
-
-MATERIAL 6
-RGB         .98 .98 0
-SPECEX      0
-SPECRGB     .98 .98 0
-REFL        0.5
-REFR        0.5
-REFRIOR     1.5
-EMITTANCE   0
-
-MATERIAL 7
-RGB         1 0.576 0.160
-SPECEX      0
-SPECRGB     0 0 0
-REFL        0
+REFL        1
 REFR        0
 REFRIOR     0
-EMITTANCE   3
+EMITTANCE   0
 
 // Camera
 CAMERA
 RES         800 800
 FOVY        45
 ITERATIONS  5000
-DEPTH       10
+DEPTH       8
 FILE        cornell
 EYE         0.0 5 10.5
 LOOKAT      0 5 0
@@ -139,27 +112,6 @@ SCALE       .01 10 10
 OBJECT 6
 sphere
 material 4
-TRANS       -2 4 0
+TRANS       -1 4 -1
 ROTAT       0 0 0
 SCALE       3 3 3
-
-OBJECT 7
-sphere
-material 5
-TRANS       2 4 0
-ROTAT       0 0 0
-SCALE       3 3 3
-
-OBJECT 8
-cube
-material 6
-TRANS       2 7 0
-ROTAT       45 45 0
-SCALE       1 1 1
-
-OBJECT 9
-cube
-material 7
-TRANS       4 0 3
-ROTAT       0 0 0
-SCALE       0.5 .3 0.5
