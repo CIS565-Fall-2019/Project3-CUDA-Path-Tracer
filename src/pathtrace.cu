@@ -39,9 +39,8 @@
 //========================
 #define ANTIALIASING	0
 #define WORKEFFCOMP     0
-#define MOTIONBLUR		0
-#define MOTIONBLUR2     0
-#define DEPTHOFFIELD	0
+#define MOTIONBLUR		0  
+#define DEPTHOFFIELD	0 // not implemented
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -264,7 +263,7 @@ __global__ void computeIntersections(
 
 		float alpha = 0.8;
 		glm::mat4 motion = glm::mat4(1.0f, 0.0f, 0.0f, iter*0.0f,
-			0.0f, 1.0f, 0.0f, iter*0.005f,
+			0.0f, 1.0f, 0.0f, iter*0.0005f,
 			0.0f, 0.0f, 1.0f, iter*0.0f,
 			0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -615,14 +614,6 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	if (iter == 2) {
 		flag = true;
 	}
-
-#if MOTIONBLUR2
-	glm::vec3 speed(0.0f, 0.0005f, 0.0f);
-	KernMotionBlur <<<1, blockSize1d >> > (depth,
-		dev_geoms,
-		hst_scene->geoms.size(), iter, speed);
-#endif
-
 
 		
 	while (!iterationComplete) {
