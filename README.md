@@ -104,7 +104,7 @@ Motion Blur Screen Captures
 - Stream compaction helps most after a few bounces. We show the contrast in runtime and number ofrays processed with and without stream comapction in the following figures. These clearly show that stream comapction speeds up the rendering. 
 
  <p float="center">
-        <img src="img/plots.PNG" width="600"/>
+        <img src="img/plots.PNG"/>
  </p>
 
 - Opening up the scene by removing two walls allows more light to escape. Stream compaction in a closed scene senario would not help much if there aren't many premature terminated rays. In case of more open scenes, stream comaption allows more warps of threads to exit and not idle.
@@ -114,8 +114,8 @@ Motion Blur Screen Captures
  </p>
 
  <p float="center">
-      <img src="img/cornell.2019-09-30_04-21-28z.5000samp.png"width="300"/>
-      <img src="img/cornell.2019-09-30_04-28-55z.5000samp.png"width="300"/>
+      <img src="img/cornell.2019-09-30_04-21-28z.5000samp.png" width="300"/>
+      <img src="img/cornell.2019-09-30_04-28-55z.5000samp.png" width="300"/>
  </p>
 
 ### Bloopers
