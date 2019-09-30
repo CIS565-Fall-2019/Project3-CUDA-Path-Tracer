@@ -25,7 +25,7 @@ The general idea is to shoot a large number of rays from the camera, compute the
 
 ![Motion Blur](img/mb.png)
 
-![Depth of Field](img/dop.png)
+![Depth of Field](img/dof.png)
 
 **Other features:**
 * Direct Light
