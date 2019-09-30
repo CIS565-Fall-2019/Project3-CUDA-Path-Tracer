@@ -142,3 +142,27 @@ __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
 
     return glm::length(r.origin - intersectionPoint);
 }
+
+
+__host__
+__device__ float triIntersectionTest(Geom tri, Ray r,
+        glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
+	
+    glm::vec3 ro = multiplyMV(tri.inverseTransform, glm::vec4(r.origin, 1.0f));
+    glm::vec3 rd = glm::normalize(multiplyMV(tri.inverseTransform, glm::vec4(r.direction, 0.0f)));
+
+    Ray rt;
+    rt.origin = ro;
+    rt.direction = rd;
+	glm::vec3 pos;
+	glm::intersectRayTriangle(ro, rd, tri.vertex[0], tri.vertex[1], tri.vertex[2], pos);
+      float t = pos.z;
+	  glm::vec3 objspaceIntersection = getPointOnRay(rt, t);
+	  
+	outside = (glm::dot(r.direction, normal) < 0);
+    intersectionPoint = multiplyMV(tri.transform, glm::vec4(objspaceIntersection, 1.f));
+    normal = glm::normalize(multiplyMV(tri.invTranspose, glm::vec4(objspaceIntersection, 0.f)));
+    return t;
+	
+
+}

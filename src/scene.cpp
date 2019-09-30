@@ -3,6 +3,7 @@
 #include <cstring>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include "obj_loader.h"
 
 Scene::Scene(string filename) {
     cout << "Reading scene from " << filename << " ..." << endl;
@@ -41,17 +42,24 @@ int Scene::loadGeom(string objectid) {
         cout << "Loading Geom " << id << "..." << endl;
         Geom newGeom;
         string line;
-
+		vector<Geom> obj;
         //load object type
         utilityCore::safeGetline(fp_in, line);
         if (!line.empty() && fp_in.good()) {
-            if (strcmp(line.c_str(), "sphere") == 0) {
-                cout << "Creating new sphere..." << endl;
-                newGeom.type = SPHERE;
-            } else if (strcmp(line.c_str(), "cube") == 0) {
-                cout << "Creating new cube..." << endl;
-                newGeom.type = CUBE;
-            }
+			if (strcmp(line.c_str(), "sphere") == 0) {
+				cout << "Creating new sphere..." << endl;
+				newGeom.type = SPHERE;
+			}
+			else if (strcmp(line.c_str(), "cube") == 0) {
+				cout << "Creating new cube..." << endl;
+				newGeom.type = CUBE;
+			}
+			else if (strcmp(line.c_str(), "obj") == 0) {
+				newGeom.type = TRI;
+				cout << "adding synth... " << endl;
+				load_obj("../scenes/wahoo.obj", &obj);
+				newGeom.triangles = obj.size();
+			}
         }
 
         //link material
@@ -59,6 +67,9 @@ int Scene::loadGeom(string objectid) {
         if (!line.empty() && fp_in.good()) {
             vector<string> tokens = utilityCore::tokenizeString(line);
             newGeom.materialid = atoi(tokens[1].c_str());
+			for (Geom& g : obj) {
+				g.materialid = newGeom.materialid;
+			}
             cout << "Connecting Geom " << objectid << " to Material " << newGeom.materialid << "..." << endl;
         }
 
@@ -70,10 +81,23 @@ int Scene::loadGeom(string objectid) {
             //load tranformations
             if (strcmp(tokens[0].c_str(), "TRANS") == 0) {
                 newGeom.translation = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+				for (Geom& g : obj) {
+			g.translation = newGeom.translation;
+
+				}
             } else if (strcmp(tokens[0].c_str(), "ROTAT") == 0) {
+
                 newGeom.rotation = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+				for (Geom& g : obj) {
+			g.rotation = newGeom.rotation;
+
+				}
             } else if (strcmp(tokens[0].c_str(), "SCALE") == 0) {
                 newGeom.scale = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+				for (Geom& g : obj) {
+			g.scale = newGeom.scale;
+
+				}
             }
 
             utilityCore::safeGetline(fp_in, line);
@@ -85,6 +109,12 @@ int Scene::loadGeom(string objectid) {
         newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
 
         geoms.push_back(newGeom);
+		for (Geom& g : obj) {
+			g.transform = utilityCore::buildTransformationMatrix(g.translation, g.rotation, g.scale);
+			g.inverseTransform = glm::inverse(g.transform);
+			g.invTranspose = glm::inverseTranspose(g.transform);
+			geoms.push_back(g);
+		}
         return 1;
     }
 }
