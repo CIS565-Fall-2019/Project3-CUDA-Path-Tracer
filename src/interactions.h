@@ -68,7 +68,7 @@ glm::vec3 calculateRandomDirectionInHemisphere(
  */
 __host__ __device__
 void scatterRay(
-		PathSegment & pathSegment,
+		PathSegment &pathSegment,
         glm::vec3 intersect,
         glm::vec3 normal,
         const Material &m,
@@ -76,4 +76,90 @@ void scatterRay(
     // TODO: implement this.
     // A basic implementation of pure-diffuse shading will just call the
     // calculateRandomDirectionInHemisphere defined above.
+	glm::vec3 new_ray;
+	glm::vec3 materialColor;
+
+
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	float prob = u01(rng);
+
+	if (prob <= m.hasReflective) {
+		new_ray = glm::reflect(pathSegment.ray.direction, normal);
+
+		materialColor = m.specular.color;
+	}
+	else if (prob <= (m.hasRefractive + m.hasReflective)) {
+		/*new_ray = glm::refract(pathSegment.ray.direction, normal, 1.0f/m.indexOfRefraction);
+
+		materialColor = m.specular.color;*/
+		glm::vec3 new_normal;
+		float ior = m.indexOfRefraction;
+		float r;
+		//Check if ray is from inside to outside object or other direction
+		float cosi = glm::dot(pathSegment.ray.direction, normal);
+
+		float n1, n2;
+		if (cosi > 0.0f) {
+			//Inside to oustide
+			n1 = ior;
+			n2 = 1; //Air
+
+			new_normal = -1.0f * normal;
+
+			//printf("QQQQQQQQQQQQQQQQQQQQ - Inside to Outside/n");
+			//Check total internal reflection
+			float sinr = (n1/ n2) * sqrtf(1 - pow(cosi, 2));
+			if (sinr > 1.0f) {
+				
+				//Total internal reflection
+				r = 1;
+				//materialColor = glm::vec3(0.0f);
+				materialColor = m.specular.color;
+			}
+			else {
+				//Calculate Reflectance (r) using Fresnel's law
+				float r0 = pow((n1 - n2) / (n1 + n2), 2);
+				r = r0 + (1 - r0) * pow((1 - glm::max(0.0f, cosi)), 5);
+				materialColor = m.specular.color;
+			}
+		}
+		else {
+			n1 = 1; //Air
+			n2 = ior;
+
+			new_normal = normal;
+
+			//printf("Outside to inside\n");
+			//Calculate Reflectance (r) using Fresnel's law
+			float r0 = pow((n1 - n2) / (n1 + n2), 2);
+			r = r0 + (1 - r0) * pow((1 - glm::max(0.0f, cosi)), 5);
+			materialColor = m.specular.color;
+		}
+
+		//Reflect or refract randomnly based on reflectance ratio
+		thrust::uniform_real_distribution<float> u01(0, 1);
+		float prob_of_reflection = u01(rng);
+		//printf("REFL: %f\n", r);
+		if (prob_of_reflection <= (1 - r)) {
+			//Reflect
+			new_ray = glm::reflect(pathSegment.ray.direction, normal);
+		}
+		else {
+			//Refract
+			new_ray = glm::refract(pathSegment.ray.direction, new_normal, n1/n2);
+		}
+		
+	}
+	else {
+		new_ray = calculateRandomDirectionInHemisphere(normal, rng);
+
+		materialColor = m.color;
+	}
+
+	//Update the new ray in place in pathSegment
+	pathSegment.ray.origin = intersect + new_ray * 0.01f;
+	pathSegment.ray.direction = new_ray;
+
+	//Update the color in place
+	pathSegment.color *= materialColor;
 }
