@@ -51,6 +51,12 @@ int Scene::loadGeom(string objectid) {
             } else if (strcmp(line.c_str(), "cube") == 0) {
                 cout << "Creating new cube..." << endl;
                 newGeom.type = CUBE;
+            } else if (strcmp(line.c_str(), "hollowShape") == 0) {
+                cout << "Creating new hollow shape..." << endl;
+                newGeom.type = HOLLOW;
+            } else if (strcmp(line.c_str(), "twist") == 0) {
+                cout << "Creating new twist shape..." << endl;
+                newGeom.type = TWIST;
             }
         }
 
