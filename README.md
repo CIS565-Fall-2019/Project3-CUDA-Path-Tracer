@@ -3,11 +3,52 @@ CUDA Path Tracer
 
 **University of Pennsylvania, CIS 565: GPU Programming and Architecture, Project 3**
 
-* (TODO) YOUR NAME HERE
-* Tested on: (TODO) Windows 22, i7-2222 @ 2.22GHz 22GB, GTX 222 222MB (Moore 2222 Lab)
 
-### (TODO: Your README)
+* Author: Chhavi Sharma ([LinkedIn](https://www.linkedin.com/in/chhavi275/))
+* Tested on: Windows 10, Intel Core(R) Core(TM) i7-6700 CPU @ 3.40GHz 16GB, 
+             NVIDIA Quadro P1000 4GB (MOORE100B-06)
 
-*DO NOT* leave the README to the last minute! It is a crucial part of the
-project, and we will not be able to grade you without a good README.
+
+ <p align="center">
+  <img src="build/cornell.2019-09-30_04-21-28z.5000samp.png">
+</p>
+
+
+### Index
+
+- [Introduction](  )
+- [Implementation Details]( )
+- [Basic Features]( )
+- [Advance Features]( )
+- [Performacne Analysis]( )
+- [Extra Credit]( )
+
+
+### Introduction 
+
+Path tracing is a computer graphics method of rendering digital 3D images such that the global illumination is as close as possible to reality. Path Tracing is similar to ray tracing in which rays are cast from a virtual camera and traced through a simulated scene by random sampling to incrementally compute a final image. The random sampling process makes it possible to render some complex phenomena which are not handled in regular ray tracing such as multiple reflections.
+
+### Implementation Details
+We implement an estimation of the Bidirectional Scattering Distribution Function to compute the an estimated illumination per pixel in the image over several iterations. In reality: Rays leave light sources -> bounce around a scene and change color/intensity based on the scene’s materials -> some hit pixels in a camera/ our eyes. Our implementation simulations this phenomnenon in reverse where a ray is launched from our camera thorugh each pixel of the image, and it's subequent intersections and bounces in the scene are traced upto a certain depth to compute the final color of the pixel. 
+This is implemented by computing a single bounce at each time-step for all the rays in the image parallely to get maximum throughput.  
+
+The ray starts with an identity color which is modified multiplicatively as it hits differnet materials in the scene.
+The bounce direction and colour intensity depend on various material properties and the angle of incidence. We simulate four types of materials i.e. Emissive, Diffused, Reflective, Refractive and their combinations.
+
+### Basic Features
+The following basic features are implemented:
+  - Shading using [BSDF](https://en.wikipedia.org/wiki/Bidirectional_scattering_distribution_function)
+      - Diffuse Reflection: Reflects all rays randomly in the normal facing semi-sphere.
+      - Specular Reflection: Reflects the incoming ray about the normal where angle of incidence is equal to the angle of relection (mirror like behaviour).
+      - Refraction: Allows ray to pass through the media based on the ratio of the refractive index of the two mediums [snell's law](https://en.wikipedia.org/wiki/Snell%27s_law)
+      - Emissive Media: Rays begin or terminate at these materials.
+      
+<p float="left">
+  <img src="/img1.png" width="100" />
+  <img src="/img2.png" width="100" /> 
+  <img src="/img3.png" width="100" />
+</p>      
+
+
+
 
