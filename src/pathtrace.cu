@@ -20,8 +20,9 @@
 #define ERRORCHECK 1
 
 #define CACHE_FIRST_BOUNCE 0
-#define SORT_BY_MATERIAL 1
+#define SORT_BY_MATERIAL 0
 #define ANTI_ALIASING 1
+#define CUDA_TIMING 0
 
 // only have one of these at a time
 #define BOKEH_CIRCLE 0
@@ -376,6 +377,7 @@ struct sortMaterialId {
  * of memory management
  */
 void pathtrace(uchar4 *pbo, int frame, int iter) {
+
     const int traceDepth = hst_scene->state.traceDepth;
     const Camera &cam = hst_scene->state.camera;
     const int pixelcount = cam.resolution.x * cam.resolution.y;
@@ -391,6 +393,14 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	///////////////////////////////////////////////////////////////////////////
 
+#if CUDA_TIMING
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+
+	cudaEventRecord(start);
+#endif // #if CUDA_TIMING
+
 	generateRayFromCamera<<<blocksPerGrid2d, blockSize2d>>>(cam, iter, traceDepth, dev_paths);
 	checkCUDAError("generate camera ray");
 
@@ -404,6 +414,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	bool iterationComplete = false;
 	while (!iterationComplete) {
+
+		//std::cout << "Remaining paths: " + std::to_string(remaining_paths) << std::endl;
 
 		// clean shading chunks
 		cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
@@ -455,6 +467,17 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			iterationComplete = (remaining_paths <= 0);
 		}
 	}
+
+#if CUDA_TIMING
+	cudaEventRecord(stop);
+	cudaEventSynchronize(stop);
+	float ms = 0.f;
+	cudaEventElapsedTime(&ms, start, stop);
+	std::cout << "Elapsed time: " << std::to_string(ms) << std::endl;
+
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
+#endif // #if CUDA_TIMING
 
 	// Assemble this iteration and apply it to the image
 	dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;

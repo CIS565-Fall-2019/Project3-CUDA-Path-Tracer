@@ -208,16 +208,6 @@ __host__ __device__ float meshIntersectionTest(Geom mesh, Ray r,
 	if (min_t > max_t_z || min_t_z > max_t) {
 		return -1;
 	}
-
-	if (min_t_z < min_t) {
-		min_t = min_t_z;
-	}
-
-	if (max_t_z > max_t) {
-		max_t = max_t_z;
-	}
-
-	
 #endif // #if BOUNDING_VOLUME
 
 	float t_min = FLT_MAX;

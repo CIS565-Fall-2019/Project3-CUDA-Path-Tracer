@@ -52,7 +52,7 @@ EMITTANCE   0
 CAMERA
 RES         800 800
 FOVY        45
-ITERATIONS  5000
+ITERATIONS  1
 DEPTH       8
 FILE        cornell
 EYE         0.0 5 10.5
@@ -116,5 +116,5 @@ mesh
 material 1
 TRANS       0 2 0
 ROTAT       0 90 0
-SCALE       9 9 9
-FILENAME ../meshes/BarramundiFish.gltf
+SCALE       0.7 0.7 0.7
+FILENAME ../meshes/easter.gltf
