@@ -79,9 +79,9 @@ The render with and without antialiasing can be seen in the following figure. Th
 
 The zoomed in version of the above images are as follows. This shows how the render is jittery without antialiasing more clearly.
 
-| Without Antialiasing | With visualization |
+| Without Antialiasing | With Antialiasing |
 | ---------------------|---------------------- |
-| ![](img/with_AA_zoom.png) | ![](img/without_AA_zoom.png)                 |
+| ![](img/without_AA_zoom.PNG) | ![](img/with_AA_zoom.PNG)                 |
 
 ### Motion Blur
 
