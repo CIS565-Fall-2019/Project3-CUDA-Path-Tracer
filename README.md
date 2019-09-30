@@ -9,6 +9,10 @@ CUDA Path Tracer
 
 ### Highlights
 
+![](img/complex_without_cube_yellow.png)
+
+![](img/cornell_multiple)
+
 ### Features implemented
 
 - Visual artefacts
@@ -31,13 +35,13 @@ CUDA Path Tracer
 
 When rays fall on an object with ideal diffuse, the ray is scattered randomnly sampled from a uniform distribution in any direction within the hemisphere centered at the point of incidence. This gives a matt finish to the object.
 
-![]()
+![](img/cornell_diffuse.png)
 
 #### Perfect Specular reflection
 
 When rays fall on an object with perfectly specular material, it always (with 100% probability) reflects at an angle equal to the incidence angle on the other side of the normal. This gives a shiny mirror like finish to the object. Reflectons of objects around can be seen. Since it does not allow any light to pass through, we can see a shadow on the side which is away from light.
 
-![]()
+![](img/cornell_perfect_reflection_1.png)
 
 #### Refraction
 
@@ -45,27 +49,43 @@ When a ray falls on a refractive surface, it penetrates inside the object making
 
 A perfectly refractive object is rendered as below.
 
-![]()
+![](img/cornell_refr_15_without_fresnel.png)
 
 However, objects are not perfectly refractive. Some proportion of the rays are reflected depending on the refractive indices of the materials and the angle of incidence of the ray. The reflectance coefficient (proportion of rays which refract) is calculated by Fresnel's law. Also, for rays coming from a material with higher refractive index to one with a lower refractive index, some rays reflect perfectly if the angle of incidence is more than a perticuar value (called critical angle). This is called total internal reflection. 
 
 The render of an object with refraction wil be as follows.
 
-![]()
+![](img/cornell_refraction_15.png)
+
+Render of a sphere with refractive index = 2.41 (diamond)
+
+![](img/cornell_refraction_241.png)
+
+Render of sphere with 50% reflection and 50% chance of refraction (with Fresnel's effect)
+
+![](img/cornell_half_refl_half_refr.png)
 
 ### Anti-Aliasing
 
 Depending on the resolution, when images are rendered, the pixels show a stair-step like lines near the edges of objects. This can be reduced by approximating the pixel values around that pixel. This makes the edge more smooth. For thie path tracer, this is implemented by adding some random noise (jitter) to the pixel value when generating rays from the camera. This means, we shoot a ray to a point in an area around the actual pixel randomly sampling from a unifrom distribution. At every iteration, the ray strikes at a different point around the pixel (stochastically) and thus across iterations, creates an average effect at each pixel.
 
-The render with and without antialiasing can be seen in the following figure.
+The render with and without antialiasing can be seen in the following figure. These renders are obtained after running the path tracer for 2000 iterations for both cases.
 
-![]()
+| Without Antialiasing | With visualization |
+| ---------------------|---------------------- |
+| ![](img/cornell_without_AA_2000.png) | ![](img/cornell_with_AA_2000.png)                 |
+
+The zoomed in version of the above images are as follows. This shows how the render is jittery without antialiasing more clearly.
+
+| Without Antialiasing | With visualization |
+| ---------------------|---------------------- |
+| ![](img/with_AA_zoom.png) | ![](img/without_AA_zoom.png)                 |
 
 ### Motion Blur
 
 Motion blur shows the effect of an object in motion which results when the image being recorded changes due to long exposure to the camera. The following renders are obtained for an object with ideal diffuse and a refractive object with motion blur.
 
-![]()
+![](img/cornell_modtion_blur_diffuse.png)
 
 ### Arbitrary mesh loading and rendering
 
@@ -81,7 +101,7 @@ When rays are either generated from the camera or bounced off some object do not
 
 The following graph shows the remaining active rays after certain number of iterations.
 
-![]()
+![](img/sc_rem_bounces.PNG)
 
 Time taken to complete 500 iterations
 
@@ -93,9 +113,6 @@ Stream compaction has a greater effect when the scene is open as opposed to corn
 - Closed scene = 
 - Open scene = 
 
-The following figure shows that the image takes less iterations to converge when using stream compaction.
-
-![]()
 
 ### Cache First Bounce
 
@@ -116,8 +133,8 @@ I implemented stream compaction using shared memory to improve stream compaction
 
 I implemented the stream compaction with shared memory in project 2's repository and it resulted in the following improvement in time for stream compaction.
 
-![]()
+![](img/sc_plot.PNG)
 
 The above graph shows how shared memory takes lesser time with increasing array size for stream compaction.
 
-When adding stream compaction with shared memory to the Path Tracer, I was getting some Out of Memory issues for images with 800 x 800 resolution. The path tracer works perfectly with lesser resolution of upto ??
+When adding stream compaction with shared memory to the Path Tracer, I was getting some Out of Memory issues for images with 800 x 800 resolution. The path tracer works perfectly with lesser resolution of upto 400 x 400
