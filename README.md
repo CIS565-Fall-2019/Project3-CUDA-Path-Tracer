@@ -104,7 +104,7 @@ Most features have been implemented with toggleable options.
 Motion Blur Screen Captures 
 <p align="center">
    <img src="img/mb1.PNG" width="420" />
-   <img src="img/mb4.PNG" width="420" />
+   <img src="img/mb4.PNG" width="420" height="420" />
 </p>    
 
 
