@@ -228,5 +228,4 @@ I also tried one version that extremely over-blurred the scene:
 ### Depth of Field
 Before I got the thin lens camera properties setup correctly, the ray jittering had fun effects on the renders, including a very out of focus render, and a very tiny cornell box:
 
-![] (img/DOVBlooper2.png) 
-![](img/DOVBlooper3.png)
+![](img/DOVBlooper2.png)  ![](img/DOVBlooper3.png)
