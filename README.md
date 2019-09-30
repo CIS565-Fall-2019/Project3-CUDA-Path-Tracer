@@ -101,8 +101,8 @@ Motion Blur Screen Captures
 
 
  <p float="center">
-        <img src="build/mb11.PNG" width="400"/>
-        <img src="build/mb22.PNG" width="400"/>
+        <img src="build/mb11.png" width="400"/>
+        <img src="build/mb22.png" width="400"/>
  </p>
  
 
