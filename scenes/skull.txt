@@ -1,0 +1,171 @@
+// Emissive material (light)
+MATERIAL 0
+RGB         1 1 1
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   5
+
+// Diffuse white
+MATERIAL 1
+RGB         .98 .98 .98
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Diffuse blue
+MATERIAL 2
+RGB         .35 .35 .85
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Diffuse red
+MATERIAL 3
+RGB         .85 .35 .35
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Specular white
+MATERIAL 4
+RGB         .98 .98 .98
+SPECEX      0
+SPECRGB     .98 .98 .98
+REFL        1
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Specular refractive white
+MATERIAL 5
+RGB         .98 .98 .98
+SPECEX      0
+SPECRGB     .98 .98 .98
+REFL        0
+REFR        1
+REFRIOR     1.52
+EMITTANCE   0
+
+// Camera
+CAMERA
+RES         1080 720
+FOVY        45
+ITERATIONS  10000
+DEPTH       8
+FILE        skull
+EYE         0.0 5 9
+LOOKAT      0 5 0
+UP          0 1 0
+FOCALDISTANCE 8
+LENSRADIUS 1
+
+
+// Ceiling light
+OBJECT 0
+cube
+material 0
+TRANS       0 15 3
+ROTAT       0 0 0
+SCALE       3 .3 3
+
+// Floor
+OBJECT 1
+cube
+material 1
+TRANS       0 0 0
+ROTAT       0 0 0
+SCALE       20 .01 15
+
+// Ceiling
+OBJECT 2
+cube
+material 1
+TRANS       0 15 0
+ROTAT       0 0 90
+SCALE       .01 20 15
+
+// Back wall
+OBJECT 3
+cube
+material 1
+TRANS       0 5 -5
+ROTAT       0 90 0
+SCALE       .01 20 10
+
+// Left wall
+OBJECT 4
+cube
+material 2
+TRANS       -5 5 0
+ROTAT       0 0 0
+SCALE       .01 20 15
+
+// Right wall
+OBJECT 5
+cube
+material 3
+TRANS       5 5 0
+ROTAT       0 0 0
+SCALE       .01 20 15
+
+// Cube
+OBJECT 6
+cube
+material 1
+TRANS       0 1 -1
+ROTAT       0 0 0
+SCALE       4 6 4
+
+// Cube2
+OBJECT 7
+cube
+material 1
+TRANS       0 1 1
+ROTAT       0 0 0
+SCALE       4 4.5 2
+
+// Cube3
+OBJECT 8
+cube
+material 1
+TRANS       0 1 2
+ROTAT       0 0 0
+SCALE       4 3 2
+
+// Cube4
+OBJECT 9
+cube
+material 1
+TRANS       0 1 3
+ROTAT       0 0 0
+SCALE       4 1.5 2
+
+// Cube5
+OBJECT 10
+cube
+material 1
+TRANS       0 1 4
+ROTAT       0 0 0
+SCALE       4 0.5 2
+
+// Mesh
+OBJECT 11
+mesh
+material 5
+TRANS       0 7 -2
+ROTAT       -90 0 00
+SCALE       3 3 3
+FILENAME ../meshes/skull.gltf
+

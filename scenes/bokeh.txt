@@ -1,0 +1,359 @@
+// Emissive material (white)
+MATERIAL 0
+RGB         1 1 1
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   6
+
+// Diffuse white
+MATERIAL 1
+RGB         .98 .98 .98
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Diffuse blue
+MATERIAL 2
+RGB         .35 .35 .85
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Diffuse yellow
+MATERIAL 3
+RGB         .85 .85 .35
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Specular white
+MATERIAL 4
+RGB         .98 .98 .98
+SPECEX      0
+SPECRGB     .98 .98 .98
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Emissive material (blue)
+MATERIAL 5
+RGB         0.1 0.1 0.8
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   8
+
+// Emissive material (purple)
+MATERIAL 6
+RGB         0.8 0.2 0.8
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   8
+
+// Emissive material (yellow)
+MATERIAL 7
+RGB         0.9 0.9 0.1
+SPECEX      0
+SPECRGB     0 0 0
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   8
+
+// Camera
+CAMERA
+RES         800 680
+FOVY        45
+ITERATIONS  1
+DEPTH       8
+FILE        cornell
+EYE         -2 8 7
+LOOKAT      0 5 0
+UP          0 1 0
+FOCALDISTANCE 7
+LENSRADIUS 1.1
+
+
+// Ceiling light
+OBJECT 0
+sphere
+material 0
+TRANS       0 15 2
+ROTAT       0 0 0
+SCALE       3 .3 3
+
+// Floor
+OBJECT 1
+cube
+material 1
+TRANS       0 0 0
+ROTAT       0 0 0
+SCALE       30 .01 20
+
+// Back wall
+OBJECT 2
+cube
+material 1
+TRANS       0 5 -5
+ROTAT       0 90 0
+SCALE       .01 20 20
+
+// Mesh
+OBJECT 3
+mesh
+material 1
+TRANS       0 7 0
+ROTAT       0 0 0
+SCALE       0.7 0.7 0.7
+FILENAME ../meshes/easter.gltf
+
+// Sphere light 1
+OBJECT 4
+sphere
+material 0
+TRANS       6 4 -3
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 1.5
+OBJECT 5
+sphere
+material 0
+TRANS       -3 6 -3
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 2
+OBJECT 6
+sphere
+material 5
+TRANS       -8 8 -3
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 3
+OBJECT 7
+sphere
+material 7
+TRANS       -5 3 -4
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 4
+OBJECT 8
+sphere
+material 6
+TRANS       6 7 2
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 5
+OBJECT 9
+sphere
+material 0
+TRANS       3 3 -3
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 6
+OBJECT 10
+sphere
+material 5
+TRANS       -7 5 -3
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 7
+OBJECT 11
+sphere
+material 7
+TRANS       -4 10 -3
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 8
+OBJECT 12
+sphere
+material 6
+TRANS       3 12 -4
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 9
+OBJECT 13
+sphere
+material 0
+TRANS       4 8 3
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 10
+OBJECT 14
+sphere
+material 5
+TRANS       -4 14 -4.5
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 11
+OBJECT 15
+sphere
+material 7
+TRANS       7 8 -4
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 12
+OBJECT 16
+sphere
+material 7
+TRANS       -8 13 1
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 13
+OBJECT 17
+sphere
+material 5
+TRANS       5 12 -3
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 14
+OBJECT 18
+sphere
+material 6
+TRANS       -9 15 -4.5
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 15
+OBJECT 19
+sphere
+material 6
+TRANS       8 8 -4
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 16
+OBJECT 20
+sphere
+material 6
+TRANS       8 3 -3
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 17
+OBJECT 21
+sphere
+material 0
+TRANS       -8 3 -2
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 18
+OBJECT 22
+sphere
+material 6
+TRANS       0 8 2
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 19
+OBJECT 23
+sphere
+material 6
+TRANS       -2 6 3
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 20
+OBJECT 24
+sphere
+material 5
+TRANS       2 3 2
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 21
+OBJECT 25
+sphere
+material 7
+TRANS       -5 4 2
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 21
+OBJECT 26
+sphere
+material 7
+TRANS       4 3 2
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 22
+OBJECT 27
+sphere
+material 6
+TRANS       -2 2 2
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 23
+OBJECT 28
+sphere
+material 0
+TRANS       -3 5 4
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Sphere light 24
+OBJECT 29
+sphere
+material 0
+TRANS       3 2 4
+ROTAT       0 0 0
+SCALE       0.2 0.2 0.2
+
+// Left wall
+OBJECT 30
+cube
+material 2
+TRANS       -14 10 0
+ROTAT       0 0 0
+SCALE       .01 20 20
+
+// Right wall
+OBJECT 31
+cube
+material 3
+TRANS       10 5 0
+ROTAT       0 0 0
+SCALE       .01 20 10
+
+// Ceiling
+OBJECT 32
+cube
+material 1
+TRANS       0 15 0
+ROTAT       0 0 90
+SCALE       .01 20 20
+

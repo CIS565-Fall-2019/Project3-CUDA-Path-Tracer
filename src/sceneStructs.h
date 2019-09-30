@@ -6,15 +6,24 @@
 #include "glm/glm.hpp"
 
 #define BACKGROUND_COLOR (glm::vec3(0.0f))
+#define BOUNDING_VOLUME 1
 
 enum GeomType {
     SPHERE,
     CUBE,
+	MESH
 };
 
 struct Ray {
     glm::vec3 origin;
     glm::vec3 direction;
+};
+
+struct Triangle {
+	glm::vec3 positions[3];
+	//glm::vec3 normals[3];
+	glm::vec3 normal;
+	glm::vec2 uvs[3];
 };
 
 struct Geom {
@@ -26,6 +35,10 @@ struct Geom {
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
+	int trianglesStart;
+	int trianglesEnd;
+	glm::vec3 maxPos;
+	glm::vec3 minPos;
 };
 
 struct Material {
@@ -49,6 +62,8 @@ struct Camera {
     glm::vec3 right;
     glm::vec2 fov;
     glm::vec2 pixelLength;
+	float lensRadius;
+	float focalDistance;
 };
 
 struct RenderState {
@@ -71,6 +86,7 @@ struct PathSegment {
 // 2) BSDF evaluation: generate a new ray
 struct ShadeableIntersection {
   float t;
+  glm::vec3 pos;
   glm::vec3 surfaceNormal;
   int materialId;
 };
