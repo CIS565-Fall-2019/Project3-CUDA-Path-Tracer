@@ -191,16 +191,6 @@ To optimize this, after we find our next set of intersections, we sort the inter
 If we are not using depth of field or anti-aliasing, in each iteration, every first bounce of the ray from the camera will intersect the same spot in the scene. Each time we cast a ray from the camera, we cast it through the top left corner of the pixel, which is the same direction in each iteration. Because we are casting the ray from the same origin in the same direction, it will hit the scene in the same place every time. Therefore, we can take advantage of this and cache that initial intersection, reusing it on the first bounce of each iteration rather than recalculating that intersection. 
 
 Note that caching cannot be done in conjunction with anti-aliasing and depth of field. These two features vary the initial ray cast each iteration to acheive some blurring of the pixels, either blurring between pixels to smooth out sharp lines, or blurring at certain distances to create depth of field. Therefore, we must recalculate the first intersections each iteration, as they will not be the same as previous iterations.
-### Bloopers
-#### OBJ Intersection
-When implementing OBJ intersection, I initially was not sorting triangle intersections by which was closest to camera, so if a triangle came after a triangle in front of it, the triangle in front did not render. In trying to fix this, I ended up with some interessting renders:
-
-![](img/MeshIntersectionBlooper.png) ![](img/OBJIntersectionBlooper1.png)
-
-#### First Bounce Cache
-When working on setting up the first bounce caching, I remembered to turn off anti-aliasing, but I was testing with depth of field on, which created this render:
-
-![](img/CachingBlooper.png)
 
 #### Performance Stats
 The following charts compare the timer per iteration for each of the optimizations on their own, and all together. I tested this with different scene complexities, first with one diffuse sphere, so all the materials except the light are diffuse, next with one specular sphere, so an extra material. Then with one specular and one refractive, so all 4 types of materials in the scene (including light). 
@@ -216,8 +206,18 @@ This data does indicate an improvement with the optimizations. Stream compaction
 
 To collect this data, I put a cuda event timer surrounding the call to the pathtrace function and took an average over the elapsed time of 4 iterations.  
 
+## Bloopers
+### OBJ Intersection
+When implementing OBJ intersection, I initially was not sorting triangle intersections by which was closest to camera, so if a triangle came after a triangle in front of it, the triangle in front did not render. In trying to fix this, I ended up with some interessting renders:
 
-#### Anti-Aliasing
+![](img/MeshIntersectionBlooper.png) ![](img/OBJIntersectionBlooper1.png)
+
+### First Bounce Cache
+When working on setting up the first bounce caching, I remembered to turn off anti-aliasing, but I was testing with depth of field on, which created this render:
+
+![](img/CachingBlooper.png)
+
+### Anti-Aliasing
 Before I figured out the correct way to add the randomized offset to the pixels for anti-aliasing, I had one attempt that ended up warping my scene in a cool way:
 
 ![](img/AntiAliasingBlooper2.PNG)
@@ -225,7 +225,7 @@ Before I figured out the correct way to add the randomized offset to the pixels 
 I also tried one version that extremely over-blurred the scene:
 
 ![](img/StrongAntiAliasingBlooper.PNG)
-#### Depth of Field
+### Depth of Field
 Before I got the thin lens camera properties setup correctly, the ray jittering had fun effects on the renders, including a very out of focus render, and a very tiny cornell box:
 
 ![] (img/DOVBlooper.png) ![](img/DOVBlooper3.png)
