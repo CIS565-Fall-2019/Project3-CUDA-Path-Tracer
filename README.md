@@ -51,7 +51,8 @@ Most features have been implemented with toggleable options.
 
 ### Description
 
-1. Shading using [BSDF](https://en.wikipedia.org/wiki/Bidirectional_scattering_distribution_function)
+
+- 1. Shading using [BSDF](https://en.wikipedia.org/wiki/Bidirectional_scattering_distribution_function)
       - Diffuse Reflection: Reflects all rays randomly in the normal facing semi-sphere.
       - Specular Reflection: Reflects the incoming ray about the normal where angle of incidence is equal to the angle of relection (mirror like behaviour).
       - Refraction: Allows ray to pass through the media based on the ratio of the refractive index of the two mediums [snell's law](https://en.wikipedia.org/wiki/Snell%27s_law)
@@ -79,29 +80,33 @@ Most features have been implemented with toggleable options.
 </p> 
 
 
-2. Stream Compaction: We reorganise the rays that have terminated, either by hitting a source of light, or reaching maximum depth, by using stream compaction so that more cuda aprs can exit early when they find all theri theireads terminated. This reduces unnecessary compute per bounce operation and in turn speeds up the rendering. 
-3. We also sort the rays by material type in order to allow continous memory access.
-4. First Bounce Intersection caching speeds up each iteration trememdously. Since there is no uncertanility in the first ray intersection computation we can cache the intersections at the begining of the first iteration and use it for all successive iterations. The first iteration als has the maximum number of rays therefore caching then at iter 0 shows drastic speedup for the rest of the iterations.
+- 2. Stream Compaction: We reorganise the rays that have terminated, either by hitting a source of light, or reaching maximum depth, by using stream compaction so that more cuda aprs can exit early when they find all theri theireads terminated. This reduces unnecessary compute per bounce operation and in turn speeds up the rendering. 
+- 3. We also sort the rays by material type in order to allow continous memory access.
+- 4. First Bounce Intersection caching speeds up each iteration trememdously. Since there is no uncertanility in the first ray intersection computation we can cache the intersections at the begining of the first iteration and use it for all successive iterations. The first iteration als has the maximum number of rays therefore caching then at iter 0 shows drastic speedup for the rest of the iterations.
 
 <p align="center">
     <img src="img/FBC.png" width="600"/>
 </p>
 
 
-5. AntiALiasing: We use anti-aliasing, a technique used to add greater realism to a digital image by smoothing jagged edges on curved lines and diagonals. We do this by randomly shifting the ray location per pixel instead of the center.
+
+- 5. AntiALiasing: We use anti-aliasing, a technique used to add greater realism to a digital image by smoothing jagged edges on curved lines and diagonals. We do this by randomly shifting the ray location per pixel instead of the center.
 
 <p align="center">
     <img src="img/aa.PNG" width="600"/>
 </p>
 
-6. Motion Blur: We implemtned motion blur by adding a veolity to an object of choice. As a result at each iteration, the object was rendered at a slightly translated location appearing giving the motion blur effect. 
+
+- 6. Motion Blur: We implemtned motion blur by adding a veolity to an object of choice. As a result at each iteration, the object was rendered at a slightly translated location appearing giving the motion blur effect. 
+
+
+Motion Blur Screen Captures 
 
 <p align="center">
     <img src="build/mb11.png" width="420"/>
     <img src="build/mb22.png" width="420"/>
 </p>
  
-Motion Blur Screen Captures 
 <p align="center">
    <img src="img/mb1.PNG" width="420" height="420"/>
    <img src="img/mb4.PNG" width="420" height="420" />
