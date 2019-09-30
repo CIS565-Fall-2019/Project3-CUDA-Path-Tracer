@@ -15,7 +15,7 @@ CUDA Path Tracer
 
 ![](img/complex_without_cube_yellow.png)
 
-![](img/cornell_multiple.png)
+![]()img/cornell_penn.png)
 
 ### Features implemented
 
@@ -34,6 +34,8 @@ CUDA Path Tracer
   - Stream Compaction using shared memory \[EXTRA CREDIT\]
 
 ### Shading different materials
+
+![](img/cornell_multiple.png)
 
 #### Ideal Diffuse
 
