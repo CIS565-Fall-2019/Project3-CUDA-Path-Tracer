@@ -19,13 +19,14 @@ CUDA Path Tracer
 - [Introduction](  )
 - [Implementation Details]( )
 - [Features]( )
-- [Performacne Analysis]( )
+- [Analysis]( )
+- [Some Results and Bloopers]( )
 - [Extra Credit]( )
 
 
 ### Introduction 
 
-Path tracing is a computer graphics method of rendering digital 3D images such that the global illumination is as close as possible to reality. Path Tracing is similar to ray tracing in which rays are cast from a virtual camera and traced through a simulated scene by random sampling to incrementally compute a final image. The random sampling process makes it possible to render some complex phenomena which are not handled in regular ray tracing such as multiple reflections.
+Path tracing is a computer graphics method of rendering digital 3D images such that the global illumination is as close as possible to reality. Path Tracing is similar to ray tracing in which rays are cast from a virtual camera and traced through a simulated scene by random sampling to incrementally compute a final image. The random sampling process makes it possible to render some complex phenomena which are not handled in regular ray tracing such as multiple reflections. 
 
 ### Implementation Details
 We implement an estimation of the Bidirectional Scattering Distribution Function to compute the an estimated illumination per pixel in the image over several iterations. In reality: Rays leave light sources -> bounce around a scene and change color/intensity based on the scene’s materials -> some hit pixels in a camera/ our eyes. Our implementation simulations this phenomnenon in reverse where a ray is launched from our camera thorugh each pixel of the image, and it's subequent intersections and bounces in the scene are traced upto a certain depth to compute the final color of the pixel. 
@@ -49,7 +50,7 @@ The bounce direction and colour intensity depend on various material properties 
    - [ ] Depth of Field
    - [ ] Loading OBJ files
 
-
+### Analysis
 1. Shading using [BSDF](https://en.wikipedia.org/wiki/Bidirectional_scattering_distribution_function)
       - Diffuse Reflection: Reflects all rays randomly in the normal facing semi-sphere.
       - Specular Reflection: Reflects the incoming ray about the normal where angle of incidence is equal to the angle of relection (mirror like behaviour).
@@ -69,4 +70,16 @@ The bounce direction and colour intensity depend on various material properties 
         <img src="build/cornell_emmisive.png" width="280" alt="Emmisive" />
         <img src="build/cornell_70-30_ref_rel.png" width="280" alt="Refract-Reflect-30-70" />
       </p> 
+
+2. Stream Compaction: We reorganise the rays that have terminated, either by hitting a source of light, or reaching maximum depth, by using stream compaction so that more cuda aprs can exit early when they find all theri theireads terminated. This reduces unnecessary compute per bounce operation and in turn speeds up the rendering. We show the contrast in runtime and number ofrays processed with and without stream comapction in the following figures. These clearly show that stream comapction speeds u the rendergin 
+
+![](img/plots.png)
+
+3. We also sort the rays by material type in order to allow continous memory access.
+4. First Bounce Intersection caching speeds up each iteration trememdously. Since there is no uncertanility in the first ray intersection computation we can cache the intersections at the begining of the first iteration and use it for all successive iterations. The first iteration als has the maximum number of rays therefore caching then at iter 0 shows drastic speedup for the rest of the iterations.
+
+![](img/FBC.png)
+
+
+
 
