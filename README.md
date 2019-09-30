@@ -91,13 +91,20 @@ Most features have been implemented with toggleable options.
 
 Motion Blur Screen Captures 
   <p float="left">
-    <img src="img/mb1.PNG" width="300" />
-    <img src="img/mb2.PNG" width="300" /> 
+    <img src="img/mb1.PNG" width="400" />
+    <img src="img/mb2.PNG" width="400" /> 
   </p>    
   <p float="left">
-    <img src="img/mb3.PNG" width="300" />
-    <img src="img/mb4.PNG" width="300" />
+    <img src="img/mb3.PNG" width="400" />
+    <img src="img/mb4.PNG" width="400" />
   </p>    
+
+
+ <p float="center">
+        <img src="build/mb11.PNG" width="400"/>
+        <img src="build/mb22.PNG" width="400"/>
+ </p>
+ 
 
 ### Analysis
 
@@ -110,7 +117,7 @@ Motion Blur Screen Captures
 - Opening up the scene by removing two walls allows more light to escape. Stream compaction in a closed scene senario would not help much if there aren't many premature terminated rays. In case of more open scenes, stream comaption allows more warps of threads to exit and not idle.
 
  <p float="center">
-        <img src="img/CLosedOpen.PNG" width="600"/>
+        <img src="img/CLosedOpen.PNG"/>
  </p>
 
  <p float="center">
