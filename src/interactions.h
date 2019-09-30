@@ -50,7 +50,7 @@ glm::vec3 calculateRandomDirectionInHemisphere(
  * 
  * The visual effect you want is to straight-up add the diffuse and specular
  * components. You can do this in a few ways. This logic also applies to
- * combining other types of materias (such as refractive).
+ * combining other types of materials (such as refractive).
  * 
  * - Always take an even (50/50) split between a each effect (a diffuse bounce
  *   and a specular bounce), but divide the resulting color of either branch
@@ -66,6 +66,33 @@ glm::vec3 calculateRandomDirectionInHemisphere(
  *
  * You may need to change the parameter list for your purposes!
  */
+
+__host__ __device__
+void calculateRefract(PathSegment & pathSegment, glm::vec3 normal, const Material &m) {
+	bool outside = glm::dot(pathSegment.ray.direction, normal) < 0.f;
+	glm::vec3 n = outside ? normal : (-1.f * normal);
+	float eta = outside ? 1.0f / m.indexOfRefraction : m.indexOfRefraction;
+	glm::vec3 dir = glm::refract(pathSegment.ray.direction, n, eta);
+
+	if (glm::length(dir) < 0.01f) {
+		dir = glm::reflect(pathSegment.ray.direction, normal);
+		pathSegment.color *= 0;
+	}
+	pathSegment.ray.direction = dir;
+}
+
+
+__host__ __device__
+float schlickApprox(PathSegment & pathSegment, glm::vec3 normal, const Material &m) {
+	bool outside = glm::dot(pathSegment.ray.direction, normal) < 0.f;
+	float eta = outside ? 1.f / m.indexOfRefraction : m.indexOfRefraction;
+	float r0 = powf((1.f - eta) / (1 + eta), 2);
+	float r = r0 + (1 - r0) * powf(1 - glm::abs(glm::dot(pathSegment.ray.direction, normal)), 5.0f);
+	return r;
+}
+
+
+
 __host__ __device__
 void scatterRay(
 		PathSegment & pathSegment,
@@ -73,7 +100,32 @@ void scatterRay(
         glm::vec3 normal,
         const Material &m,
         thrust::default_random_engine &rng) {
-    // TODO: implement this.
-    // A basic implementation of pure-diffuse shading will just call the
-    // calculateRandomDirectionInHemisphere defined above.
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	float p = u01(rng);
+
+	if (m.hasRefractive > 0) {
+		float schlick = schlickApprox(pathSegment, normal, m);
+		if (schlick > u01(rng)) {
+			pathSegment.ray.direction = glm::reflect(pathSegment.ray.direction, normal);
+			pathSegment.color *= m.specular.color;
+		}
+		else {
+			calculateRefract(pathSegment, normal, m);
+			pathSegment.color *= m.color;
+		}
+		
+	}
+	// reflect
+	else if (m.hasReflective > p) {
+		pathSegment.ray.direction = glm::reflect(pathSegment.ray.direction, normal);
+		pathSegment.color *= m.specular.color;
+	}
+	// diffuse
+	else {
+		pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
+		pathSegment.color *= m.color;
+	}
+	glm::clamp(pathSegment.color, glm::vec3(0.0f), glm::vec3(1.0f));
+	pathSegment.ray.origin = intersect + 0.001f * pathSegment.ray.direction;
+
 }
