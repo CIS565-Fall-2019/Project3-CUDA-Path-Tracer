@@ -8,7 +8,7 @@
 #include <vector>
 #include <array>
 
-#define DENOISE 0
+#define DENOISE 1
 static std::string startTimeString;
 
 // For camera controls
@@ -139,6 +139,8 @@ float ReverseFloat(const float inFloat)
 	return retVal;
 }
 void denoise() {
+	oidn::DeviceRef device = oidn::newDevice();
+	device.commit();
 	oidn::ImageBuffer im(width, height, 3);
 	float samples = iteration;
 	image img(width, height);
@@ -152,21 +154,23 @@ void denoise() {
 		}
 	}
 	oidn::ImageBuffer output(width, height, 3);
-	oidn::DeviceRef device = oidn::newDevice();
-	device.commit();
+	
 	oidn::FilterRef filter = device.newFilter("RT");
 	filter.setImage("color", im.getData(), oidn::Format::Float3, width, height);
 	filter.setImage("output", output.getData(), oidn::Format::Float3, width, height);
+	filter.set("hdr", true);
 	filter.commit();
 	filter.execute();
 	// Write the pixels
 	for (int h = 0; h < height; ++h){
 		for (int w = 0; w < width; ++w){
+			int index = w + (h * width);
 			const float r = output[((height - 1 - h)*width + w) * 3 + 0];
 			const float g = output[((height - 1 - h)*width + w) * 3 + 1];
 			const float b = output[((height - 1 - h)*width + w) * 3 + 2];
 		//	std::cout << r << " " << g << " " << b << std::endl;
 			glm::vec3 pix(r, g, b);
+			renderState->image[index] = pix;
 			img.setPixel(width - 1 - w, h, glm::vec3(pix) / samples);
 	}
 		
