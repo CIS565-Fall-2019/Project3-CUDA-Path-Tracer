@@ -193,6 +193,11 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		//float y_shift = y + u01(rng);
 		float x_shift = x;
 		float y_shift = y;
+
+#if ANTI_ALIAS
+		x_shift = x + u01(rng);
+		y_shift = y + u01(rng);
+#endif
 		
 
 		segment.ray.direction = glm::normalize(cam.view
@@ -544,7 +549,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	float milliseconds = 0;
 	cudaEventElapsedTime(&milliseconds, start, stop);
 	
-	printf("%.4f\n", milliseconds);
+	//printf("%.4f\n", milliseconds);
 
 	num_paths = pixelcount;
 
