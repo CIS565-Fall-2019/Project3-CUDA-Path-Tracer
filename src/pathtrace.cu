@@ -18,14 +18,6 @@
 #include "interactions.h"
 
 #define ERRORCHECK 1
-#define SORT_BY_MATERIAL true
-#define STREAM_COMPACT true
-#define CACHE_FIRST_BOUNCE false
-#define MOTION_BLUR false
-#define ANTI_ALIASING true
-#define DIRECT_LIGHTING true
-#define DEPTH_OF_FIELD false
-#define TIMER false
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -97,6 +89,8 @@ static Geom * dev_geoms = NULL;
 static Light * dev_lights = NULL;
 static Material * dev_materials = NULL;
 static PathSegment * dev_paths = NULL;
+static float3 * dev_albedos = NULL;
+static float3 * dev_normals = NULL;
 static ShadeableIntersection * dev_intersections = NULL;
 static ShadeableIntersection * dev_intersections_cache = NULL;
 // TODO: static variables for device memory, any extra info you need, etc
@@ -113,7 +107,7 @@ void pathtraceInit(Scene *scene) {
     cudaMalloc(&dev_image, pixelcount * sizeof(glm::vec3));
     cudaMemset(dev_image, 0, pixelcount * sizeof(glm::vec3));
 
-  	cudaMalloc(&dev_paths, pixelcount * sizeof(PathSegment));
+	cudaMalloc(&dev_paths, pixelcount * sizeof(PathSegment));
 
   	cudaMalloc(&dev_geoms, scene->geoms.size() * sizeof(Geom));
   	cudaMemcpy(dev_geoms, scene->geoms.data(), scene->geoms.size() * sizeof(Geom), cudaMemcpyHostToDevice);
@@ -131,6 +125,9 @@ void pathtraceInit(Scene *scene) {
 
 	cudaMalloc(&dev_lights, scene->lights.size() * sizeof(Light));
 	cudaMemcpy(dev_lights, scene->lights.data(), scene->lights.size() * sizeof(Light), cudaMemcpyHostToDevice);
+
+	cudaMalloc(&dev_albedos, pixelcount * sizeof(float3));
+	cudaMalloc(&dev_normals, pixelcount * sizeof(float3));
 
     checkCUDAError("pathtraceInit");
 }
@@ -201,6 +198,9 @@ __global__ void computeIntersections(
 	, Geom * geoms
 	, int geoms_size
 	, ShadeableIntersection * intersections
+	, float3 *dev_albedos
+	, float3 *dev_normals
+	, int iter
 	)
 {
 	int path_index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -256,6 +256,17 @@ __global__ void computeIntersections(
 			intersections[path_index].t = t_min;
 			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
 			intersections[path_index].surfaceNormal = normal;
+		}
+
+
+		if (DENOISE && iter == 0) {
+			dev_normals[path_index].x = (intersections[path_index].t < 0.0) ? 0.0f : intersections[path_index].surfaceNormal.x;
+			dev_normals[path_index].y = (intersections[path_index].t < 0.0) ? 0.0f : intersections[path_index].surfaceNormal.y;
+			dev_normals[path_index].z = (intersections[path_index].t < 0.0) ? 0.0f : intersections[path_index].surfaceNormal.z;
+			dev_albedos[path_index].x = (intersections[path_index].t < 0.0) ? 0.0f : pathSegment.color.x;
+			dev_albedos[path_index].y = (intersections[path_index].t < 0.0) ? 0.0f : pathSegment.color.y;
+			dev_albedos[path_index].z = (intersections[path_index].t < 0.0) ? 0.0f : pathSegment.color.z;
+
 		}
 	}
 }
@@ -368,7 +379,7 @@ __global__ void finalGather(int nPaths, glm::vec3 * image, PathSegment * iterati
  * Wrapper for the __global__ call that sets up the kernel calls and does a ton
  * of memory management
  */
-void pathtrace(uchar4 *pbo, int frame, int iter) {
+void pathtrace(uchar4 *pbo, int frame, int iter, float3* albedos, float3* normals) {
     const int traceDepth = hst_scene->state.traceDepth;
     const Camera &cam = hst_scene->state.camera;
     const int pixelcount = cam.resolution.x * cam.resolution.y;
@@ -453,6 +464,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 				, dev_geoms
 				, hst_scene->geoms.size()
 				, dev_intersections_cache
+				, dev_albedos
+				, dev_normals
+				, iter
 				);
 			checkCUDAError("trace one bounce");
 		}
@@ -466,6 +480,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			, dev_geoms
 			, hst_scene->geoms.size()
 			, dev_intersections
+			, dev_albedos
+			, dev_normals
+			, iter
 			);
 		checkCUDAError("trace one bounce");
 	}
@@ -524,9 +541,15 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
     // Send results to OpenGL buffer for rendering
     sendImageToPBO<<<blocksPerGrid2d, blockSize2d>>>(pbo, cam.resolution, iter, dev_image);
 
-    // Retrieve image from GPU
-    cudaMemcpy(hst_scene->state.image.data(), dev_image,
-            pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+	// Retrieve image from GPU
+	cudaMemcpy(hst_scene->state.image.data(), dev_image,
+		pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+	// Retrieve image from GPU
+	cudaMemcpy(albedos, dev_albedos,
+		pixelcount * sizeof(float3), cudaMemcpyDeviceToHost);
+	// Retrieve image from GPU
+	cudaMemcpy(normals, dev_normals,
+		pixelcount * sizeof(float3), cudaMemcpyDeviceToHost);
 
     checkCUDAError("pathtrace");
 
