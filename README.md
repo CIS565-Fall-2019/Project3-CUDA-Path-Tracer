@@ -80,7 +80,10 @@ Without DOF             |  With DOF
  <a name = "dn">  
  
  ### Intel Open Denoising
- 
+ Intel® Open Image Denoise is an open source library of high-performance, high-quality denoising filters for images rendered with ray tracing. The purpose of Open Image Denoise is to provide an open, high-quality, efficient, and easy-to-use denoising library that allows one to significantly reduce rendering times in ray tracing based rendering applications. It filters out the Monte Carlo noise inherent to stochastic ray tracing methods like path tracing, reducing the amount of necessary samples per pixel by even multiple orders of magnitude (depending on the desired closeness to the ground truth). A simple but flexible C/C++ API ensures that the library can be easily integrated into most existing or new rendering solutions. Here we have an image that was just run for 10 iterations
+ Without OIDN       |   With OIDN  | After 100 iterations 
+:-------------------------:|:-------------------------:|:-------------------------:
+![](img/noised.png) | ![](img/denoised.png)|  ![](img/100itered.png)
  
  <a name = "rr">  
  
