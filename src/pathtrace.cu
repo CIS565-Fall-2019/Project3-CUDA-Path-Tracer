@@ -23,8 +23,8 @@
 
 #define TIME_ITER 1
 
-#define STREAM_COMPACTION 0
-#define SORT_BY_MATERIAL 1
+#define STREAM_COMPACTION 1
+#define SORT_BY_MATERIAL 0
 #define CACHE_FIRST_BOUNCE 0
 
 #define DIRECT_LIGHTING 0
@@ -99,6 +99,7 @@ static ShadeableIntersection * dev_first_bounce = NULL;
 #endif
 static Geom * dev_lights = NULL;
 static int num_lights = 0;
+static int num_materials = 0;
 
 void pathtraceInit(Scene *scene) {
     hst_scene = scene;
@@ -115,6 +116,7 @@ void pathtraceInit(Scene *scene) {
 
   	cudaMalloc(&dev_materials, scene->materials.size() * sizeof(Material));
   	cudaMemcpy(dev_materials, scene->materials.data(), scene->materials.size() * sizeof(Material), cudaMemcpyHostToDevice);
+    num_materials = scene->materials.size();
 
   	cudaMalloc(&dev_intersections, pixelcount * sizeof(ShadeableIntersection));
   	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
@@ -212,6 +214,7 @@ __global__ void computeIntersections(
 	, Geom * geoms
 	, int geoms_size
 	, ShadeableIntersection * intersections
+    , int num_materials
 	)
 {
 	int path_index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -231,7 +234,7 @@ __global__ void computeIntersections(
 		glm::vec3 tmp_normal;
 
 		// naive parse through global geoms
-
+        bool changeMat = false;
 		for (int i = 0; i < geoms_size; i++)
 		{
 			Geom & geom = geoms[i];
@@ -245,6 +248,18 @@ __global__ void computeIntersections(
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
 			// TODO: add more intersection tests here... triangle? metaball? CSG?
+            else if (geom.type == HOLLOW)
+            {
+                bool mat = true;
+                t = hollowShapeIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside, mat);
+                if (!mat) { changeMat = true; }
+            }
+            else if (geom.type == TWIST)
+            {
+                bool mat = true;
+                t = twistIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside, mat);
+                if (!mat) { changeMat = true; }
+            }
 
 			// Compute the minimum t from the intersection tests to determine what
 			// scene geometry object was hit first.
@@ -266,6 +281,12 @@ __global__ void computeIntersections(
 			//The ray hits something
 			intersections[path_index].t = t_min;
 			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
+            if (changeMat && (geoms[hit_geom_index].type == HOLLOW || geoms[hit_geom_index].type == TWIST))
+            {
+                int mID = geoms[hit_geom_index].materialid + 1;
+                if (mID >= num_materials) { mID = 0; }
+                intersections[path_index].materialId = mID;
+            }
 			intersections[path_index].surfaceNormal = normal;
 		}
 	}
@@ -561,7 +582,8 @@ float pathtrace(uchar4 *pbo, int frame, int iter) {
                 , dev_paths
                 , dev_geoms
                 , hst_scene->geoms.size()
-                , dev_intersections);
+                , dev_intersections,
+                num_materials);
             checkCUDAError("trace one bounce");
         }
         else
@@ -579,7 +601,8 @@ float pathtrace(uchar4 *pbo, int frame, int iter) {
 		    , dev_paths
 		    , dev_geoms
 		    , hst_scene->geoms.size()
-		    , dev_intersections);
+		    , dev_intersections
+            , num_materials);
 	    checkCUDAError("trace one bounce");
         #endif
 

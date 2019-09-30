@@ -10,6 +10,8 @@
 enum GeomType {
     SPHERE,
     CUBE,
+    HOLLOW,
+    TWIST,
 };
 
 struct Ray {
