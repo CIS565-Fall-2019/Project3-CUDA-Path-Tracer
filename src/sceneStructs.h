@@ -22,6 +22,7 @@ struct Geom {
     int materialid;
     glm::vec3 translation;
     glm::vec3 rotation;
+	glm::vec3 speed;
     glm::vec3 scale;
     glm::mat4 transform;
     glm::mat4 inverseTransform;

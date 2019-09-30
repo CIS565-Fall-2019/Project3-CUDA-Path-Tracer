@@ -5,6 +5,10 @@
 #include <thrust/random.h>
 #include <thrust/remove.h>
 #include <thrust/partition.h>
+#include <glm/gtc/matrix_inverse.hpp>
+#include<glm/gtc/matrix_transform.hpp>
+#include <ctime>
+#include <chrono>
 
 #include "sceneStructs.h"
 #include "scene.h"
@@ -17,7 +21,10 @@
 
 #define ERRORCHECK 1
 #define SORT_MATERIAL false 
-#define ANTI_ALIASING false
+#define ANTI_ALIASING true
+#define STREAM_COMPACTION true
+#define MOTION_BLUR false
+bool CACHE_BOUNCE = true;
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -168,6 +175,8 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		   );
 	   }
 
+
+
 	   
 	    //thrust::uniform_real_distribution<float> u01(0, 1);
 		//float noise = u01(rng);
@@ -257,7 +266,7 @@ __global__ void computeIntersections(
 // Note that this shader does NOT do a BSDF evaluation!
 // Your shaders should handle that - this can allow techniques such as
 // bump mapping.
-__global__ void shadeFakeMaterial (
+__global__ void shadeMaterial (
   int iter
   , int num_paths
 	, ShadeableIntersection * shadeableIntersections
@@ -266,7 +275,7 @@ __global__ void shadeFakeMaterial (
 	)
 {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < num_paths)
+  if (idx < num_paths && pathSegments[idx].remainingBounces >0)
   {
     ShadeableIntersection intersection = shadeableIntersections[idx];
 	if (intersection.t > 0.0f) { // if the intersection exists...
@@ -297,10 +306,34 @@ __global__ void shadeFakeMaterial (
     // used for opacity, in which case they can indicate "no opacity".
     // This can be useful for post-processing and image compositing.
 	else {
-      pathSegments[idx].color = glm::vec3(0.0f);
-	  pathSegments[idx].remainingBounces = 0;
+		pathSegments[idx].remainingBounces = 0;
+		pathSegments[idx].color = glm::vec3(0.0f);
     }
   }
+}
+
+
+
+__global__ void ApplyMotionBlur(float dt, int num_geoms, Geom geomet[]) {
+	int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
+
+	if (idx < num_geoms) {
+
+		geomet[idx].translation -= dt*geomet[idx].speed;
+		
+		glm::mat4 scale = glm::scale(glm::mat4(), geomet[idx].scale);
+		glm::mat4 translate = glm::translate(glm::mat4(), geomet[idx].translation);
+
+		glm::mat4 rotateX = glm::rotate(glm::mat4(), geomet[idx].rotation.x * (float)PI / 180,glm::vec3(1,0,0));
+		glm::mat4 rotateY = glm::rotate(glm::mat4(), geomet[idx].rotation.y * (float)PI / 180, glm::vec3(0,1,0));
+		glm::mat4 rotateZ = glm::rotate(glm::mat4(), geomet[idx].rotation.z * (float)PI / 180, glm::vec3(0,0,1));
+		
+		geomet[idx].transform = translate * rotateX * rotateY * rotateZ * scale;
+		geomet[idx].invTranspose = glm::inverseTranspose(geomet[idx].transform);
+		geomet[idx].inverseTransform = glm::inverse(geomet[idx].transform);
+		
+	}
+	
 }
 
 // Add the current iteration's output to the overall image
@@ -374,16 +407,32 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	// --- PathSegment Tracing Stage ---
 	// Shoot ray into scene, bounce between objects, push shading chunks
 
+	if (ANTI_ALIASING) {
+		CACHE_BOUNCE = false;
+	}
+	
+	if (MOTION_BLUR) {
+		dim3 numblocksPathSegmentTracing = (hst_scene->geoms.size() + blockSize1d - 1) / blockSize1d;
+		ApplyMotionBlur << <numblocksPathSegmentTracing, blockSize1d >> > (0.001, hst_scene->geoms.size(),dev_geoms);
+	}
+
   bool iterationComplete = false;
+
+  int count = 0;
+  double time = 0;
   while (!iterationComplete) {
 
+	  count++;
+	  using namespace std::chrono;
+	  high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	  
 	  // clean shading chunks
 	  cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 
 	  // tracing
 	  dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
 
-	  if ((depth == 0) && (!ANTI_ALIASING)){
+	  if ((depth == 0) && (CACHE_BOUNCE)){
 		  if (iter == 1) {
 			  computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
 				  depth
@@ -431,7 +480,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	// TODO: compare between directly shading the path segments and shading
 	// path segments that have been reshuffled to be contiguous in memory.
 
-	  shadeFakeMaterial << <numblocksPathSegmentTracing, blockSize1d >> > (
+	  shadeMaterial << <numblocksPathSegmentTracing, blockSize1d >> > (
 		  iter,
 		  num_paths,
 		  dev_intersections,
@@ -440,9 +489,21 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		  );
 
 	  // Stream Compaction
-	  dev_path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, part_struct());
-	  num_paths = dev_path_end - dev_paths;
+	  if (STREAM_COMPACTION) {
+		  dev_path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, part_struct());
+		  num_paths = dev_path_end - dev_paths;
+	  }
 
+	  high_resolution_clock::time_point t2 = high_resolution_clock::now();
+	  duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
+
+	  time += time_span.count();
+	  
+	  std::cout << time/count << " seconds. " << count << " num left " << num_paths;
+	  
+	  std::cout << std::endl;
+	  
+	  
 	  if (num_paths == 0 || depth == traceDepth) {
 		  iterationComplete = true; // TODO: should be based off stream compaction results.
 	  }

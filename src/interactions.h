@@ -2,6 +2,7 @@
 
 #include "intersections.h"
 
+
 // CHECKITOUT
 /**
  * Computes a cosine-weighted random direction in a hemisphere.
