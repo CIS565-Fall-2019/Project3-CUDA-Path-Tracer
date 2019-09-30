@@ -1,6 +1,7 @@
 #include "main.h"
 #include "preview.h"
 #include <cstring>
+#include<chrono>
 
 static std::string startTimeString;
 
@@ -134,8 +135,10 @@ void runCuda() {
 
         // execute the kernel
         int frame = 0;
+		auto start = std::chrono::high_resolution_clock::now();
         pathtrace(pbo_dptr, frame, iteration);
-
+		auto end = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double, std::milli> duro = end - start;
         // unmap buffer object
         cudaGLUnmapBufferObject(pbo);
     } else {
@@ -144,6 +147,8 @@ void runCuda() {
         cudaDeviceReset();
         exit(EXIT_SUCCESS);
     }
+
+
 }
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
