@@ -238,8 +238,8 @@ Certainly, CMake has a way to do this, but as somebody who is not a CMake wizard
 * Models downloaded from Morgan McGuire's [Computer Graphics Archive](https://casual-effects.com/data)
     * Bunny, Dragon, Teapot, Tree, Fireplace Room
 * Turbosquid
-    * [Wine Glass](https://www.turbosquid.com/FullPreview/Index.cfm/ID/667624) by OmniStorm
-    * [Secondary Wine Glass](https://www.turbosquid.com/FullPreview/Index.cfm/ID/932821) by Mig91
+    * [Wine Glass](https://www.turbosquid.com/FullPreview/Index.cfm/ID/667624) by OmniStorm (unused)
+    * [Secondary Wine Glass](https://www.turbosquid.com/FullPreview/Index.cfm/ID/932821) by Mig91 (unused)
 * Sketchfab
     * [Fountain](https://sketchfab.com/3d-models/fountain-07b16f0c118d4073a81522a526183c11) by Eugen Shuklin
     * [Altar](https://sketchfab.com/3d-models/altar-9b20f669e75441bcb34476255d248564) by William Chang
@@ -253,7 +253,7 @@ Certainly, CMake has a way to do this, but as somebody who is not a CMake wizard
 ### Other Code
 * Used [TinyObjLoader](https://github.com/syoyo/tinyobjloader) library for loading `*.obj` files
 * Used [TinyGltf](https://github.com/syoyo/tinygltf) library for loading `*.gltf` files
-    * I also lifted their `gltf_loader` files from their raytrace examples. I did not use any other code from the example folder.
+    * I also lifted their `gltf_loader` files from their raytrace examples (and fixed a bug therein). I did not use any other code from the example folder.
 * [OpenImageDenoiser](https://github.com/OpenImageDenoise/oidn) for post-processing
-* Formerly: Ray-triangle intersection algorithm stolen from the Wikipedia article for the [Moller-Trumbore Intersection Algorithm](https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm). Now, using glm.
+* Formerly: Ray-triangle intersection algorithm stolen from the Wikipedia article for the [Moller-Trumbore Intersection Algorithm](https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm). Now, using glm, to my chagrin (I swear I could have intersected both front and back faces had I gotten that algorithm to work correctly).
    
