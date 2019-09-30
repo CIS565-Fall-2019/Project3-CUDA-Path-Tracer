@@ -4,17 +4,33 @@
 #include <vector>
 #include <cuda_runtime.h>
 #include "glm/glm.hpp"
+#include <list>
 
 #define BACKGROUND_COLOR (glm::vec3(0.0f))
 
 enum GeomType {
     SPHERE,
     CUBE,
+	MESH,
 };
 
 struct Ray {
     glm::vec3 origin;
     glm::vec3 direction;
+};
+
+struct Triangle
+{
+	glm::vec3 v1;
+	glm::vec3 v2;
+	glm::vec3 v3;
+	glm::vec3 n;
+};
+
+struct Mesh
+{
+	int num_triangles = 0;
+	std::vector<Triangle> triangles;
 };
 
 struct Geom {
@@ -26,6 +42,7 @@ struct Geom {
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
+	glm::mat4 initial_transform; 
 };
 
 struct Material {
@@ -73,4 +90,8 @@ struct ShadeableIntersection {
   float t;
   glm::vec3 surfaceNormal;
   int materialId;
+  glm::vec3 intersection;
 };
+
+inline __host__ __device__ bool operator<(const ShadeableIntersection &lhs, const ShadeableIntersection &rhs) { return (lhs.materialId < rhs.materialId); };
+

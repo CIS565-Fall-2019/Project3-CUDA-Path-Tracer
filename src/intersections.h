@@ -142,3 +142,25 @@ __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
 
     return glm::length(r.origin - intersectionPoint);
 }
+
+__host__ __device__ float meshIntersectionTest(Triangle *triangles, int size, Ray r,
+	glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
+	float t = -1.0f;
+	glm::vec3 baryPosition;
+	float t_min = FLT_MAX;
+	for (int i = 0; i < size; i++) {
+		Triangle tri = triangles[i];
+		bool result = glm::intersectRayTriangle(r.origin, r.direction, tri.v1, tri.v2, tri.v3, baryPosition);
+		if (result) {
+			t = glm::length(baryPosition - r.origin);
+			if (t > 0.0f && t_min > t)
+			{
+				t_min = t;
+				intersectionPoint = getPointOnRay(r, t);
+				normal = glm::normalize(glm::cross(tri.v1 - tri.v3, tri.v1 - tri.v2));
+				outside = glm::dot(r.origin, normal) < 0;
+			}
+		}
+	}	
+	return t;
+}

@@ -3,6 +3,7 @@
 #include <cstring>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include "tiny_obj/tiny_obj_loader.h"
 
 Scene::Scene(string filename) {
     cout << "Reading scene from " << filename << " ..." << endl;
@@ -31,6 +32,43 @@ Scene::Scene(string filename) {
         }
     }
 }
+// Reference: http://syoyo.github.io/tinyobjloader/
+void loadMesh(const string& obj_filename, Mesh *mesh) {
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string err;
+	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, obj_filename.c_str());
+	if (!err.empty()) {
+		std::cerr << err << std::endl;
+	}
+	if (!ret) {
+		exit(1);
+	}
+	for (size_t s = 0; s < shapes.size(); s++) {
+		size_t index_offset = 0;
+		for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
+			Triangle tri;
+			int fv = shapes[s].mesh.num_face_vertices[f];
+			if (fv == 3) {
+				tinyobj::index_t v1_idx = shapes[s].mesh.indices[index_offset];
+				tinyobj::index_t v2_idx = shapes[s].mesh.indices[index_offset + 1];
+				tinyobj::index_t v3_idx = shapes[s].mesh.indices[index_offset + 2];
+
+				tri.v1 = glm::vec3(attrib.vertices[3 * v1_idx.vertex_index + 0], attrib.vertices[3 * v1_idx.vertex_index + 1], attrib.vertices[3 * v1_idx.vertex_index + 2]);
+				tri.v2 = glm::vec3(attrib.vertices[3 * v2_idx.vertex_index + 0], attrib.vertices[3 * v2_idx.vertex_index + 1], attrib.vertices[3 * v2_idx.vertex_index + 2]);
+				tri.v3 = glm::vec3(attrib.vertices[3 * v3_idx.vertex_index + 0], attrib.vertices[3 * v3_idx.vertex_index + 1], attrib.vertices[3 * v3_idx.vertex_index + 2]);
+				tri.n = glm::vec3();				
+				index_offset += fv;
+				mesh->num_triangles++;
+				mesh->triangles.push_back(tri);
+			}
+		}
+		cout << "Loaded Triangles " << mesh->num_triangles << std::endl;
+	}
+	cout << "Loaded Shapes " << shapes.size() << std::endl;
+
+}
 
 int Scene::loadGeom(string objectid) {
     int id = atoi(objectid.c_str());
@@ -45,13 +83,19 @@ int Scene::loadGeom(string objectid) {
         //load object type
         utilityCore::safeGetline(fp_in, line);
         if (!line.empty() && fp_in.good()) {
-            if (strcmp(line.c_str(), "sphere") == 0) {
+			vector<string> tokens = utilityCore::tokenizeString(line);
+			if (strcmp(tokens[0].c_str(), "sphere") == 0) {
                 cout << "Creating new sphere..." << endl;
                 newGeom.type = SPHERE;
-            } else if (strcmp(line.c_str(), "cube") == 0) {
+            } else if (strcmp(tokens[0].c_str(), "cube") == 0) {
                 cout << "Creating new cube..." << endl;
                 newGeom.type = CUBE;
-            }
+			}
+			else if (strcmp(tokens[0].c_str(), "mesh") == 0) {
+				cout << "Creating new mesh..." << endl;
+				newGeom.type = MESH;
+				loadMesh(tokens[1].c_str(), &mesh);
+			}
         }
 
         //link material
@@ -83,6 +127,7 @@ int Scene::loadGeom(string objectid) {
                 newGeom.translation, newGeom.rotation, newGeom.scale);
         newGeom.inverseTransform = glm::inverse(newGeom.transform);
         newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
+		newGeom.initial_transform = newGeom.transform;
 
         geoms.push_back(newGeom);
         return 1;

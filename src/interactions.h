@@ -1,6 +1,7 @@
 #pragma once
 
 #include "intersections.h"
+#include "utilities.h"
 
 // CHECKITOUT
 /**
@@ -41,6 +42,54 @@ glm::vec3 calculateRandomDirectionInHemisphere(
         + sin(around) * over * perpendicularDirection2;
 }
 
+/*
+* Refract pathSegment according to the material m and surface normal 
+* normal at the intersection point
+*/
+__host__ __device__ glm::vec3 refract(
+	PathSegment & pathSegment,
+	glm::vec3 normal,
+	const Material &m,
+	thrust::default_random_engine &rng) {
+	// Check if ray is coming from inside or outside of the material it struck
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	float R = 1.0f; // Refraction Probability
+	float ior;
+	glm::vec3 sur_normal;
+
+	float cosi = glm::dot(pathSegment.ray.direction, normal);
+	if (cosi > 0.0f) {
+		ior = m.indexOfRefraction;
+		sur_normal = normal * -1.0f;
+	}
+	else {
+		ior = 1.0f / m.indexOfRefraction;
+		sur_normal = normal;
+	}
+	// Check for Total Internal Reflection
+	float sinr = (1.0f / m.indexOfRefraction) * sqrtf(1 - powf(cosi, 2));
+
+	// Ray is coming from inside and TIR
+	if (cosi > 0.0f && sinr > 1.0f) {
+		R = 0.0f;
+		pathSegment.color *= 0;
+	}
+	else {
+		// Schlick's Approximation for fresnel's effects
+		float r0 = powf((1.0f - ior) / (1.0f + ior), 2.0f);
+		//printf("Schlick screwing up!! r0: %f R: %f\n", r0, fmaxf(0.0f, cosi));
+		R = r0 + ((1 - r0) * powf((1 - fmaxf(0.0f, cosi)), 5));
+		pathSegment.color *= m.specular.color;
+	}
+	float r_num = u01(rng);
+	if (r_num < R) {
+		return glm::refract(pathSegment.ray.direction, sur_normal, ior);
+	}
+	else {
+		return glm::reflect(pathSegment.ray.direction, normal);
+	}
+}
+
 /**
  * Scatter a ray with some probabilities according to the material properties.
  * For example, a diffuse surface scatters in a cosine-weighted hemisphere.
@@ -69,11 +118,28 @@ glm::vec3 calculateRandomDirectionInHemisphere(
 __host__ __device__
 void scatterRay(
 		PathSegment & pathSegment,
-        glm::vec3 intersect,
+		glm::vec3 intersect,
         glm::vec3 normal,
         const Material &m,
         thrust::default_random_engine &rng) {
-    // TODO: implement this.
-    // A basic implementation of pure-diffuse shading will just call the
-    // calculateRandomDirectionInHemisphere defined above.
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	glm::vec3 scattered_ray_direction;
+	// Split according to probability
+	float rand_num = u01(rng);
+	// Reflection
+	if (rand_num < m.hasReflective) {
+		scattered_ray_direction = glm::reflect(pathSegment.ray.direction, normal);
+		pathSegment.color *= m.specular.color;
+	}
+	// Refraction
+	else if (rand_num < m.hasReflective + m.hasRefractive) {
+		scattered_ray_direction = refract(pathSegment, normal, m, rng);
+	}
+	// Diffusion
+	else {
+		scattered_ray_direction = calculateRandomDirectionInHemisphere(normal, rng);
+		pathSegment.color *= m.color;
+	}
+	pathSegment.ray.origin = intersect + scattered_ray_direction * EPSILON;
+	pathSegment.ray.direction = scattered_ray_direction;
 }
