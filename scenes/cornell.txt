@@ -169,7 +169,7 @@ EYE         0.0 5 10.5
 LOOKAT      0 5 0
 UP          0 1 0
 RADIUS		0.3
-FOCAL		3.0
+FOCAL		8.0
 
 // Ceiling light
 OBJECT 0
@@ -255,8 +255,7 @@ SCALE       .01 10 10
 // Sphere
 OBJECT 9
 sphere
-material 15
+material 5
 TRANS       0 5 1
 ROTAT       0 0 0
-VELOCITY	0.01 0 0
-SCALE       2 2 2 
+SCALE       6 6 6 
