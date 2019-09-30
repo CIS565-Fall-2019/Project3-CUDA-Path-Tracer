@@ -45,11 +45,7 @@ I saw, with bounding-box culling, a time of `144s` to reach 500 iterations. With
 
 Using the CUDA texture memory, I was able to hook up `.gltf` files with their textures within the ray tracer. I worked almost entirely from files downloaded from [Sketchfab](https://sketchfab.com/), so their naming conventions may have ended up baked in to my implementation. (Specifically, the file naming for their texture image files is how I distinguish between different types of texture mappings.)
 
-Notably, these assets provide a few different attributes. In addition to base color, some models have normal (bump) maps, textures for metallic roughness, or emissivity. An example of an asset displaying both base color texture and emissivity textures is here:
-
-![Altar mesh with base color and emissivity implemented](progressImages/day7AltarTexture2.png)
-
-I acheived this by loading each of four different potential texture layers into the GPU's texture memory: color, emissivity, metallicRoughness (which also encoded an (unused) ambient occlusion parameter), and a bump texture (normal mapping). If a loaded model had a texture, I would keep track of its existence, and when applicable, pull it from memory. This was able to cut down on some amount of frustration of interpolating between values, as CUDA handled that for me. This convenience was counterbalanced by the frustration of figuring out how to navigate texture memory like CUDA wanted me to.
+I acheived this by loading each of four different potential texture layers into the GPU's texture memory: color, emissivity, metallicRoughness (which also encoded an (unused) ambient occlusion parameter), and a bump texture (normal mapping). (These were what I was finding from the Sketchfab models I was downloading.) If a loaded model had a texture, I would keep track of its existence, and when applicable, pull it from memory. This was able to cut down on some amount of frustration of interpolating between values, as CUDA handled that for me. This convenience was counterbalanced by the frustration of figuring out how to navigate texture memory like CUDA wanted me to.
 
 Here is a series of images of the same scene, with differing level of textures applied to them.
 
@@ -121,6 +117,25 @@ Of course, it's also better with a more interesting background:
 
 Here, you see the emissive materials behind her come through, distorted but still clear. The "candle" light through her hand is also visible.
 
+### Antialiasing
+
+I implemented some simple antialiasing as well, modifying the starting camera ray within its pixel in a random fashion. The differences may be seen between these two images:
+
+
+<figure>
+<img src="progressImages/cornellNoAntialised.png" alt="No Antialiasing"
+	title="No Antialiasing" width="700" height="700" />
+ <figcaption>No Antialiasing</figcaption>
+</figure>
+
+<figure>
+<img src="progressImages/cornellAntialised.png" alt="Antialiasing"
+	title="Antialiasing" width="700" height="700" />
+ <figcaption>Antialiasing</figcaption>
+</figure>
+
+You can spot the difference around the sphere, in particular; the presence of "jaggies" in the non-antialiased picture gives it away.
+
 ### Material Sorting
 
 In order to attempt to reduce warp divergence, and better make use of the GPU resources, I implemented a pass to allow for material sorting between computing intersections and shading the materials.
@@ -186,6 +201,10 @@ As you can see, the filtering smoothed out even particularly rough images, but a
 
 
 ## Configuration Notes
+
+### Run Options
+
+Most of the switches for features and performance in the code are in `#define` variables at the top of `utilities.h`. Note that, if antialiasing is used, the first intersection is not cached.
 
 ### CMakeLists changes
 
