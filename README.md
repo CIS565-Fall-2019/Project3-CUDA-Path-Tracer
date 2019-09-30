@@ -37,7 +37,7 @@ The bounce direction and colour intensity depend on various material properties 
 
 ### Basic Features
 The following basic features are implemented:
-   # [checkbox:checked] Shading using [BSDF](https://en.wikipedia.org/wiki/Bidirectional_scattering_distribution_function)
+   - Shading using [BSDF](https://en.wikipedia.org/wiki/Bidirectional_scattering_distribution_function)
       - Diffuse Reflection: Reflects all rays randomly in the normal facing semi-sphere.
       - Specular Reflection: Reflects the incoming ray about the normal where angle of incidence is equal to the angle of relection (mirror like behaviour).
       - Refraction: Allows ray to pass through the media based on the ratio of the refractive index of the two mediums [snell's law](https://en.wikipedia.org/wiki/Snell%27s_law)
