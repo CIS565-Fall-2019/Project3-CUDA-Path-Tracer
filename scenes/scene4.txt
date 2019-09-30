@@ -1,41 +1,31 @@
-// Emissive material (light)
-MATERIAL 0
-RGB         1 1 1
-SPECEX      0
-SPECRGB     0 0 0
-REFL        0
-REFR        0
-REFRIOR     0
-EMITTANCE   3
-
-// Diffuse white
+// Refractive Orange
 MATERIAL 1
-RGB         .98 .98 .98
+RGB         .9 .5 .3
 SPECEX      0
-SPECRGB     0 0 0
-REFL        0
-REFR        0
-REFRIOR     0
+SPECRGB     .9 .5 .3
+REFL        0.2
+REFR        0.2
+REFRIOR     1.33
 EMITTANCE   0
 
-// Diffuse red
+// Refractive yellow
 MATERIAL 2
-RGB         .95 .35 .35
+RGB         .9 .9 .1
 SPECEX      0
-SPECRGB     0 0 0
-REFL        0
-REFR        0
-REFRIOR     0
+SPECRGB     .9 .9 .1
+REFL        0.2
+REFR        0.2
+REFRIOR     1.33
 EMITTANCE   0
 
 // Diffuse green
 MATERIAL 3
-RGB         .35 .85 .35
+RGB         .3 0 .4
 SPECEX      0
-SPECRGB     0 0 0
-REFL        0
-REFR        0
-REFRIOR     0
+SPECRGB     .7 .8 .4
+REFL        0.2
+REFR        0.2
+REFRIOR     1.33
 EMITTANCE   0
 
 // Specular white
@@ -60,13 +50,14 @@ EMITTANCE   0
 
 // Diffuse yellow
 MATERIAL 6
-RGB         .35 .85 0
+RGB         .8 1 .8 
 SPECEX      0
 SPECRGB     0 0 0
 REFL        0
 REFR        0
 REFRIOR     0
 EMITTANCE   0
+
 // Camera
 CAMERA
 RES         800 800
@@ -126,11 +117,3 @@ material 1
 TRANS       5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
-
-// Sphere
-OBJECT 6
-mesh ../scenes/android.obj
-material 4
-TRANS       -1 6 -1
-ROTAT       0 0 0
-SCALE       3 3 3

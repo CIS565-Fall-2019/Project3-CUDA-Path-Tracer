@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cuda.h>
 #include <cmath>
+#include <chrono>
 #include <thrust/execution_policy.h>
 #include <thrust/random.h>
 #include <thrust/remove.h>
@@ -190,8 +191,8 @@ __global__ void computeIntersections(
 					float spherical_interpolation = glm::sin(iter / 250.f);
 					glm::mat4 start = geom.initial_transform;
 					glm::mat4 off(1.f); 
-					off[4] += glm::vec4(0.f, MOTION_BLUR_OFFSET, 0.f, 0.f);
-					geom.transform = start - off * spherical_interpolation;
+					off[2] += glm::vec4(0.f, MOTION_BLUR_OFFSET, 0.f, 0.f);
+					geom.transform = start + off * spherical_interpolation;
 					geom.inverseTransform = glm::inverse(geom.transform);
 					geom.invTranspose = glm::transpose(glm::inverse(geom.transform));
 				#endif
@@ -362,6 +363,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	bool iterationComplete = false;
 	while (!iterationComplete) {
+		auto start = std::chrono::high_resolution_clock::now();
 		ShadeableIntersection* dev_cur_intersections = dev_intersections;
 		// clean shading chunks
 		cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
@@ -422,10 +424,13 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		);
 		#if COMPACT_RAYS
 			num_paths = StreamCompaction::Shared::compactCUDA(num_paths, dev_leftover_indices);
-			//printf("Leftover paths: %d\n", num_paths);
 		#endif
 		if((depth == traceDepth) || num_paths == 0)
 			iterationComplete = true;
+		auto finish = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> elapsed = finish - start;
+		if (iter == 1)
+			std::cout << elapsed.count() << "\n";
 
 	}
 	num_paths = pixelcount;
@@ -444,4 +449,6 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
 
 	checkCUDAError("pathtrace");
+
+	
 }
