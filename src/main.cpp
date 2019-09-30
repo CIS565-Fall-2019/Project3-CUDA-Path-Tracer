@@ -33,12 +33,14 @@ int height;
 int main(int argc, char** argv) {
     startTimeString = currentTimeString();
 
-    if (argc < 2) {
+    /*if (argc < 2) {
         printf("Usage: %s SCENEFILE.txt\n", argv[0]);
         return 1;
-    }
+    }*/
 
-    const char *sceneFile = argv[1];
+    //const char *sceneFile = argv[1];
+	const char *sceneFile = "../scenes/close.txt";
+
 
     // Load scene file
     scene = new Scene(sceneFile);
@@ -97,7 +99,7 @@ void saveImage() {
     img.savePNG(filename);
     //img.saveHDR(filename);  // Save a Radiance HDR file
 }
-
+//run
 void runCuda() {
     if (camchanged) {
         iteration = 0;
@@ -121,12 +123,12 @@ void runCuda() {
 
     // Map OpenGL buffer object for writing from CUDA on a single GPU
     // No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not use this buffer
-
+	//std::cout << "iter time: " << renderState->iterations << std::endl;
     if (iteration == 0) {
-        pathtraceFree();
-        pathtraceInit(scene);
+        Path_Tracer::pathtraceFree();
+		Path_Tracer::pathtraceInit(scene);
     }
-
+	//renderState->iterations is the total count
     if (iteration < renderState->iterations) {
         uchar4 *pbo_dptr = NULL;
         iteration++;
@@ -134,13 +136,13 @@ void runCuda() {
 
         // execute the kernel
         int frame = 0;
-        pathtrace(pbo_dptr, frame, iteration);
+		Path_Tracer::pathtrace(pbo_dptr, frame, iteration);	
 
         // unmap buffer object
         cudaGLUnmapBufferObject(pbo);
-    } else {
+    } else {//already reach the iter times
         saveImage();
-        pathtraceFree();
+		Path_Tracer::pathtraceFree();
         cudaDeviceReset();
         exit(EXIT_SUCCESS);
     }
