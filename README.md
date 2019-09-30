@@ -8,6 +8,8 @@ CUDA Path Tracer
 ## Path Tracer
 ## Overview
 This is an implementation of CUDA-based path tracer capable of rendering globally-illuminated images very quickly. Path tracing is a computer graphics Monte Carlo method of rendering images so that we can achieve good results with tracing a finite number out of the infinite space of rays.
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/droid_1.png" width="600"/> </p>
+
 <p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/scene1.png" width="600"/> </p>
 
 <p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/scene2.png" width="600"/> </p>
@@ -80,14 +82,30 @@ Loading 3D models (Reference: https://free3d.com/) using [tinyObj](http://syoyo.
 ## Optimizations
 ### Stream Compaction
 A lot of rays die after a few iterations by either merging into light or the ones which do not intersect with any object. So, we can use stream compaction to limit the number of rays we are tracing and the number of threads launched at each iteration. I am using my Work-efficient stream compaction implementation across multiple blocks which uses shared memory for performance. 
+
 #### Performance impact of stream compaction
+Following plot shows the average time per depth with and without stream compaction. Stream compaction took around 3.8 ms whereas it took 4s without it. These are the results with 8 bounces and so the performance would increase even further with more bounces and more complex scenes.
+
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/Performance_SC.PNG" width="600"/> </p>
+
 #### Number of live/unterminated rays at each iteration
+Following plots shows the number of unterminated rays at each depth. Yellow bars correspond to an open scene and the red bars show corresponding closed scene with additional left and right walls. We can see that the numbe rof live rays drop at a very fast pace in the open scene compared to the closed one.
+
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/SteamCompaction_open_closed.png" width="600"/> </p>
 
 ### Contiguous rays by material type
 The shader implementation depends on the material with which the ray has intersected. So, If one warp has rays intersecting with different materials, it would lead to warp divergence and only the threads with one material could run at one time making it sequential in the number of materials. We can avoid this performance bottleneck by sorting the rays according to the material they are intersecting with so that rays interacting with the same material are contiguous in memory before shading and warp divergence is reduced. 
 
+Following plot shows the average time per iteration with and without sorting tha paths according to the material type. There is a huge performance drop due to this. One potential reason for this is the number of materials (6 in this case) used to create the scene .Another reason is the sorting overhead. Probably the gain due to less warp divergence is not sufficient to make up for the sorting overhead. It might help in case we have a huge number of materials.
+
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/Performance_MS.png" width="600"/> </p>
+
 ### Cache First Bounce
-One first step of generating rays and finding itersection for the first bounce is same across all iterations with an exception while we are using anti aliasing. So, we could to an optimization by saving the first after the first iteration and reuse it rather than re doing it every time.
+One first step of generating rays and finding itersection for the first bounce is same across all iterations with an exception while we are using anti aliasing. So, we could to an optimization by saving the first after the first iteration and reuse it rather than re doing it every time. 
+
+Following plot shows average time per iteration with and without using cache. It took around 32 ms for iteration without using cache and 29 ms with cache. These number are calculated with an average across 10 iterations. The gap would increase with the complexity of the scene specifically the number of objects.
+
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/Performance_Cache.png" width="600"/> </p>
 
 ## Bloopers
 <p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/Blooper1_0.00001.png" width="400"/>   <img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/Blooper2_inverse_eta.png" width="400"/> </p>
