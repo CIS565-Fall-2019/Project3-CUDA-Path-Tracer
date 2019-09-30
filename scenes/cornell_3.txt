@@ -144,3 +144,10 @@ TRANS       3 4 0
 ROTAT       0 0 0
 SCALE       2 2 2
 
+// Front wall
+OBJECT 9
+cube
+material 3
+TRANS       5 5 11
+ROTAT       0 270 0
+SCALE       .01 50 50

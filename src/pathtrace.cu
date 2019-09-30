@@ -18,6 +18,15 @@
 #include "intersections.h"
 #include "interactions.h"
 
+static bool b_useFirstCache = true;
+#define USE_COMPACTION 0
+#define DEPTH_OF_FILED 0
+#define MOTION_BLUR 0
+#define DIRECT_LIGHT 0
+#define SORT_MATERIAL 0
+
+// static utilityCore::PerformanceTimer timer;
+
 #define ERRORCHECK 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -70,13 +79,6 @@ __global__ void sendImageToPBO(uchar4* pbo, glm::ivec2 resolution,
 		pbo[index].z = color.z;
 	}
 }
-
-static bool b_useCompaction = true;
-static bool b_useFirstCache = true;
-#define DEPTH_OF_FILED 0
-#define MOTION_BLUR 0
-#define DIRECT_LIGHT 0
-#define SORT_MATERIAL 1
 
 static Scene* hst_scene = NULL;
 static glm::vec3* dev_image = NULL;
@@ -175,7 +177,7 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		glm::vec2 pLens(0, 0);
 #if DEPTH_OF_FILED
 		thrust::uniform_real_distribution<float> u01_len(0, 1);
-		float lensRadius = 0.1f;
+		float lensRadius = 0.08f;
 		pLens += lensRadius * ConcentricSampleDisk(glm::vec2(u01_len(rng), u01_len(rng)));
 #endif // DEPTH_OF_FILED
 
@@ -267,19 +269,99 @@ __global__ void computeIntersections(
 	}
 }
 
-__global__ void shadeByDirectLight(
+__global__ void shadowTest(
+	 int num_paths,
+	 ShadeableIntersection* intersections,
+	 Geom* geoms,
+	 int geoms_size,
+	 PathSegment* pathSegments) 
+{
+	int path_index = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if (path_index < num_paths)
+	{
+		PathSegment pathSegment = pathSegments[path_index];
+
+		float t;
+		glm::vec3 intersect_point;
+		glm::vec3 normal;
+		float t_min = FLT_MAX;
+		int hit_geom_index = -1;
+		bool outside = true;
+
+		glm::vec3 tmp_intersect;
+		glm::vec3 tmp_normal;
+
+		// naive parse through global geoms other than lights
+
+		for (int i = 1; i < geoms_size; i++)
+		{
+			Geom& geom = geoms[i];
+
+			if (geom.type == CUBE)
+			{
+				t = boxIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+			}
+			else if (geom.type == SPHERE)
+			{
+				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+			}
+			// TODO: add more intersection tests here... triangle? metaball? CSG?
+
+			// Compute the minimum t from the intersection tests to determine what
+			// scene geometry object was hit first.
+			if (t > 0.0f && t_min > t)
+			{
+				t_min = t;
+				hit_geom_index = i;
+				intersect_point = tmp_intersect;
+				normal = tmp_normal;
+			}
+		}
+
+		if (hit_geom_index == -1)
+		{
+			intersections[path_index].t = -1.0f;
+		}
+		else
+		{
+			//The ray hits something
+			intersections[path_index].t = t_min;
+			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
+			intersections[path_index].surfaceNormal = normal;
+
+			// shade the shadow
+			pathSegment.color = glm::vec3(1);
+
+		}
+	}
+
+}
+
+__global__ void computeRayToLight(
 	 int num_paths
 	, ShadeableIntersection* shadeableIntersections
 	, PathSegment* pathSegments
 	, Material* materials
+	, Geom* light
 )
 {
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	if (idx >= num_paths || pathSegments[idx].remainingBounces <= 0) return;
+
 	// Take a ray directly to a random point on an emissive object
 
-	// 1. Scatter ray from intersection point to light
+	// 1. Scatter ray from intersection point to sampled point on light
+	thrust::default_random_engine rng = makeSeededRandomEngine(0, num_paths, pathSegments[idx].remainingBounces);
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	glm::vec4 pLocal(u01(rng) - .5f, u01(rng) - .5f, 0, 1);
+	glm::vec4 sampled_L = light->transform * pLocal;
+	glm::vec3 intersect = pathSegments[idx].ray.origin;
 
+	pathSegments[idx].ray.direction = glm::normalize(glm::vec3(sampled_L) - intersect);
+	pathSegments[idx].ray.origin += 0.0001f * pathSegments[idx].ray.direction;
 
-
+	
 	// 2. Intersection test/ see if it's in shadow
 
 	// 3. Shade the path segment
@@ -486,18 +568,18 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 
 	int num_paths = dev_path_end - dev_paths;
 
+	//timer.startGpuTimer();
+
 	// --- PathSegment Tracing Stage ---
 	// Shoot ray into scene, bounce between objects, push shading chunks
-
 	while (true) {
 
-		if (b_useCompaction) {
-		//	PathSegment* new_end = thrust::remove_if(thrust::device, dev_paths, dev_paths + num_paths, check_completion());
+#if USE_COMPACTION
+			//	PathSegment* new_end = thrust::remove_if(thrust::device, dev_paths, dev_paths + num_paths, check_completion());
 			PathSegment* new_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, check_completion());
-
 			num_paths = new_end - dev_paths;
 			if (num_paths < 1) break;
-		}
+#endif
 
 		// clean shading chunks
 		cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
@@ -509,10 +591,10 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 		if (b_useFirstCache && iter > 0 && depth == 0) {
 			cudaMemcpy(dev_intersections, dev_first_intersections, num_paths * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
 		}
-		else 
+		else
 		{
 			computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
-				  depth
+				depth
 				, num_paths
 				, dev_paths
 				, dev_geoms
@@ -524,7 +606,7 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 		checkCUDAError("trace one bounce");
 		cudaDeviceSynchronize();
 		// Cache first dev_intersections
-		if (b_useFirstCache && iter==0 && depth == 0) {
+		if (b_useFirstCache && iter == 0 && depth == 0) {
 			cudaMemcpy(dev_first_intersections, dev_intersections, num_paths * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
 		}
 
@@ -558,24 +640,47 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 			break;; // TODO: should be based off stream compaction results.
 	}
 
+	num_paths = dev_path_end - dev_paths;
+
 #if DIRECT_LIGHT
 	if (num_paths > 1) {
 		dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
 
-		shadeByDirectLight << <numblocksPathSegmentTracing, blockSize1d >> > (
+		computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
+			depth
+			, num_paths
+			, dev_paths
+			, dev_geoms
+			, hst_scene->geoms.size()
+			, dev_intersections
+			);
+
+		computeRayToLight << <numblocksPathSegmentTracing, blockSize1d >> > (
 			num_paths,
 			dev_intersections,
 			dev_paths,
-			dev_materials
+			dev_materials,
+			dev_geoms
+			);
+
+		// Light must be the first one in dev_geoms
+		shadowTest << <numblocksPathSegmentTracing, blockSize1d >> > (
+			num_paths,
+			dev_intersections,
+			dev_geoms,
+			hst_scene->geoms.size(),
+			dev_paths
 			);
 	}
 #endif // DIRECT_LIGHT
-	num_paths = dev_path_end - dev_paths;
 
 	// Assemble this iteration and apply it to the image
 	dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
 	finalGather << <numBlocksPixels, blockSize1d >> > (num_paths, dev_image, dev_paths);
 
+
+//	timer.endGpuTimer();
+//	std::cout << timer.getGpuElapsedTimeForPreviousOperation() << std::endl;
 	///////////////////////////////////////////////////////////////////////////
 
 	// Send results to OpenGL buffer for rendering
