@@ -97,6 +97,10 @@ Refractive Sphere (IOR = 1.52) |  Refractive Cube (IOR = 1.52)
   5000 Samples, Refractive material with IOR 1.52
 </p>
 
+IOR 1.2           |  IOR 1.52               | IOR 1.7
+:-------------------------:|:-------------------------:|:-------------------------:
+![](img/GlassTorusIOR1.2.5000samp.png)| ![](img/GlassTorus5000samp.IOR1.52.png) |![](img/GlassTorusIOR1.8.png)
+
 ### OBJ Loading
 In order to render a piece of geometry, there must be a way to find a ray's intersection with that geometry. Basic shapes, such as spheres and boxes, can be described by simple intersection equations, but arbitrary meshes are more complex. To render these, I implemented an OBJ loader that reads in mesh data from and OBJ file using the TinyObj loader. The mesh geometry consists of a list of triangles that make up the form. Triangles have a simple intersection function, so to intersect with the mesh, we can iterate over all triangles in that mesh. 
 
@@ -197,6 +201,21 @@ When implementing OBJ intersection, I initially was not sorting triangle interse
 When working on setting up the first bounce caching, I remembered to turn off anti-aliasing, but I was testing with depth of field on, which created this render:
 
 ![](img/CachingBlooper.png)
+
+#### Performance Stats
+The following charts compare the timer per iteration for each of the optimizations on their own, and all together. I tested this with different scene complexities, first with one diffuse sphere, so all the materials except the light are diffuse, next with one specular sphere, so an extra material. Then with one specular and one refractive, so all 4 types of materials in the scene (including light). 
+![](img/PerformanceStatsSpheres.PNG)
+
+Based on the above stats, the optimizations actually tend to slow down the rendering for simpler scenes. This may be because the overhead of sorting and performing stream compaction is not worth the benefits, as the scene is so simple that it is fast without any modifications.  Caching first does speed things up a little bit, but this feature is only usable without depth of field and anti-aliasing.  Interestingly, with just stream compaction turned on, the specular and refractive materials were noticably faster than the diffuse material.  Perhaps these materials were more likely to hit light or nothing and terminate quickly, making the stream compaction more worthwhile, as there were more paths being terminated.  
+
+I also compared performance with a reflective dragon in the scene, which has 10000 triangles in the mesh:
+
+![](img/PerformanceStatsDragon.PNG)
+
+This data does indicate an improvement with the optimizations. Stream compaction and material sorting significantly decrease the time per iteration.  Caching also decreases this time, but only slightly.  This indicates that the reason why the optimizations were not helping above was because of scene complexity, but when the scene is very complex, the overhead of sorting and stream compacting pays off overall.  Caching does not speed up the rendering any more than it did for the simpler scenes because it still only applies to one step of each iteration, whereas the other optimizations apply to every step.  
+
+To collect this data, I put a cuda event timer surrounding the call to the pathtrace function and took an average over the elapsed time of 4 iterations.  
+
 
 #### Anti-Aliasing
 Before I figured out the correct way to add the randomized offset to the pixels for anti-aliasing, I had one attempt that ended up warping my scene in a cool way:
