@@ -18,6 +18,8 @@ static glm::vec3 cammove;
 float zoom, theta, phi;
 glm::vec3 cameraPosition;
 glm::vec3 ogLookAt; // for recentering the camera
+static float3 * albedoPtr = NULL;
+static float3 * normalPtr = NULL;
 
 Scene *scene;
 RenderState *renderState;
@@ -26,9 +28,11 @@ int iteration;
 int width;
 int height;
 
+
 //-------------------------------
 //-------------MAIN--------------
 //-------------------------------
+
 
 int main(int argc, char** argv) {
     startTimeString = currentTimeString();
@@ -73,6 +77,51 @@ int main(int argc, char** argv) {
     mainLoop();
 
     return 0;
+}
+void denoise() {
+
+	// Create an Open Image Denoise device
+	oidn::DeviceRef device = oidn::newDevice();
+	device.commit();
+	float3 *colorPtr = (float3*)malloc(width * height * sizeof(float3));
+	float3 *outputPtr = (float3*)malloc(width * height * sizeof(float3));
+
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			int id = (i * width) + j;
+			glm::vec3 pixelColors = renderState->image[id];
+			colorPtr[id] = {pixelColors.x,  pixelColors.y, pixelColors.z};
+		}
+	}
+
+	// Create a denoising filter
+	oidn::FilterRef filter = device.newFilter("RT"); // generic ray tracing filter
+	filter.setImage("color", colorPtr, oidn::Format::Float3, width, height);
+	filter.setImage("albedo", albedoPtr, oidn::Format::Float3, width, height); // optional
+	filter.setImage("normal", normalPtr, oidn::Format::Float3, width, height); // optional
+	filter.setImage("output", outputPtr, oidn::Format::Float3, width, height);
+	filter.set("hdr", true); // image is HDR
+	filter.commit();
+
+	// Filter the image
+	filter.execute();
+
+	// Check for errors
+	const char* errorMessage;
+	if (device.getError(errorMessage) != oidn::Error::None)
+		std::cout << "Error: " << errorMessage << std::endl;
+
+
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			int id = (i * width) + j;
+			float3 pixelColors = outputPtr[id];
+			renderState->image[id] = { pixelColors.x,  pixelColors.y, pixelColors.z };
+		}
+	}
+
+	free(colorPtr);
+	free(outputPtr);
 }
 
 void saveImage() {
@@ -127,6 +176,10 @@ void runCuda() {
         pathtraceInit(scene);
     }
 
+
+	albedoPtr = (float3*)malloc(width * height * sizeof(float3));
+	normalPtr = (float3*)malloc(width * height * sizeof(float3));
+
     if (iteration < renderState->iterations) {
         uchar4 *pbo_dptr = NULL;
         iteration++;
@@ -134,11 +187,14 @@ void runCuda() {
 
         // execute the kernel
         int frame = 0;
-        pathtrace(pbo_dptr, frame, iteration);
+        pathtrace(pbo_dptr, frame, iteration, albedoPtr, normalPtr);
 
         // unmap buffer object
         cudaGLUnmapBufferObject(pbo);
     } else {
+		if (DENOISE) {
+			denoise();
+		}
         saveImage();
         pathtraceFree();
         cudaDeviceReset();

@@ -68,12 +68,97 @@ glm::vec3 calculateRandomDirectionInHemisphere(
  */
 __host__ __device__
 void scatterRay(
-		PathSegment & pathSegment,
-        glm::vec3 intersect,
-        glm::vec3 normal,
-        const Material &m,
-        thrust::default_random_engine &rng) {
-    // TODO: implement this.
-    // A basic implementation of pure-diffuse shading will just call the
-    // calculateRandomDirectionInHemisphere defined above.
+	PathSegment & pathSegment,
+	glm::vec3 intersect,
+	glm::vec3 normal,
+	const Material &m,
+	thrust::default_random_engine &rng) {
+	// TODO: implement this.
+	// A basic implementation of pure-diffuse shading will just call the
+	// calculateRandomDirectionInHemisphere defined above.
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	float samplingProbability = u01(rng);
+	int operationToPerform = (samplingProbability > m.hasReflective + m.hasRefractive) ? 1 : 0;
+	operationToPerform += (samplingProbability > m.hasReflective) ? 1 : 0;
+
+
+	pathSegment.remainingBounces -= 1;
+	if (samplingProbability > m.hasReflective + m.hasRefractive) {
+		pathSegment.ray.direction = glm::normalize(calculateRandomDirectionInHemisphere(normal, rng));
+		pathSegment.ray.origin = intersect + pathSegment.ray.direction * 0.001f;
+		pathSegment.color *= m.color;
+	}
+	else {
+		if (samplingProbability > m.hasReflective) {
+			bool goingOutside = glm::dot(normal, pathSegment.ray.direction) > 0.0f;
+			glm::vec3 newDirection = glm::refract(glm::normalize(pathSegment.ray.direction),
+				(goingOutside ? -1.0f : 1.0f) * glm::normalize(normal),
+				(goingOutside ? m.indexOfRefraction : 1.0f / m.indexOfRefraction));
+
+			if (glm::length(newDirection) < 0.01f) {
+				newDirection = glm::reflect(pathSegment.ray.direction, normal);
+			}
+			float r0 = powf((m.indexOfRefraction - 1.0f) / (1.0f + m.indexOfRefraction), 2.0f);
+			float r = r0 + (1 - r0) * powf(1 - max(0.0f, glm::dot(pathSegment.ray.direction, normal)), 5);
+			newDirection = r < u01(rng) ? glm::reflect(pathSegment.ray.direction, normal) : newDirection;
+			pathSegment.ray.direction = glm::normalize(newDirection);
+			pathSegment.ray.origin = intersect + pathSegment.ray.direction * 0.001f;
+			pathSegment.color *= m.specular.color;
+		}
+		else {
+			pathSegment.ray.direction = glm::normalize(glm::reflect(pathSegment.ray.direction, normal));
+			pathSegment.ray.origin = intersect + pathSegment.ray.direction * 0.001f;
+			pathSegment.color *= m.specular.color;
+		}
+	}
+}
+
+
+__device__
+void directLight(
+	int num_lights,
+	Light * lights,
+	int num_geoms,
+	Geom * geoms,
+	Material* materials,
+	glm::vec3 intersect,
+	glm::vec3 normal,
+	PathSegment & pathSegment,
+	thrust::default_random_engine &rng) {
+	// TODO: implement this.
+	// A basic implementation of pure-diffuse shading will just call the
+	// calculateRandomDirectionInHemisphere defined above.
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	int randomLightIndex = (int)(u01(rng) * (num_lights - 1));
+	Light  & light = lights[randomLightIndex];
+	glm::vec3 pointOnLight = glm::vec3(light.geom.transform * glm::vec4(u01(rng) - 0.5f, u01(rng) -0.5f, u01(rng) - 0.5f, 1.0f));
+	Ray ray;
+	ray.direction = glm::normalize(pointOnLight - intersect);
+	ray.origin = intersect =  0.001f * ray.direction;
+	for (int i = 0; i < num_geoms; i++)
+	{
+		Geom & geom = geoms[i];
+		float t = 0.0f;
+		glm::vec3 tmp_intersect;
+		glm::vec3 tmp_normal;
+		bool outside = true;
+
+		if (geom.type == CUBE)
+		{
+			t = boxIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+		}
+		else if (geom.type == SPHERE)
+		{
+			t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+		}
+		if (t > 0.0f && glm::distance(pointOnLight, intersect) > t)
+		{
+			return;
+		}
+	}
+
+	Material material = materials[light.geom.materialid];
+	glm::vec3 materialColor = material.color;
+	pathSegment.color *= (materialColor * material.emittance * glm::abs(glm::dot(ray.direction, normal)));
+
 }
