@@ -116,13 +116,13 @@ SCALE       .01 10 10
 OBJECT 5
 cube
 material 3
-TRANS       5 5%% 0
+TRANS       5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
 
-// Sphere
+// Sphere and CUBE
 OBJECT 6
-sphere
+sphereAndCube 
 material 4
 TRANS       -1 4 -1
 ROTAT       0 0 0

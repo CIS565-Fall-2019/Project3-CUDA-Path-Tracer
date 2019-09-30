@@ -21,10 +21,10 @@
 #include "interactions.h"
 
 #define ERRORCHECK 1
-#define SORTMATERIAL 1
+#define SORTMATERIAL 0
 #define STREAMCOMPACT 1
-#define BLURGEOM 1
-#define CACHE 0
+#define BLURGEOM 0
+#define CACHE 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -208,12 +208,18 @@ __global__ void computeIntersections(
 			{
 				t = boxIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
-			else if (geom.type == SPHERE)
-			{
+			else if (geom.type == SPHERE) {
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
-			// TODO: add more intersection tests here... triangle? metaball? CSG?
-
+			else if (geom.type == SPHERECUBEUNION) {
+				t = sphereCubeUnion(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+			}
+			else if (geom.type == SPHEREANDNOTCUBE) {
+				t = sphereAndNotCube(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+			}
+			else if (geom.type == SPHEREANDCUBE) {
+				t = sphereAndCube(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+			}
 			// Compute the minimum t from the intersection tests to determine what
 			// scene geometry object was hit first.
 			if (t > 0.0f && t_min > t)
