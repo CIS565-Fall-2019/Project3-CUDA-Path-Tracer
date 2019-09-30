@@ -18,9 +18,9 @@ REFR        0
 REFRIOR     0
 EMITTANCE   0
 
-// Diffuse red
+// Diffuse purple
 MATERIAL 2
-RGB         .85 .35 .35
+RGB         .85 .35 .85
 SPECEX      0
 SPECRGB     0 0 0
 REFL        0
@@ -28,9 +28,9 @@ REFR        0
 REFRIOR     0
 EMITTANCE   0
 
-// Diffuse green
+// Diffuse yellow
 MATERIAL 3
-RGB         .35 .85 .35
+RGB         .85 .85 .35
 SPECEX      0
 SPECRGB     0 0 0
 REFL        0
@@ -40,22 +40,12 @@ EMITTANCE   0
 
 // Specular white
 MATERIAL 4
-RGB         .98 .98 .98
+RGB         1 1 1
 SPECEX      0
 SPECRGB     .98 .98 .98
 REFL        1
 REFR        0
-REFRIOR     1.52
-EMITTANCE   0
-
-// Specular white
-MATERIAL 5
-RGB         .98 .98 .98
-SPECEX      0
-SPECRGB     .98 .98 .98
-REFL        0
-REFR        1
-REFRIOR     1.52
+REFRIOR     1.8
 EMITTANCE   0
 
 // Camera
@@ -118,18 +108,3 @@ TRANS       5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
 
-// Sphere
-OBJECT 6
-sphere
-material 4
-TRANS       -1 4 -1
-ROTAT       0 75 -25
-SCALE       3 3 3
-
-// Sphere
-OBJECT 7
-sphere
-material 5
-TRANS       3 4 -1
-ROTAT       0 75 -25
-SCALE       3 3 3

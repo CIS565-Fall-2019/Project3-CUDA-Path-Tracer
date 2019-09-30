@@ -3,6 +3,10 @@
 #include <cstring>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include "tiny_obj_loader.h"
+
+//#define OBJ1
+//#define OBJ2
 
 Scene::Scene(string filename) {
     cout << "Reading scene from " << filename << " ..." << endl;
@@ -30,6 +34,263 @@ Scene::Scene(string filename) {
             }
         }
     }
+
+#ifdef OBJ1
+
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	tinyobj::attrib_t attribs;
+	std::string warning;
+	std::string error;
+	std::string objfile = "../objs/dragon.obj";
+	bool objLoad = tinyobj::LoadObj(&attribs, &shapes, &materials, &warning, &error, objfile.c_str());
+	if (!warning.empty()) {
+		std::cout << "WARN: " << warning << std::endl;
+	}
+	if (!error.empty()) {
+		std::cout << "ERR: " << error << std::endl;
+	}
+
+	if (!objLoad) {
+		std::cout << "failed to load obj";
+		return;
+	}
+
+	Geom cubeMesh;
+	cubeMesh.materialid = 4;
+	cubeMesh.type = MESH;
+	cubeMesh.rotation = glm::vec3(30, -10, -15);
+	cubeMesh.scale = glm::vec3(3, 3, 3);
+	cubeMesh.translation = glm::vec3(0, 4, 0);
+
+	cubeMesh.transform = utilityCore::buildTransformationMatrix(
+		cubeMesh.translation, cubeMesh.rotation, cubeMesh.scale);
+	cubeMesh.inverseTransform = glm::inverse(cubeMesh.transform);
+	cubeMesh.invTranspose = glm::inverseTranspose(cubeMesh.transform);
+
+	cubeMesh.minXYZ = glm::vec3(FLT_MAX);
+	cubeMesh.maxXYZ = glm::vec3(-FLT_MAX);
+
+
+
+
+	// Get out the vertices and normals from attribs
+	std::vector<float> &positions = attribs.vertices;
+	std::vector<float> &normals = attribs.normals;
+
+	// Iterate over every shape in the obj
+	for (tinyobj::shape_t shape : shapes) {
+		// Get the indices of the points in each shape
+		std::vector<tinyobj::index_t> &currIndices = shape.mesh.indices;
+		// Make sure number of indices is a multiple of 3 for triangulation
+		if (currIndices.size() % 3 != 0) {
+			std::cout << "not triangles" << std::endl;
+			return;
+		}
+		cubeMesh.lastTriangle += currIndices.size() / 3;
+
+
+		// Go over every triangle and add the triangle
+		for (int i = 0; i < currIndices.size(); i += 3) {
+
+			tinyobj::index_t indexP1 = currIndices.at(i);
+			tinyobj::index_t indexP2 = currIndices.at(i + 1);
+			tinyobj::index_t indexP3 = currIndices.at(i + 2);
+
+			Triangle currTri;
+
+			currTri.p1 = glm::vec3(positions.at(3 * indexP1.vertex_index), 
+								   positions.at(3 * indexP1.vertex_index + 1),
+								   positions.at(3 * indexP1.vertex_index + 2));
+			currTri.p2 = glm::vec3(positions.at(3 * indexP2.vertex_index), 
+				                   positions.at(3 * indexP2.vertex_index + 1), 
+				                   positions.at(3 * indexP2.vertex_index + 2));
+			currTri.p3 = glm::vec3(positions.at(3 * indexP3.vertex_index), 
+				                   positions.at(3 * indexP3.vertex_index + 1), 
+				                   positions.at(3 * indexP3.vertex_index + 2));
+
+			currTri.n2 = glm::vec3(normals.at(3 * indexP2.normal_index), 
+                                   normals.at(3 * indexP2.normal_index + 1), 
+				                   normals.at(3 * indexP2.normal_index + 2));
+			currTri.n3 = glm::vec3(normals.at(3 * indexP3.normal_index), 
+                                   normals.at(3 * indexP3.normal_index + 1), 
+				                   normals.at(3 * indexP3.normal_index + 2));
+			currTri.n1 = glm::vec3(normals.at(3 * indexP1.normal_index), 
+							       normals.at(3 * indexP1.normal_index + 1), 
+								   normals.at(3 * indexP1.normal_index + 2));
+
+			cubeMesh.minXYZ.x = min(currTri.p1.x, 
+								min(currTri.p2.x, 
+								min(currTri.p3.x, 
+									cubeMesh.minXYZ.x)));
+
+			cubeMesh.minXYZ.y = min(currTri.p1.y,
+								min(currTri.p2.y,
+								min(currTri.p3.y,
+							        cubeMesh.minXYZ.y)));
+
+			cubeMesh.minXYZ.z = min(currTri.p1.z,
+								min(currTri.p2.z,
+								min(currTri.p3.z,
+									cubeMesh.minXYZ.z)));
+
+			cubeMesh.maxXYZ.x = max(currTri.p1.x, 
+								max(currTri.p2.x, 
+								max(currTri.p3.x, 
+									cubeMesh.maxXYZ.x)));
+
+			cubeMesh.maxXYZ.y = max(currTri.p1.y,
+								max(currTri.p2.y,
+								max(currTri.p3.y,
+							        cubeMesh.maxXYZ.y)));
+
+			cubeMesh.maxXYZ.z = max(currTri.p1.z,
+				max(currTri.p2.z,
+					max(currTri.p3.z,
+						cubeMesh.maxXYZ.z)));
+
+
+		
+
+			this->triangles.push_back(currTri);
+
+
+		}
+	}
+	std::cout << this->triangles.size();
+	cubeMesh.lastTriangle = this->triangles.size();
+	this->geoms.push_back(cubeMesh);
+
+#endif // OBJ1
+
+#ifdef OBJ2
+
+	std::vector<tinyobj::shape_t> shapescello;
+	std::vector<tinyobj::material_t> materialscello;
+	tinyobj::attrib_t attribscello;
+	std::string warningcello;
+	std::string errorcello;
+	std::string objfilecello = "../objs/cello.obj";
+	bool objloadcello = tinyobj::loadobj(&attribscello, &shapescello, &materialscello, &warningcello, &errorcello, objfilecello.c_str());
+	if (!warningcello.empty()) {
+		std::cout << "warn: " << warningcello << std::endl;
+	}
+	if (!errorcello.empty()) {
+		std::cout << "err: " << errorcello << std::endl;
+	}
+
+	if (!objloadcello) {
+		std::cout << "failed to load obj";
+		return;
+	}
+
+
+	geom cellomesh;
+	cellomesh.materialid = 4;
+	cellomesh.type = mesh;
+	cellomesh.rotation = glm::vec3(-20, -30, -20);
+	cellomesh.scale = glm::vec3(2, 2, 2);
+	cellomesh.translation = glm::vec3(1.4, 1.3, 6.1);
+
+	cellomesh.transform = utilitycore::buildtransformationmatrix(
+		cellomesh.translation, cellomesh.rotation, cellomesh.scale);
+	cellomesh.inversetransform = glm::inverse(cellomesh.transform);
+	cellomesh.invtranspose = glm::inversetranspose(cellomesh.transform);
+
+	cellomesh.minxyz = glm::vec3(flt_max);
+	cellomesh.maxxyz = glm::vec3(-flt_max);
+
+
+
+
+	// get out the vertices and normals from attribs
+	std::vector<float> &positionscello = attribscello.vertices;
+	std::vector<float> &normalscello = attribscello.normals;
+	std::cout << positionscello.size() << std::endl;
+	cellomesh.firsttriangle = cubemesh.lasttriangle;
+	cellomesh.lasttriangle = cellomesh.firsttriangle;
+
+	// iterate over every shape in the obj
+	for (tinyobj::shape_t shape : shapescello) {
+		// get the indices of the points in each shape
+		std::vector<tinyobj::index_t> &currindices = shape.mesh.indices;
+		// make sure number of indices is a multiple of 3 for triangulation
+		if (currindices.size() % 3 != 0) {
+			std::cout << "not triangles" << std::endl;
+			return;
+		}
+		cellomesh.lasttriangle += currindices.size() / 3;
+
+
+		// go over every triangle and add the triangle
+		for (int i = 0; i < currindices.size(); i += 3) {
+			tinyobj::index_t indexp1 = currindices.at(i);
+			tinyobj::index_t indexp2 = currindices.at(i + 1);
+			tinyobj::index_t indexp3 = currindices.at(i + 2);
+
+			triangle currtri;
+
+			currtri.p1 = glm::vec3(positionscello.at(3 * indexp1.vertex_index),
+				positionscello.at(3 * indexp1.vertex_index + 1),
+				positionscello.at(3 * indexp1.vertex_index + 2));
+			currtri.p2 = glm::vec3(positionscello.at(3 * indexp2.vertex_index),
+				positionscello.at(3 * indexp2.vertex_index + 1),
+				positionscello.at(3 * indexp2.vertex_index + 2));
+			currtri.p3 = glm::vec3(positionscello.at(3 * indexp3.vertex_index),
+				positionscello.at(3 * indexp3.vertex_index + 1),
+				positionscello.at(3 * indexp3.vertex_index + 2));
+
+			currtri.n2 = glm::vec3(normalscello.at(3 * indexp2.normal_index),
+				normalscello.at(3 * indexp2.normal_index + 1),
+				normalscello.at(3 * indexp2.normal_index + 2));
+			currtri.n3 = glm::vec3(normalscello.at(3 * indexp3.normal_index),
+				normalscello.at(3 * indexp3.normal_index + 1),
+				normalscello.at(3 * indexp3.normal_index + 2));
+			currtri.n1 = glm::vec3(normalscello.at(3 * indexp1.normal_index),
+				normalscello.at(3 * indexp1.normal_index + 1),
+				normalscello.at(3 * indexp1.normal_index + 2));
+
+			cellomesh.minxyz.x = min(currtri.p1.x,
+				min(currtri.p2.x,
+					min(currtri.p3.x,
+						cellomesh.minxyz.x)));
+
+			cellomesh.minxyz.y = min(currtri.p1.y,
+				min(currtri.p2.y,
+					min(currtri.p3.y,
+						cellomesh.minxyz.y)));
+
+			cellomesh.minxyz.z = min(currtri.p1.z,
+				min(currtri.p2.z,
+					min(currtri.p3.z,
+						cellomesh.minxyz.z)));
+
+			cellomesh.maxxyz.x = max(currtri.p1.x,
+				max(currtri.p2.x,
+					max(currtri.p3.x,
+						cellomesh.maxxyz.x)));
+
+			cellomesh.maxxyz.y = max(currtri.p1.y,
+				max(currtri.p2.y,
+					max(currtri.p3.y,
+						cellomesh.maxxyz.y)));
+
+			cellomesh.maxxyz.z = max(currtri.p1.z,
+				max(currtri.p2.z,
+					max(currtri.p3.z,
+						cellomesh.maxxyz.z)));
+
+
+
+
+			this->triangles.push_back(currtri);
+
+		}
+	}
+	cellomesh.lasttriangle = this->triangles.size();
+	this->geoms.push_back(cellomesh);
+#endif // OBJ2
+
 }
 
 int Scene::loadGeom(string objectid) {

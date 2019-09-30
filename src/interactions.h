@@ -76,4 +76,64 @@ void scatterRay(
     // TODO: implement this.
     // A basic implementation of pure-diffuse shading will just call the
     // calculateRandomDirectionInHemisphere defined above.
+	glm::vec3 originalDirection = pathSegment.ray.direction;
+
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	float p = u01(rng);
+
+
+
+	if (p <= m.hasReflective) {
+		// Reflection
+		pathSegment.ray.direction = glm::normalize(glm::reflect(originalDirection, normal));
+		pathSegment.ray.origin = intersect + EPSILON * normal;
+		pathSegment.color *= m.specular.color / m.hasReflective;
+	}
+	else if (p <= m.hasReflective + m.hasRefractive) {
+		//bool entering = pathSegment.ray.direction.z > 0;
+		glm::vec3 rayDir = glm::normalize(originalDirection);
+		glm::vec3 refractedDir = glm::vec3();
+		glm::vec3 offsetOrigin = glm::vec3();
+		float eta = 1.f / m.indexOfRefraction;
+
+		if (glm::dot(rayDir, glm::normalize(normal)) > 0.0) {
+			// Inside sphere leaving
+			float theta = acos(glm::dot(normal, rayDir));
+			float critAngle = asin((float)1.f / eta);
+			offsetOrigin = intersect + 0.001f * glm::normalize(normal);
+			refractedDir = glm::normalize(glm::refract(rayDir, -normal, eta));
+			if ((float)1.f / eta < 1 && theta > critAngle) {
+				refractedDir = glm::normalize(glm::reflect(rayDir, -normal));
+				offsetOrigin = intersect + 0.001f * glm::normalize(-normal);
+
+			}
+		}
+		else {
+			// outside sphere entering
+			float theta = acos(glm::dot(normal, -rayDir));
+			float critAngle = asin(eta);
+			offsetOrigin = intersect + 0.001f * (-normal);
+			refractedDir = glm::normalize(glm::refract(rayDir, normal, eta));
+			if (eta < 1 && theta > critAngle) {
+				refractedDir = glm::normalize(glm::reflect(rayDir, -normal));
+				offsetOrigin = intersect + 0.001f * (normal);
+			}
+		}
+		pathSegment.ray.origin = offsetOrigin;
+		pathSegment.ray.direction = refractedDir;
+		//pathSegment.color *= m.specular.color;
+
+	}
+	else {
+		pathSegment.ray.direction = glm::normalize(calculateRandomDirectionInHemisphere(normal, rng));
+		pathSegment.ray.origin = intersect + EPSILON * normal;
+
+		float scale = m.hasReflective >= 1 ? 0 : 1.0 / (1.0 - m.hasReflective);
+		pathSegment.color *= m.color * scale;
+	}
+
+
+
+
+	
 }
