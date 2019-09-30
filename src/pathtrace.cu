@@ -19,6 +19,7 @@
 
 #define ERRORCHECK 1
 
+#define STREAM_COMPACTION 1
 #define CACHE_FIRST_BOUNCE 0
 #define SORT_BY_MATERIAL 0
 #define ANTI_ALIASING 1
@@ -256,6 +257,12 @@ __global__ void computeIntersections(int depth, int num_paths, PathSegment *path
 	if (path_index < num_paths)
 	{
 		PathSegment pathSegment = pathSegments[path_index];
+#if STREAM_COMPACTION
+#else 
+		if (pathSegment.remainingBounces < 0) {
+			return;
+		}
+#endif
 
 		float t;
 		glm::vec3 intersect_point;
@@ -318,6 +325,13 @@ __global__ void shadeMaterial(int iter, int num_paths, ShadeableIntersection *sh
 		ShadeableIntersection intersection = shadeableIntersections[idx];
 		PathSegment& pathSegment = pathSegments[idx];
 
+#if STREAM_COMPACTION
+#else 
+		if (pathSegment.remainingBounces <= 0) {
+			return;
+		}
+#endif
+
 		if (intersection.t > 0.0f) { // if the intersection exists...
 			// set up the RNG
 			thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, 0);
@@ -371,6 +385,7 @@ struct sortMaterialId {
 	}
 };
 
+float total = 0.f;
 
 /**
  * Wrapper for the __global__ call that sets up the kernel calls and does a ton
@@ -457,6 +472,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 		iterationComplete = (depth > traceDepth);
 
+#if STREAM_COMPACTION
 		// skip stream compaction if we can
 		if (!iterationComplete) {
 			// run stream compaction to remove terminated rays
@@ -466,6 +482,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			// if all rays are terminated, iteration is complete
 			iterationComplete = (remaining_paths <= 0);
 		}
+#endif // # if STREAM_COMPACTION
 	}
 
 #if CUDA_TIMING
@@ -473,7 +490,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	cudaEventSynchronize(stop);
 	float ms = 0.f;
 	cudaEventElapsedTime(&ms, start, stop);
+	total += ms;
 	std::cout << "Elapsed time: " << std::to_string(ms) << std::endl;
+	std::cout << "Total elapsed time: " << std::to_string(total) << std::endl;
 
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);

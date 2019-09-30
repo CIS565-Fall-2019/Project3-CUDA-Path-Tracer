@@ -149,8 +149,8 @@ __host__ __device__ void specularRefraction(PathSegment& pathSegment, const glm:
 
 	pathSegment.color *= m.specular.color;
 	pathSegment.ray.direction = glm::normalize(newDir);
-	pathSegment.ray.origin = intersect + (newNormal * 0.001f); // USE THIS FOR CLOUDY LOOK
-	//pathSegment.ray.origin = intersect + (pathSegment.ray.direction * 0.001f);
+	//pathSegment.ray.origin = intersect + (newNormal * 0.001f); // USE THIS FOR CLOUDY LOOK
+	pathSegment.ray.origin = intersect + (pathSegment.ray.direction * 0.001f);
 }
 
 /**
