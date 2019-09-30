@@ -66,4 +66,24 @@ In this implementation we try to move objects in the image slowly as we are crea
 | Without Motion Blur | With Motion Blur |
 | ------------- | ----------- |
 | ![](img/wo_MB.png)  | ![](img/w_MB.png) |
-| ----------------><---------------- | ----------------><----------------|
+| ---------------->![](img/wo_MB_Z.png)<---------------- | ---------------->![](img/w_MB_Z.png)<----------------|
+
+
+## Perfomance Implementation and Analysis:
+
+In the naive approach, we track each rays motion and bouce, throughout its jounrney untill our depth requirment is met. But this is not the best and most effitient way to approach this since many rays will be terminating their journey earlier by either hitting the light source or a diffusing surface.
+
+## Stream Compaction: 
+
+Stream compaction would allow us to get rid of rays that have already terminted by hitting the light source or a diffusing surface. This way we can exit earlier in each iteration thus improving our performance. This is specially usefull when our depth is a larger number such as 32. We can see the performance improvment significantly as follows:
+
+
+## First bounce intersections Caching:
+
+## Material Sort:
+
+
+### Cool Renders:
+
+### Bloopers
+
