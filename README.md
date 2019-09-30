@@ -15,14 +15,14 @@ CUDA Path Tracer
 2.	 [Graphics Features](#graphics)
 		1.	 [Diffusion](#diffusion)
         	2.	 [Reflection](#reflection)
-        	3.	 [Refraction with Fresnel effects using Schlick's approximation](#refraction)
-        	4.	 [Anti Aliasing](#anti-alias)
-        	5.	 [Motion Blur](#motion-blur)
-        	6.	 [Open Image AI Denoiser](#denoiser)
+                 	3.	 [Refraction with Fresnel effects using Schlick's approximation](#refraction)
+                               	4.	 [Anti Aliasing](#anti-alias)
+                 	5.	 [Motion Blur](#motion-blur)
+                         	6.	 [Open Image AI Denoiser](#denoiser)
 3.	 [Optimization Features](#optimization)
         	1.	 [Stream Compaction](#stream)
-        	2.	 [Material Sorting](#material-sort)
-        	3.	 [Cache First Bounce](#cache)
+                 	2.	 [Material Sorting](#material-sort)
+                               	3.	 [Cache First Bounce](#cache)
 4.	 [References](#references)
 
 <a name = "overview"/>
@@ -85,6 +85,36 @@ Motion blur is the averaging of multiple shots in a motion.
 <a name = "denoiser"/>
 
 #### Open Image AI Denoiser
+I was able to get the denoiser kind of working and all credits to Intel's out of the world documentation (Really only aliens can understand it). Here is my blooper reel from that. 
+
+Blooper 1       |  Blooper 2 | Blooper 3 | Blooper 4
+:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:
+![](img/denoise_blooper.png) | ![](img/denoise_blooper2.png)|  ![](img/denoise_blooper3.png) |  ![](img/denoise_blooper4.png)
+
+I was able to get one decent result though. 
+
+Original      |  Denoised
+:-------------------------:|:-------------------------:
+![](img/denoise_orig.png) | ![](img/denoise_decent.png)
+
+The library expects the pixel values to be in little endian format according to the documentation, so I had written a ReverseFloat function to convert big-endian to little endian, but doing so resulted in the blooper reel, when I did not use that function, I got this result for output after 5 iterations. However when I go more than 25 iterations, the output goes completely dark. I could not dig deeper into why that happened within time but I wish to do so later.
+
+It was a hard task to set it up and build it. I have listed down the steps I had to take here and I think this can serve as an easy documentation of how to set it up and get it running because the existing one is simply great!!
+
+* Install tbb from here: https://github.com/intel/tbb/releases
+* Then run this command : ```git clone --recursive https://github.com/OpenImageDenoise/oidn.git```
+* Then copy the oidn folder into your Path Tracer folder
+* Now in your CMakeLists.txt add the lines ```add_subdirectory(oidn)``` and add ```OpenImageDenoise``` to target_link_libraries
+* Then run ```cmake-gui ..```  and add the following four entries before clicking configure:
+
+  * ```TBB_ROOT``` which is equal to something like ```C:/Users/dewan/Desktop/tbb2019_20190605oss_win/tbb2019_20190605oss```
+* ```TBB_INCLUDE_DIR``` which is something like ```C:\Users\dewan\Desktop\tbb2019_20190605oss_win\tbb2019_20190605oss\include```
+  *  ```TBB_LIBRARY``` which is something like ```C:\Users\dewan\Desktop\tbb2019_20190605oss_win\tbb2019_20190605oss\lib\intel64\vc14\tbb_debug.lib```
+  *  ```TBB_LIBRARY_MALLOC``` which is something like ```C:\Users\dewan\Desktop\tbb2019_20190605oss_win\tbb2019_20190605oss\lib\intel64\vc14\tbbmalloc_debug.lib```
+* Now install oidn from here ```https://github.com/OpenImageDenoise/oidn/releases``` and copy ```OpenImageDenoise.dll, tbb.dll, tbbmalloc.dll``` from the bin folder to your System32 windows folder.
+
+The code should build now, atleast it did for me, but I make no guarantees as these steps were results of solving all the error messages that were thrown at me when trying to run this.
+
 
 <a name = "optimization"/>
 
@@ -109,7 +139,7 @@ The rays always start at the pixel they belong to and shoot out at the same loca
 
 
 
-A performance comparison of these optimizations can be seen below (Lower is better):
+A performance comparison of these optimizations can be seen below:
 
 ![](img/perf.JPG) 
 
