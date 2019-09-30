@@ -18,8 +18,8 @@
 #include "interactions.h"
 
 #define ERRORCHECK 1
-#define SORTMATERIAL 1
-#define STREAMCOMPACT 1
+#define SORTMATERIAL 0
+#define STREAMCOMPACT 0
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -399,11 +399,11 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	// TODO:
 	// --- Shading Stage ---
 	// Shade path segments based on intersections and generate new rays by
-	// evaluating the BSDF.
-	// Start off with just a big kernel that handles all the different
-	// materials you have in the scenefile.
-	// TODO: compare between directly shading the path segments and shading
-	// path segments that have been reshuffled to be contiguous in memory.
+  // evaluating the BSDF.
+  // Start off with just a big kernel that handles all the different
+  // materials you have in the scenefile.
+  // TODO: compare between directly shading the path segments and shading
+  // path segments that have been reshuffled to be contiguous in memory.
 
 		#if SORTMATERIAL
 		thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + num_paths, dev_paths, compareMaterials());
@@ -429,8 +429,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 		num_paths = dev_path_end - dev_paths;
 
-	// Assemble this iteration and apply it to the image
-	dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
+  // Assemble this iteration and apply it to the image
+  dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
 	finalGather<<<numBlocksPixels, blockSize1d>>>(num_paths, dev_image, dev_paths);
 
     ///////////////////////////////////////////////////////////////////////////
