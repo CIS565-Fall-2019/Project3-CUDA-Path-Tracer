@@ -43,7 +43,7 @@ The bounce direction and colour intensity depend on various material properties 
    - [x] BSDF Shading (Refractive, Percentage Combinations)
    - [x] Stochasitc Sampled Anti Aliasing
    - [x] Work Efficient Stream Compaction usnig Shared Memory 
-   - [x] Motion Blur (somewhat)
+   - [x] Motion Blur
    - [ ] Depth of Field
    - [ ] Loading OBJ files
 
@@ -60,7 +60,7 @@ Most features have been implemented with toggleable options.
 
 
 <p align="center">
-    Refraction        Reflection        Diffuese
+    Refraction    |    Reflection    |    Diffuese
 </p>
 <p align="center">
   <img src="build/cornell_refraction.png" width="260" alt="Refraction" />
@@ -70,7 +70,7 @@ Most features have been implemented with toggleable options.
 
       
 <p align="center">
-    Refract-Reflect-50-50        Emmisive        Refract-Reflect-30-70
+    Refract-Reflect-50-50    |    Emmisive    |    Refract-Reflect-30-70
 </p>      
 <p align="center">
   <img src="build/cornell_Refract-Reflect-50-50.png" width="260" alt="Refract-Reflect-50-50" />
@@ -88,7 +88,7 @@ Most features have been implemented with toggleable options.
 </p>
 
 
-5. AntiALiasing: We use anti-aliasing, a technique used to add greater realism to a digital image by smoothing jagged edges on curved lines and diagonals. We do this by randomly dhifting the ray location per pixel instead of the center.
+5. AntiALiasing: We use anti-aliasing, a technique used to add greater realism to a digital image by smoothing jagged edges on curved lines and diagonals. We do this by randomly shifting the ray location per pixel instead of the center.
 
 <p align="center">
     <img src="img/aa.PNG" width="600"/>
@@ -131,13 +131,9 @@ Motion Blur Screen Captures
 
 1. Bloopers (Mostly motion blur)
 <p align="center">
-    <img src="img/cornell.2019-09-28_03-45-01z.232samp.png" width="300"/>
-</p>
-<p align="center">
-    <img src="img/cornell.2019-09-28_05-00-15z.2959samp.png" width="300"/>
-</p>
-<p align="center">
-    <img src="img/cornell.2019-09-28_05-15-10z.5000samp.png" width="300"/>
+    <img src="img/cornell.2019-09-28_03-45-01z.232samp.png" width="260"/>
+    <img src="img/cornell.2019-09-28_05-00-15z.2959samp.png" width="260"/>
+    <img src="img/cornell.2019-09-28_05-15-10z.5000samp.png" width="260"/>
 </p>
 
 
