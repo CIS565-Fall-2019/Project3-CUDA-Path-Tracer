@@ -62,7 +62,7 @@ EMITTANCE   30
 CAMERA
 RES         800 600
 FOVY        35
-ITERATIONS  2000
+ITERATIONS  1000
 DEPTH       12
 FILE        altar
 EYE         0.0 -1 10.5
