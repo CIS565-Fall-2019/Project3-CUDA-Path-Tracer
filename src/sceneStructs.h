@@ -23,6 +23,7 @@ struct Geom {
     glm::vec3 translation;
     glm::vec3 rotation;
     glm::vec3 scale;
+	glm::vec3 velocity;
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
@@ -57,6 +58,8 @@ struct RenderState {
     int traceDepth;
     std::vector<glm::vec3> image;
     std::string imageName;
+	std::vector<glm::vec3> normals;
+	std::vector<glm::vec3> albedos;
 };
 
 struct PathSegment {

@@ -74,8 +74,10 @@ int Scene::loadGeom(string objectid) {
                 newGeom.rotation = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
             } else if (strcmp(tokens[0].c_str(), "SCALE") == 0) {
                 newGeom.scale = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
-            }
-
+			}
+			else if (strcmp(tokens[0].c_str(), "VELOCITY") == 0) {
+				newGeom.velocity = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+			}
             utilityCore::safeGetline(fp_in, line);
         }
 
@@ -144,8 +146,11 @@ int Scene::loadCamera() {
     //set up render camera stuff
     int arraylen = camera.resolution.x * camera.resolution.y;
     state.image.resize(arraylen);
+	state.albedos.resize(arraylen);
+	state.normals.resize(arraylen);
     std::fill(state.image.begin(), state.image.end(), glm::vec3());
-
+	std::fill(state.albedos.begin(), state.albedos.end(), glm::vec3());
+	std::fill(state.normals.begin(), state.normals.end(), glm::vec3());
     cout << "Loaded camera!" << endl;
     return 1;
 }

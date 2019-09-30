@@ -1,7 +1,14 @@
 #include "main.h"
 #include "preview.h"
 #include <cstring>
+#include<chrono>
+#include<intrin.h>
+#include <OpenImageDenoise/oidn.hpp>
+#include <string>
+#include <vector>
+#include <array>
 
+#define DENOISE 0
 static std::string startTimeString;
 
 // For camera controls
@@ -29,7 +36,50 @@ int height;
 //-------------------------------
 //-------------MAIN--------------
 //-------------------------------
+namespace oidn {
 
+	class ImageBuffer
+	{
+	private:
+		std::vector<float> data;
+		int width;
+		int height;
+		int channels;
+
+	public:
+		ImageBuffer()
+			: width(0),
+			height(0),
+			channels(0) {}
+
+		ImageBuffer(int width, int height, int channels)
+			: data(width * height * channels),
+			width(width),
+			height(height),
+			channels(channels) {}
+
+		operator bool() const
+		{
+			return data.data() != nullptr;
+		}
+
+		const float& operator [](size_t i) const { return data[i]; }
+		float& operator [](size_t i) { return data[i]; }
+
+		int getWidth() const { return width; }
+		int getHeight() const { return height; }
+		std::array<int, 2> getSize() const { return { width, height }; }
+		int getChannels() const { return channels; }
+
+		const float* getData() const { return data.data(); }
+		float* getData() { return data.data(); }
+		int getDataSize() { return int(data.size()); }
+	};
+
+	ImageBuffer loadImage(const std::string& filename);
+	void saveImage(const std::string& filename, const ImageBuffer& image);
+
+}
 int main(int argc, char** argv) {
     startTimeString = currentTimeString();
 
@@ -74,7 +124,77 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+float ReverseFloat(const float inFloat)
+{
+	float retVal;
+	char *floatToConvert = (char*)& inFloat;
+	char *returnFloat = (char*)& retVal;
 
+	// swap the bytes into a temporary buffer
+	returnFloat[0] = floatToConvert[3];
+	returnFloat[1] = floatToConvert[2];
+	returnFloat[2] = floatToConvert[1];
+	returnFloat[3] = floatToConvert[0];
+
+	return retVal;
+}
+void denoise() {
+	oidn::DeviceRef device = oidn::newDevice();
+	device.commit();
+	oidn::ImageBuffer im(width, height, 3);
+	oidn::ImageBuffer normal(width, height, 3);
+	oidn::ImageBuffer albedo(width, height, 3);
+	float samples = iteration;
+	image img(width, height);
+	for (int x = 0; x < width; x++) {
+		for (int y = 0; y < height; y++) {
+			int index = x + (y * width);
+			glm::vec3 pix = renderState->image[index];
+			glm::vec3 normal_in = renderState->normals[index];
+			glm::vec3 albedos_in = renderState->albedos[index];
+			im[((height - 1 - y)*width + x) * 3 + 0] = pix.x;
+			im[((height - 1 - y)*width + x) * 3 + 1] = pix.y;
+			im[((height - 1 - y)*width + x) * 3 + 2] = pix.z;
+			normal[((height - 1 - y)*width + x) * 3 + 0] = normal_in.x;
+			normal[((height - 1 - y)*width + x) * 3 + 1] = normal_in.y;
+			normal[((height - 1 - y)*width + x) * 3 + 2] = normal_in.z;
+			albedo[((height - 1 - y)*width + x) * 3 + 0] = albedos_in.x;
+			albedo[((height - 1 - y)*width + x) * 3 + 1] = albedos_in.y;
+			albedo[((height - 1 - y)*width + x) * 3 + 2] = albedos_in.z;
+
+		}
+	}
+	oidn::ImageBuffer output(width, height, 3);
+	
+	oidn::FilterRef filter = device.newFilter("RT");
+	filter.setImage("color", im.getData(), oidn::Format::Float3, width, height);
+	filter.setImage("albedo", albedo.getData(), oidn::Format::Float3, width, height);
+	filter.setImage("normal", normal.getData(), oidn::Format::Float3, width, height);
+	filter.setImage("output", output.getData(), oidn::Format::Float3, width, height);
+	filter.set("hdr", true);
+	filter.commit();
+	filter.execute();
+	// Write the pixels
+	for (int h = 0; h < height; ++h){
+		for (int w = 0; w < width; ++w){
+			int index = w + (h * width);
+			const float r = output[((height - 1 - h)*width + w) * 3 + 0];
+			const float g = output[((height - 1 - h)*width + w) * 3 + 1];
+			const float b = output[((height - 1 - h)*width + w) * 3 + 2];
+		//	std::cout << r << " " << g << " " << b << std::endl;
+			glm::vec3 pix(r, g, b);
+			renderState->image[index] = pix;
+			img.setPixel(width - 1 - w, h, glm::vec3(pix) / samples);
+	}
+		
+}
+	std::string filename = "denoise_output_2";
+	std::ostringstream ss;
+	ss << filename << "." << startTimeString << "." << samples << "samp";
+	filename = ss.str();
+	img.savePNG(filename);
+
+}
 void saveImage() {
     float samples = iteration;
     // output image file
@@ -134,11 +254,14 @@ void runCuda() {
 
         // execute the kernel
         int frame = 0;
+		auto start = std::chrono::high_resolution_clock::now();
+		
         pathtrace(pbo_dptr, frame, iteration);
-
         // unmap buffer object
         cudaGLUnmapBufferObject(pbo);
     } else {
+		if(DENOISE)
+			denoise();
         saveImage();
         pathtraceFree();
         cudaDeviceReset();
