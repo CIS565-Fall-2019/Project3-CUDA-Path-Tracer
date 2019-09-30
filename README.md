@@ -13,6 +13,18 @@ Path tracing is a realistic lighting algorithm that simulates light bouncing aro
 
 The following features are enabled in the path tracer:
 
-1. Basic Features:
-  a. 
+* Basic Features:
+  * BSDF evaluation for Diffusion and Perfectly Specular Surfaces
+  * Sort the rays after intersection with material ID type it intersected
+  * Stream Compaction using Thrust
+  * Cache First Bounce
+  
+* Adanced Features:
+  * BSDF evaluation including Refraction, Fresnel Effect using Schlick's approximation
+  * BSDF evaluation for Different Percentage Comnibations for Refraction and Reflection
+  * Anit-aliasing
+  * Work-Efficient Stream Compaction using Shared Memory
+  * Motion Blur (attempted)
+
+
 
