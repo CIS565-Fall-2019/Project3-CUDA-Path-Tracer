@@ -115,5 +115,27 @@ In this we cache the first bounce because (if we are not using anti aliasing or 
  <a name = "analysis">
  
  ## Performance Analysis
-<img src="img/FinalPerformanceAnalysis.jpg" width="600"/>
+ Test scenario: We test 2 cases, the glass cornell and the solar system for exactly 50 iterations.
  
+ Glass Cornell             |  Solar System  
+:-------------------------:|:-------------------------:  
+![](img/RefractionReflection.png) | ![](img/solar_system.png)  
+
+<img src="img/FinalPerformanceAnalysis.jpg" width="600"/>
+We observe several interesting things like:  
+
+* Sort by material really tanks the performance : 66.95 seconds for Glass Cornell and 65 seconds for Solar System. This might be because we don't have many materials and a lot of rays. But if we had a lot of materials, sorting would have improved the performance.  
+* Having just first bounce cached is the fastest with significant differences for lots of iterations.  
+* Stream compaction hurts the performance a lot for Glass Cornell which is a closed box (on 5 sides) compared to solar system (open space). This is most likely due most rays getting removed after partitioning in the open space solar system.  
+* Other features that are thread independent do not increase the time by a lot. This is because this is a GPU, on a CPU which has just a single core, this would take a lot of time because of all of it becoming sequential.  
+
+
+
+
+## References
+
+* [PBRT] Physically Based Rendering, third Edition: From Theory To Implementation. Pharr, Matt and Humphreys, Greg. 2010.
+* Antialiasing and Raytracing. Chris Cooksey and Paul Bourke, http://paulbourke.net/miscellaneous/aliasing/
+* [Sampling notes](http://graphics.ucsd.edu/courses/cse168_s14/) from Steve Rotenberg and Matteo Mannino, University of California, San Diego, CSE168: Rendering Algorithms
+* https://medium.com/@elope139/depth-of-field-in-path-tracing-e61180417027
+* GPU Gems
