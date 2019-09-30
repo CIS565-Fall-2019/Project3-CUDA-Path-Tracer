@@ -42,10 +42,9 @@ Diffusion                    |  Reflection               | Transmission
 
 We can also have a material to be a _combination_ of reflection, refraction, and diffusion. If reflection coeffecient is `p1`, refraction coefficient is `p2`, then for a given a ray we sample a specular reflected ray with probability `p1`, refracted ray with probability `p2`, and diffused ray with probability `1 - p1 - p2`.
 
-<figure>
+<p align='center'>
 	<img src="data/reflect_refract.png" width=500>
-	<figcaption>			Combining reflection and refraction              </figcaption>
-</figure>
+</p>
 
 We can see the red wall and the green wall on the corresponding side of the sphere. This highlights the reflective property of the material. But, more importantly, notice the shiny surface at the bottom of the sphere and the shadow sprinkled with a speck of white light. This is _because_ of refraction. The white light passed through the sphere by refracting from air to glass and came out by refracting from glass to air. 
 
@@ -92,6 +91,12 @@ We can see that the time taken reduces, unsurprisingly. But this by itself doesn
 </p>
 
 For smaller image resolutions, the effect of stream compaction is neglible. In fact, it might even be slower because the overhead might not be worth it. But as we scale to larger image resolutions, we have a clear winner.
+
+For a relatively open scene, more rays die out aftter each bounce, so the effectt of stream compaction on performance will not be as significant as it is on a closed scene. The following plot, taken on an image of `1500x1500` resolution, illustrates this.
+
+<p align="center">
+<img src="data/closed_open.png">
+</p>
 
 ## Overall performance analysis
 
