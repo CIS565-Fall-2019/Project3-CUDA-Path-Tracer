@@ -68,12 +68,61 @@ glm::vec3 calculateRandomDirectionInHemisphere(
  */
 __host__ __device__
 void scatterRay(
-		PathSegment & pathSegment,
-        glm::vec3 intersect,
-        glm::vec3 normal,
-        const Material &m,
-        thrust::default_random_engine &rng) {
-    // TODO: implement this.
-    // A basic implementation of pure-diffuse shading will just call the
-    // calculateRandomDirectionInHemisphere defined above.
+	PathSegment & pathSegment,
+	glm::vec3 intersect,
+	glm::vec3 normal,
+	const Material &m,
+	thrust::default_random_engine &rng) {
+
+	glm::vec3 newRayDir;
+
+	// Toss a coin to decide between reflect, refract, and diffuse.
+	// reflect if p < reflect_prob, refract if relect_prob <= p < reflect_prob + refract_prob and diffuse otherwise
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	float tossCoin = u01(rng);
+	if (tossCoin < m.hasReflective) {
+		//reflect
+		newRayDir = glm::reflect(pathSegment.ray.direction, normal);
+		pathSegment.color *= m.specular.color;
+	}
+	else if (tossCoin >= m.hasReflective && tossCoin < m.hasReflective + m.hasRefractive) {
+		//refract
+		if (glm::dot(pathSegment.ray.direction, normal) < 0) {
+			// From air to something else
+			newRayDir = glm::refract(pathSegment.ray.direction, normal, 1/m.indexOfRefraction);
+		}
+		else {
+			// From something else to air
+			newRayDir = glm::refract(pathSegment.ray.direction, normal * glm::vec3(-1.0), m.indexOfRefraction);
+			//total internal reflection;
+			if (glm::length2(newRayDir) < 1e-6) {
+				newRayDir = glm::reflect(pathSegment.ray.direction, normal * glm::vec3(-1.0));
+			}
+		}
+
+		pathSegment.color *= m.specular.color;
+	}
+	else {
+		newRayDir = calculateRandomDirectionInHemisphere(normal, rng);
+		pathSegment.color *= m.color;
+	}
+
+	pathSegment.ray.direction = newRayDir;
+	pathSegment.ray.origin = intersect + pathSegment.ray.direction*0.01f;
 }
+
+struct isTerminated {
+	//__host__ __device__ bool operator() (const PathSegment& p) {
+	//	return (p.remainingBounces > 0);
+	//}
+
+	__host__ __device__ bool operator() (int p) {
+		return (p >= 0);
+	}
+};
+
+struct compareIntersections {
+	__host__ __device__ bool operator() (const ShadeableIntersection &lhs, const ShadeableIntersection &rhs) { 
+		return (lhs.materialId < rhs.materialId); 
+	};
+};
