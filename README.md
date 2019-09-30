@@ -11,7 +11,9 @@ CUDA Path Tracer
 
 ![](img/complex_without_cube_yellow.png)
 
-![](img/cornell_multiple)
+![](img/cornell_multiple.png)
+
+![](img/cornell_penn.png)
 
 ### Features implemented
 
@@ -138,3 +140,19 @@ I implemented the stream compaction with shared memory in project 2's repository
 The above graph shows how shared memory takes lesser time with increasing array size for stream compaction.
 
 When adding stream compaction with shared memory to the Path Tracer, I was getting some Out of Memory issues for images with 800 x 800 resolution. The path tracer works perfectly with lesser resolution of upto 400 x 400
+
+### Bloopers
+
+Some of the really interesting bloopers I got while implementing this project.
+
+- When the random seed was not unique for every bounce of the ray, some wierd banding was observed.
+
+![](img/blooper_banding_seed.png)
+
+- When the index of refraction was reciprocal of what is should be.
+
+![](img/blooper_donut_incorrect_ior.png)
+
+- When a very small noise was added to the origin of the scattered ray.
+
+![](img/blooper_full_white.png)
