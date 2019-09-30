@@ -24,6 +24,7 @@
 #define CACHE_BOUNCE 1
 #define MOTION_BLUR 0
 #define ANTI_ALIAS 0
+#define DENOISE 0
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -83,6 +84,8 @@ static Material * dev_materials = NULL;
 static PathSegment * dev_paths = NULL;
 static ShadeableIntersection * dev_intersections = NULL;
 static ShadeableIntersection * dev_intersections_first = NULL;
+static glm::vec3 * dev_normal = NULL;
+static glm::vec3 * dev_albedo = NULL;
 
 // TODO: static variables for device memory, any extra info you need, etc
 // ...
@@ -94,6 +97,12 @@ void pathtraceInit(Scene *scene) {
 
     cudaMalloc(&dev_image, pixelcount * sizeof(glm::vec3));
     cudaMemset(dev_image, 0, pixelcount * sizeof(glm::vec3));
+
+	cudaMalloc(&dev_normal, pixelcount * sizeof(glm::vec3));
+	cudaMemset(dev_normal, 0, pixelcount * sizeof(glm::vec3));
+
+	cudaMalloc(&dev_albedo, pixelcount * sizeof(glm::vec3));
+	cudaMemset(dev_albedo, 0, pixelcount * sizeof(glm::vec3));
 
   	cudaMalloc(&dev_paths, pixelcount * sizeof(PathSegment));
 
@@ -123,6 +132,8 @@ void pathtraceFree() {
   	cudaFree(dev_intersections);
     // TODO: clean up any extra device memory you created
 	cudaFree(dev_intersections_first);
+	cudaFree(dev_normal);
+	cudaFree(dev_albedo);
     checkCUDAError("pathtraceFree");
 }
 
@@ -178,6 +189,9 @@ __global__ void computeIntersections(
 	, Geom * geoms
 	, int geoms_size
 	, ShadeableIntersection * intersections
+	, glm::vec3 * dev_albedo
+	, glm::vec3 * dev_normal
+	, int iter
 	)
 {
 	int path_index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -233,6 +247,10 @@ __global__ void computeIntersections(
 			intersections[path_index].t = t_min;
 			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
 			intersections[path_index].surfaceNormal = normal;
+		}
+		if (DENOISE && iter == 0) {
+			dev_normal[path_index] = intersections[path_index].surfaceNormal;
+			dev_albedo[path_index] = pathSegment.color;
 		}
 	}
 }
@@ -433,6 +451,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 					, dev_geoms
 					, hst_scene->geoms.size()
 					, dev_intersections
+					, dev_albedo
+					, dev_normal
+					, iter
 					);
 				checkCUDAError("trace one bounce");
 				cudaMemcpy(dev_intersections_first, dev_intersections, pixelcount * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
@@ -450,6 +471,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 				, dev_geoms
 				, hst_scene->geoms.size()
 				, dev_intersections
+				, dev_albedo
+				, dev_normal
+				, iter
 				);
 			checkCUDAError("trace one bounce");
 		}
@@ -462,10 +486,12 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			, dev_geoms
 			, hst_scene->geoms.size()
 			, dev_intersections
+			, dev_albedo
+			, dev_normal
+			, iter
 			);
 		checkCUDAError("trace one bounce");
 	}
-	
 	
 	cudaDeviceSynchronize();
 	depth++;
@@ -515,10 +541,13 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
     // Send results to OpenGL buffer for rendering
     sendImageToPBO<<<blocksPerGrid2d, blockSize2d>>>(pbo, cam.resolution, iter, dev_image);
-
     // Retrieve image from GPU
     cudaMemcpy(hst_scene->state.image.data(), dev_image,
             pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+	cudaMemcpy(hst_scene->state.normals.data(), dev_normal,
+		pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+	cudaMemcpy(hst_scene->state.albedos.data(), dev_albedo,
+		pixelcount * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
 
     checkCUDAError("pathtrace");
 }

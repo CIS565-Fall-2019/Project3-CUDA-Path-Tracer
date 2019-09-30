@@ -93,11 +93,18 @@ Blooper 1       |  Blooper 2 | Blooper 3 | Blooper 4
 
 Finally after fixing my issues I was able to get it working:
 
+
+
+The library expects the pixel values to be in little endian format according to the documentation, so I had written a ReverseFloat function to convert big-endian to little endian, but doing so resulted in the blooper reel, when I did not use that function, I got this result for output after 5 iterations.
 Original      |  Denoised
 :-------------------------:|:-------------------------:
 ![](img/denoise_orig.png) | ![](img/denoise_decent.png)
 
-The library expects the pixel values to be in little endian format according to the documentation, so I had written a ReverseFloat function to convert big-endian to little endian, but doing so resulted in the blooper reel, when I did not use that function, I got this result for output after 5 iterations.
+Then I also passed albedos and normals buffers to the library, the results after doing that were:
+
+Original      |  Denoised
+:-------------------------:|:-------------------------:
+![](img/original_albedo_nromal.png) | ![](img/denoise_albedo_nromal.png) 
 
 It was a hard task to set it up and build it. I have listed down the steps I had to take here and I think this can serve as an easy documentation of how to set it up and get it running because the existing one is simply great!!
 

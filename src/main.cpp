@@ -8,7 +8,7 @@
 #include <vector>
 #include <array>
 
-#define DENOISE 1
+#define DENOISE 0
 static std::string startTimeString;
 
 // For camera controls
@@ -142,21 +142,34 @@ void denoise() {
 	oidn::DeviceRef device = oidn::newDevice();
 	device.commit();
 	oidn::ImageBuffer im(width, height, 3);
+	oidn::ImageBuffer normal(width, height, 3);
+	oidn::ImageBuffer albedo(width, height, 3);
 	float samples = iteration;
 	image img(width, height);
 	for (int x = 0; x < width; x++) {
 		for (int y = 0; y < height; y++) {
 			int index = x + (y * width);
 			glm::vec3 pix = renderState->image[index];
+			glm::vec3 normal_in = renderState->normals[index];
+			glm::vec3 albedos_in = renderState->albedos[index];
 			im[((height - 1 - y)*width + x) * 3 + 0] = pix.x;
 			im[((height - 1 - y)*width + x) * 3 + 1] = pix.y;
 			im[((height - 1 - y)*width + x) * 3 + 2] = pix.z;
+			normal[((height - 1 - y)*width + x) * 3 + 0] = normal_in.x;
+			normal[((height - 1 - y)*width + x) * 3 + 1] = normal_in.y;
+			normal[((height - 1 - y)*width + x) * 3 + 2] = normal_in.z;
+			albedo[((height - 1 - y)*width + x) * 3 + 0] = albedos_in.x;
+			albedo[((height - 1 - y)*width + x) * 3 + 1] = albedos_in.y;
+			albedo[((height - 1 - y)*width + x) * 3 + 2] = albedos_in.z;
+
 		}
 	}
 	oidn::ImageBuffer output(width, height, 3);
 	
 	oidn::FilterRef filter = device.newFilter("RT");
 	filter.setImage("color", im.getData(), oidn::Format::Float3, width, height);
+	filter.setImage("albedo", albedo.getData(), oidn::Format::Float3, width, height);
+	filter.setImage("normal", normal.getData(), oidn::Format::Float3, width, height);
 	filter.setImage("output", output.getData(), oidn::Format::Float3, width, height);
 	filter.set("hdr", true);
 	filter.commit();
@@ -242,7 +255,7 @@ void runCuda() {
         // execute the kernel
         int frame = 0;
 		auto start = std::chrono::high_resolution_clock::now();
-
+		
         pathtrace(pbo_dptr, frame, iteration);
         // unmap buffer object
         cudaGLUnmapBufferObject(pbo);

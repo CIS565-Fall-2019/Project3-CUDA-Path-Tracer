@@ -58,6 +58,8 @@ struct RenderState {
     int traceDepth;
     std::vector<glm::vec3> image;
     std::string imageName;
+	std::vector<glm::vec3> normals;
+	std::vector<glm::vec3> albedos;
 };
 
 struct PathSegment {
