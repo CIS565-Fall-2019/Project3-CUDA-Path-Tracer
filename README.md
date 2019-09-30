@@ -8,7 +8,11 @@ CUDA Path Tracer
 ## Path Tracer
 ## Overview
 This is an implementation of CUDA-based path tracer capable of rendering globally-illuminated images very quickly. Path tracing is a computer graphics Monte Carlo method of rendering images so that we can achieve good results with tracing a finite number out of the infinite space of rays.
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/scene1.png" width="600"/> </p>
 
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/scene2.png" width="600"/> </p>
+
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/scene3.png" width="600"/> </p>
 ### Contents
 * `scenes/` Example scene description files
 * `img/` Renders of example scene description files
@@ -51,18 +55,24 @@ This is an implementation of CUDA-based path tracer capable of rendering globall
 
 ### Ideal Diffusion
 A ray after striking with a material is either reflected, refracted or diffused depending upon the material properties of the object. Diffusion is implemented using Bidirectional Scattering Distribution Function. 
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/Diffusion.png" width="600"/> </p>
 
 ### Perfect Reflection
 In case of perfectly reflective surface, the new ray is calculated using `glm::reflect` function.
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/Reflection.png" width="600"/> </p>
 
 ### Refraction with fresnel effects
 Refraction is calculated using Snell's law and I have used `glm::refract` function to do this. But since most materials are not perfectly sepcular, have implmented fresnel effects using **Schlick's approximation**. Fresnel equations give the proportion of reflected and refracted light and then a random number from 0 to 1 is calculated to choose between specular reflection and refraction.
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/Refraction.png" width="600"/> </p>
 
 ### Antialiasing
 Antialiasing is a technique to diminish the jaggies/stairstep-like lines and smoothen them. This is implemented using a very simple trick that is by jittering the pixel's location. The idea is to subdivide the pixel into subpixels and choose a random supixel each time rather than always looking at the center to of the pixel. Accumulating the effect across multiple iterations, the intensity value of the pixel is the average of all these samples and creates a more continuos effect.
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/without_anti_z.png" width="300"/>  <img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/with_anti_z.png" width="312"/> </p>
 
 ### Motion Blur
 Motion blur is another technique which leverages this averaging effect of this implementation. To implement this, the object is moved slighlty between each iteration and the averaging of such multiple shots creats the effect of motion.
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/motionblur.png" width="600"/> </p>
+
 
 ### 3D Object Modeling
 Loading 3D models (Reference: https://free3d.com/) using [tinyObj](http://syoyo.github.io/tinyobjloader/) and then checking triangle intersection using `glm::intersectRayTriangle`.
@@ -80,3 +90,4 @@ The shader implementation depends on the material with which the ray has interse
 One first step of generating rays and finding itersection for the first bounce is same across all iterations with an exception while we are using anti aliasing. So, we could to an optimization by saving the first after the first iteration and reuse it rather than re doing it every time.
 
 ## Bloopers
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/Blooper1_0.00001.png" width="400"/>   <img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/Blooper2_inverse_eta.png" width="400"/> </p>
