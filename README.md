@@ -1,12 +1,6 @@
 
-_
-
-___ _  _ ___  ____    ___  ____ ___ _  _    ___ ____ ____ ____ ____ ____ 
-|    |  | |  \ |__|    |__] |__|  |  |__|     |  |__/ |__| |    |___ |__/ 
-|___ |__| |__/ |  |    |    |  |  |  |  |     |  |  \ |  | |___ |___ |  \ 
-                                                                          
-
-=================================================================
+CUDA Path Tracer
+==================================================================
 
 **University of Pennsylvania, CIS 565: GPU Programming and Architecture**
 
@@ -17,4 +11,6 @@ ________________________________________________________________________________
 ![Developer](https://img.shields.io/badge/Developer-Dhruv-0f97ff.svg?style=flat) ![CUDA 10.1](https://img.shields.io/badge/CUDA-10.1-yellow.svg) ![Built](https://img.shields.io/appveyor/ci/gruntjs/grunt.svg) ![Issues](https://img.shields.io/badge/issues-none-green.svg)
 ____________________________________________________________________________________
 
+Table of contents
+=================
 
