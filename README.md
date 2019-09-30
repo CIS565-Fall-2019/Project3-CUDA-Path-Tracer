@@ -123,13 +123,13 @@ I implemented some simple antialiasing as well, modifying the starting camera ra
 
 
 <figure>
-<img src="progressImages/cornellNoAntialised.png" alt="No Antialiasing"
+<img src="progressImages/cornellNoAntialiased.png" alt="No Antialiasing"
 	title="No Antialiasing" width="700" height="700" />
  <figcaption>No Antialiasing</figcaption>
 </figure>
 
 <figure>
-<img src="progressImages/cornellAntialised.png" alt="Antialiasing"
+<img src="progressImages/cornellAntialiased.png" alt="Antialiasing"
 	title="Antialiasing" width="700" height="700" />
  <figcaption>Antialiasing</figcaption>
 </figure>
