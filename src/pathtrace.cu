@@ -1,4 +1,4 @@
-#include <cstdio>
+#include <cstdio>BLUR 0
 #include <cuda.h>
 #include <cmath>
 #include <thrust/partition.h>
@@ -11,7 +11,10 @@
 #include "sceneStructs.h"
 #include "scene.h"
 #include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtx/norm.hpp"
+#include "glm/matrix.hpp"
+#include "glm/glm.hpp"
 #include "utilities.h"
 #include "pathtrace.h"
 #include "intersections.h"
@@ -19,7 +22,9 @@
 
 #define ERRORCHECK 1
 #define SORTMATERIAL 0
-#define STREAMCOMPACT 0
+#define STREAMCOMPACT 1
+#define BLURGEOM 1
+#define CACHE 0
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -137,16 +142,31 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		PathSegment & segment = pathSegments[index];
 
 		segment.ray.origin = cam.position;
-    segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
+		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
 
 		// TODO: implement antialiasing by jittering the ray
 		segment.ray.direction = glm::normalize(cam.view
 			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f)
 			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f)
 			);
-
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
+	}
+}
+
+__global__ void blurGeom(Geom *geoms, int geoms_size, int num_paths, glm::vec3 offset, int iter) {
+	int path_index = blockIdx.x * blockDim.x + threadIdx.x;
+	if (path_index < num_paths) {
+		float dt = iter * 0.00001f;
+		for (int i = 0; i < geoms_size; ++i) {
+			Geom & geom = geoms[i];
+			if (geom.type == SPHERE) {
+				geom.translation -= glm::clamp(offset * dt, glm::vec3(0.0f), offset);
+				geom.transform[3] = glm::vec4(geom.translation, geom.transform[3].w);
+				geom.inverseTransform = glm::inverse(geom.transform);
+				geom.invTranspose = glm::transpose(geom.inverseTransform);
+			}
+		}
 	}
 }
 
@@ -160,7 +180,7 @@ __global__ void computeIntersections(
 	, PathSegment * pathSegments
 	, Geom * geoms
 	, int geoms_size
-	, ShadeableIntersection * intersections
+	, ShadeableIntersection * intersections 
 	)
 {
 	int path_index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -184,13 +204,15 @@ __global__ void computeIntersections(
 		for (int i = 0; i < geoms_size; i++)
 		{
 			Geom & geom = geoms[i];
-
 			if (geom.type == CUBE)
 			{
 				t = boxIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
 			else if (geom.type == SPHERE)
 			{
+			#ifdef BLURSPHERE
+				glm::mat4
+			#endif //BLURSPHERE
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
 			// TODO: add more intersection tests here... triangle? metaball? CSG?
@@ -368,8 +390,12 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 		// tracing
 		dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
+		
+		#ifdef BLURGEOM
+				blurGeom << <numblocksPathSegmentTracing, blockSize1d >> > (dev_geoms, hst_scene->geoms.size(), num_paths, glm::vec3(-1e-5f, -1e-5f, 0.0), iter);
+		#endif //BLURGEOM
 
-		if (depth == 0) {
+		if (depth == 0 && CACHE) {
 			if (iter == 1) {
 				computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (
 					depth
@@ -396,14 +422,14 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		}
 		cudaDeviceSynchronize();
 
-	// TODO:
-	// --- Shading Stage ---
-	// Shade path segments based on intersections and generate new rays by
-  // evaluating the BSDF.
-  // Start off with just a big kernel that handles all the different
-  // materials you have in the scenefile.
-  // TODO: compare between directly shading the path segments and shading
-  // path segments that have been reshuffled to be contiguous in memory.
+		// TODO:
+		// --- Shading Stage ---
+		// Shade path segments based on intersections and generate new rays by
+		// evaluating the BSDF.
+		// Start off with just a big kernel that handles all the different
+		// materials you have in the scenefile.
+		// TODO: compare between directly shading the path segments and shading
+		// path segments that have been reshuffled to be contiguous in memory.
 
 		#if SORTMATERIAL
 		thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + num_paths, dev_paths, compareMaterials());

@@ -69,7 +69,7 @@ glm::vec3 calculateRandomDirectionInHemisphere(
 __host__ __device__
 float schlick(float cosine, float ref_idx) {
     float r0 = powf((1.f - ref_idx) / (1.f + ref_idx), 2.f);
-    return r0 + (1.f - r0) * powf((1.f - cosine),5.f);
+    return r0 + (1.f - r0) * powf((1.f - cosine), 5.f);
 }
 __host__ __device__
 void scatterRay(
