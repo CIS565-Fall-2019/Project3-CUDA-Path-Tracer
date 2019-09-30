@@ -14,14 +14,15 @@ CUDA Path Tracer
 1.	 [Overview](#overview)
 2.	 [Graphics Features](#graphics)
 		1.	 [Diffusion](#diffusion)
-    	2.	 [Reflection](#reflection)
-    	3.	 [Refraction with Fresnel effects using Schlick's approximation](#refraction)
-    	4.	 [Anti Aliasing](#anti-alias)
-    	5.	 [Motion Blur](#motion-blur)
+        	2.	 [Reflection](#reflection)
+        	3.	 [Refraction with Fresnel effects using Schlick's approximation](#refraction)
+        	4.	 [Anti Aliasing](#anti-alias)
+        	5.	 [Motion Blur](#motion-blur)
+        	6.	 [Open Image AI Denoiser](#denoiser)
 3.	 [Optimization Features](#optimization)
-    	1.	 [Stream Compaction](#stream)
-    	2.	 [Material Sorting](#material-sort)
-    	3.	 [Cache First Bounce](#cache)
+        	1.	 [Stream Compaction](#stream)
+        	2.	 [Material Sorting](#material-sort)
+        	3.	 [Cache First Bounce](#cache)
 4.	 [References](#references)
 
 <a name = "overview"/>
@@ -80,6 +81,10 @@ With Anti Aliasing       |  Without Anti Aliasing
 #### Motion Blur
 Motion blur is the averaging of multiple shots in a motion.
  ![](img/motion_blur.png)
+
+<a name = "denoiser"/>
+
+#### Open Image AI Denoiser
 
 <a name = "optimization"/>
 
