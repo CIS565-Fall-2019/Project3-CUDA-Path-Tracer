@@ -544,7 +544,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	float milliseconds = 0;
 	cudaEventElapsedTime(&milliseconds, start, stop);
 	
-	//printf("%.4f\n", milliseconds);
+	printf("%.4f\n", milliseconds);
 
 	num_paths = pixelcount;
 
