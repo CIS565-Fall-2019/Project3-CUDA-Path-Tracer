@@ -8,8 +8,6 @@ CUDA Path Tracer
 ## Path Tracer
 <p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/scene3.png" width="600"/> </p>
 
-<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/scene2.png" width="600"/> </p>
-
 <p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/scene1.png" width="600"/> </p>
 
 ## Overview
@@ -81,7 +79,7 @@ Loading 3D models (Reference: https://free3d.com/) using [tinyObj](http://syoyo.
 
 <p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/droid_1.png" width="600"/> </p>
 <p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/3D_Android.png" width="600"/> </p>
-
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/scene2.png" width="600"/> </p>
 ## Optimizations
 ### Stream Compaction
 A lot of rays die after a few iterations by either merging into light or the ones which do not intersect with any object. So, we can use stream compaction to limit the number of rays we are tracing and the number of threads launched at each iteration. I am using my Work-efficient stream compaction implementation across multiple blocks which uses shared memory for performance. 
