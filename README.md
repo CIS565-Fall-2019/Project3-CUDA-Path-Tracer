@@ -36,10 +36,10 @@ We can create a physically-based depth of field effect in our renders using a th
 
 ### Bokeh
 
-A fun consequence of the thin lens approximation is the creation of [bokeh](https://en.wikipedia.org/wiki/Bokeh), "blur produced in the out-of-focus parts of an image produced by a lens." The thin lens approximation typically features a circular lens, creating circular bokeh, but one can create other shapes by sampling points from a shape other than a disk.
+A fun consequence of the thin lens approximation is the creation of [bokeh](https://en.wikipedia.org/wiki/Bokeh), "blur produced in the out-of-focus parts of an image produced by a lens." The thin lens approximation typically features a circular lens, creating circular bokeh, but one can create other shapes by sampling points from a shape other than a disk. This projects supports bokeh in the shape of circles, squares, diamonds (rotated squares), and triangles.
 
 
-| Disk | Diamond (rotated square) | Triangle |
+| Circle | Diamond | Triangle |
 | ------------- | ----------- | ----------- |
 | ![](img/circleBokeh.png) | ![](img/diamondBokeh.png) | ![](img/triangleBokeh.png) |
 
