@@ -73,7 +73,7 @@ CAMERA
 RES         800 800
 FOVY        45
 ITERATIONS  5000
-DEPTH       64
+DEPTH       8
 FILE        cornell
 EYE         0.0 5 10.5
 LOOKAT      0 5 0
@@ -105,31 +105,31 @@ ROTAT       0 0 90
 SCALE       .01 10 10
 
 // Back wall
-OBJECT 3
-cube
-material 1
-TRANS       0 5 -5
-ROTAT       0 90 0
-SCALE       .01 10 10
+//OBJECT 3
+//cube
+//material 1
+//TRANS       0 5 -5
+//ROTAT       0 90 0
+//SCALE       .01 10 10
 
 // Left wall
-OBJECT 4
-cube
-material 4
-TRANS       -5 5 0
-ROTAT       0 0 0
-SCALE       .01 10 10
+//OBJECT 4
+//cube
+//material 4
+//TRANS       -5 5 0
+//ROTAT       0 0 0
+//SCALE       .01 10 10
 
 // Right wall
-OBJECT 5
-cube
-material 4
-TRANS       5 5 0
-ROTAT       0 0 0
-SCALE       .01 10 10
+//OBJECT 5
+//cube
+//material 4
+//TRANS       5 5 0
+//ROTAT       0 0 0
+//SCALE       .01 10 10
 
 // Sphere
-OBJECT 6
+OBJECT 3
 sphere
 material 5
 TRANS       -1 1.5 2.5
@@ -138,7 +138,7 @@ SCALE       3 3 3
 SPEED .05 .05 .05
 
 // Red Cube
-OBJECT 7
+OBJECT 4
 cube
 material 4
 TRANS       0 5.5 0
@@ -147,7 +147,7 @@ SCALE       3 3 3
 //SPEED .03 .03 .03
 
 // Ceiling light
-OBJECT 8
+OBJECT 5
 cube
 material 0
 TRANS       -2 10 2

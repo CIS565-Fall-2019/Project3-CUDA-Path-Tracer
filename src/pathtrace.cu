@@ -21,9 +21,9 @@
 
 #define ERRORCHECK 1
 #define SORT_MATERIAL false 
-#define ANTI_ALIASING true
+#define ANTI_ALIASING false
 #define STREAM_COMPACTION true
-#define MOTION_BLUR true
+#define MOTION_BLUR false
 bool CACHE_BOUNCE = true;
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -499,7 +499,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	  time += time_span.count();
 	  
-	  std::cout << time/count << " seconds. " << count << " num left " << num_paths;
+	  std::cout << time/count << " seconds. " << count << " num left " << num_paths << " Actual time: " << time_span.count();
 	  
 	  std::cout << std::endl;
 	  
