@@ -15,7 +15,7 @@ CUDA Path Tracer
 
 ![](img/complex_without_cube_yellow.png)
 
-![]()img/cornell_penn.png)
+![](img/cornell_penn.png)
 
 ### Features implemented
 
