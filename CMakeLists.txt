@@ -63,6 +63,7 @@ find_package(GLM REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
 
 set(headers
+	src/obj_loader.h
     src/main.h
     src/image.h
     src/interactions.h
@@ -76,6 +77,7 @@ set(headers
     )
 
 set(sources
+	src/obj_loader.cpp
     src/main.cpp
     src/stb.cpp
     src/image.cpp

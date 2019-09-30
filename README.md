@@ -1,13 +1,16 @@
-CUDA Path Tracer
-================
+CUDA Number Algorithms
+======================
 
-**University of Pennsylvania, CIS 565: GPU Programming and Architecture, Project 3**
+**University of Pennsylvania, CIS 565: GPU Programming and Architecture, Project 2**
 
-* (TODO) YOUR NAME HERE
-* Tested on: (TODO) Windows 22, i7-2222 @ 2.22GHz 22GB, GTX 222 222MB (Moore 2222 Lab)
+Davis Polito 
+*  [https://github.com/davispolito/Project0-Getting-Started/blob/master]()
+* Tested on: Windows 10, i7-8750H @ 2.20GHz 16GB, GTX 1060       
+#Stream Compaction
+![Graph Showing effect of stream compaction](/Project3-CUDA-Path-Tracer/img/stream.PNG)
+This graph shows that as we remove the number of walls, making the scene more open, stream compaction is able to increase the speed of our project by drastically reducing the number of paths we must check intersection for. 
 
-### (TODO: Your README)
+#Material Sorting
 
-*DO NOT* leave the README to the last minute! It is a crucial part of the
-project, and we will not be able to grade you without a good README.
+
 

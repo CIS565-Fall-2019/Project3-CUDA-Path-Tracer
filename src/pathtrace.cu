@@ -18,7 +18,7 @@
 
 #define ERRORCHECK 1
 #define CACHE 1
-#define SORT 1
+#define SORT 0
 #define COMPACT 1
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -98,6 +98,7 @@ void pathtraceInit(Scene *scene) {
 
   	cudaMalloc(&dev_intersections, pixelcount * sizeof(ShadeableIntersection));
   	cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
+
 
     // TODO: initialize any extra device memeory you need
 	cudaMalloc(&first_intersections, pixelcount * sizeof(ShadeableIntersection));
@@ -193,6 +194,10 @@ __global__ void computeIntersections(
 			}
 			// TODO: add more intersection tests here... triangle? metaball? CSG?
 
+
+			else if (geom.type == TRI) {
+				t = triIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+			}
 			// Compute the minimum t from the intersection tests to determine what
 			// scene geometry object was hit first.
 			if (t > 0.0f && t_min > t)
@@ -239,14 +244,13 @@ __global__ void shadeFakeMaterial (
   if (idx < num_paths && pathSegments[idx].remainingBounces)
   {
     ShadeableIntersection intersection = shadeableIntersections[idx];
-    if (intersection.t > 0.0f) { // if the intersection exists...
+    if (intersection.t > 0.0f ) { // if the intersection exists...
       // Set up the RNG
       // LOOK: this is how you use thrust's RNG! Please look at
       // makeSeededRandomEngine as well.
 		thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, pathSegments[idx].remainingBounces);
 
 			thrust::uniform_real_distribution<float> u01(0, 1);
-
 			Material material = materials[intersection.materialId];
 			glm::vec3 materialColor = material.color;
 
@@ -428,7 +432,8 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	  if ((num_paths = new_end - dev_paths) < 1) {
 		  depth = traceDepth + 1;
 	  }
-
+	  std::cout << num_paths << std::endl;
+	  //std::cout << "Bounces left:" << dev_paths->remainingBounces << std::endl; 
 #endif
 
   iterationComplete = depth++ > traceDepth; // TODO: should be based off stream compaction results.

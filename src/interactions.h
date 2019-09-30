@@ -86,7 +86,7 @@ void scatterRay(
 		pathSegment.ray.origin = intersect + EPSILON * normal;
 	}
 	else if (random_num < m.hasRefractive) {
-
+		
 	}
 	else {
 		//color
