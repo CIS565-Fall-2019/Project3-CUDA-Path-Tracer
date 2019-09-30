@@ -3,11 +3,21 @@ CUDA Path Tracer
 
 **University of Pennsylvania, CIS 565: GPU Programming and Architecture, Project 3**
 
-* (TODO) YOUR NAME HERE
-* Tested on: (TODO) Windows 22, i7-2222 @ 2.22GHz 22GB, GTX 222 222MB (Moore 2222 Lab)
+Peyman Norouzi
+* [LinkedIn](https://www.linkedin.com/in/peymannorouzi)
+* Tested on: Windows 10, i7-6700 @ 3.40GHz 16GB, Quadro P1000 4096MB (Moore 100B Lab)
 
-### (TODO: Your README)
+## CUDA Path Ray Tracer:
 
-*DO NOT* leave the README to the last minute! It is a crucial part of the
-project, and we will not be able to grade you without a good README.
+![](img/w_MB.png)
 
+In computer graphics, ray tracing is a rendering technique for generating photo realastic images. In this approach, we trace paths of light as they leave from a camera as pixels in an image plane and simulating the effects of them encountering with virtual objects. 
+
+
+## Table of Contents:
+
+
+
+## CUDA Ray Tracing Implementation:
+
+![](img/1280px-Ray_trace_diagram.svg.png)
