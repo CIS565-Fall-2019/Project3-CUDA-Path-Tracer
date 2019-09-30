@@ -19,7 +19,7 @@ Based on [PBRT](http://www.pbr-book.org/) book！It is really nice.
 
 ## Features
 
-![](img/wait.gif)
+![](img/11.gif)
 
 
 
@@ -127,9 +127,9 @@ I use almost same scene to test. Same camera view, objects in the space. As we c
 
 ![](img/cmp.png)
 
-![](img/close.gif)
+![](img/short1.gif)
 
-![](img/open.gif)
+![](img/short2.gif)
 
 
 
