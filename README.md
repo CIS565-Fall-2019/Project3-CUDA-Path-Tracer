@@ -65,4 +65,34 @@ No Light Depth 0                    |  No Light Depth 8               | No Light
 ![](data/no_light_depth_0.png)| 		![](data/no_light_depth_8.png) 	|![](data/no_light_depth_15.png)
 
 
-## Performance Analysis
+## Stream Compaction
+
+Since we are parallelizing by rays, and after each depth, some rays will terminate because they didn't intersect any object or terminated at a light source, it is better to launch threads for number of rays still alive. By stream compacting on alive rays and bringing them ttogeher, we can reduce warp divergence as we are only dealing with the active threads _that are grouped together_.  
+
+Performance for a complete shader call after each depth is included below
+
+<p align="center">
+<img src="data/perf_depth.png">
+</p>
+
+We can see that the time taken reduces, unsurprisingly. But this by itself doesn't justify why stream compacttion is better. For that we analyze the time taken for an entire iteration (across all depth). The performance graph is given below.
+
+<p align="center">
+<img src="data/perf_stream.png">
+</p>
+
+For smaller image resolutions, the effect of stream compaction is neglible. In fact, it might even be slower because the overhead might not be worth it. But as we scale to larger image resolutions, we have a clear winner.
+
+## Overall performance analysis
+
+Sorting by material id, though a good idea to limit warp divergence, did not turn out to be a good idea in the present case because our scenes are not big enough to justify the sorting overhead. So I incurred a heavy penalty to sort.
+
+<p align="center">
+<img src="data/per_bar.png">
+</p>
+
+
+
+
+
+
