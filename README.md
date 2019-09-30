@@ -94,7 +94,7 @@ Following plot shows the average time per depth with and without stream compacti
 #### Number of live/unterminated rays at each iteration
 Following plots shows the number of unterminated rays at each depth. Yellow bars correspond to an open scene and the red bars show corresponding closed scene with additional left and right walls. We can see that the numbe rof live rays drop at a very fast pace in the open scene compared to the closed one.
 
-<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/SteamCompaction_open_closed.png" width="600"/> </p>
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/SteamCompaction_open_closed.PNG" width="600"/> </p>
 
 ### Contiguous rays by material type
 The shader implementation depends on the material with which the ray has intersected. So, If one warp has rays intersecting with different materials, it would lead to warp divergence and only the threads with one material could run at one time making it sequential in the number of materials. We can avoid this performance bottleneck by sorting the rays according to the material they are intersecting with so that rays interacting with the same material are contiguous in memory before shading and warp divergence is reduced. 
