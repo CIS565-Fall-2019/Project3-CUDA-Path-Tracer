@@ -51,33 +51,39 @@ Notably, these assets provide a few different attributes. In addition to base co
 
 Here is a series of images of the same scene, with differing level of textures applied to them.
 
+None: 2:51
+Color: 2:52
+Emissive: 2:53
+MetallicRoughness: 3:09
+Normal: 3:18
+
 <figure>
 <img src="progressImages/altar0.png" alt="No Textures"
-	title="No Textures" width="500" height="500" />
+	title="No Textures" width="600" height="450" />
  <figcaption>No Textures</figcaption>
 </figure>
  
 <figure>
 <img src="progressImages/altarC.png" alt="Color Texture"
-	title="Color Texture" width="500" height="500" />
+	title="Color Texture" width="600" height="450" />
  <figcaption>Color Texture</figcaption>
 </figure>
 
 <figure>
 <img src="progressImages/altarCE.png" alt="Color and Emissivity Textures"
-	title="Color and Emissivity Textures" width="500" height="500" />
+	title="Color and Emissivity Textures" width="600" height="450" />
  <figcaption>Color and Emissivity Textures</figcaption>
 </figure>
 
 <figure>
 <img src="progressImages/altarCEM.png" alt="Color, Emissivity, and Metallic Textures"
-	title="Color, Emissivity, and Metallic Textures" width="500" height="500" />
+	title="Color, Emissivity, and Metallic Textures" width="600" height="450" />
  <figcaption>Color, Emissivity, and Metallic Textures</figcaption>
 </figure>
 
 <figure>
 <img src="progressImages/altarCEMN.png" alt=Color, Emissivity, Metallic, and Normal Textures"
-	title="Color, Emissivity, Metallic, and Normal Textures" width="500" height="500" />
+	title="Color, Emissivity, Metallic, and Normal Textures" width="600" height="450" />
  <figcaption>Color, Emissivity, Metallic, and Normal Textures</figcaption>
 </figure>
 
@@ -171,6 +177,8 @@ I elected to only feed the image in at the very end of a run, so as to not sully
 	title="2000 iterations, filtered" width="500" height="500" />
  <figcaption>2000 iterations, filtered</figcaption>
 </figure>
+
+As you can see, the filtering smoothed out even particularly rough images, but also eliminated some significant actual detail; only the last image was able to acheive a good amount of detail that got through the filtering process.
 
 
 ## Configuration Notes
