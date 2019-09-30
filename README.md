@@ -64,6 +64,16 @@ No Light Depth 0                    |  No Light Depth 8               | No Light
 :-------------------------:|:-------------------------:|:-------------------------:
 ![](data/no_light_depth_0.png)| 		![](data/no_light_depth_8.png) 	|![](data/no_light_depth_15.png)
 
+## Anti-Aliasing
+
+As explained before, we use one ray per pixel, and the ray passes through the center of the pixel. This can lead to zagged edges which are clearly evident when we zoom in. We can limit this by jittering the ray through the pixel. Instead of the ray always passing through the center, we randomize the ray location within the pixel. This helps in diminishing the discontinuity when jumping between pixels and therefore renders an overall smoother image. The effects are illustrated below:
+
+
+Aliased                    |  Anti-Aliased               
+:-------------------------:|:-------------------------:
+![](data/aliased.png)| 		![](data/anti_aliased.png)
+
+The jagged edges bordering the green reflection is smoother in the anti-aliased image.
 
 ## Stream Compaction
 
@@ -85,14 +95,29 @@ For smaller image resolutions, the effect of stream compaction is neglible. In f
 
 ## Overall performance analysis
 
-Sorting by material id, though a good idea to limit warp divergence, did not turn out to be a good idea in the present case because our scenes are not big enough to justify the sorting overhead. So I incurred a heavy penalty to sort.
+Sorting by material id, though a good idea to limit warp divergence, did not turn out to be a good idea in the present case because our scenes are not big enough to justify the sorting overhead. The performance was for a screen resolution `700x700`. As discussed above, the image resolution is not big enough for the stream compactiton to do its magic, which is why we get comparable performance to the implementation without one. 
 
 <p align="center">
 <img src="data/per_bar.png">
 </p>
 
+The work-efficient stream compaction which I implemented uses shared memory to perform the scan over varying number of blocks. Though this passed the test cases provided in Project 2 (working upto array sizes of `2^27`), I could not scale it for the path tracer beyond image resolution of `720x720`. The performance is comparable to thrust's implementatiton though a bit slower. I atttribute this to not accounting for bank-conflicts within shared-memory and sloppy use of `cudaMemcpy` to transfer data to-and-fro so as to fit in well with the previously written API.
+
+## Bloopers
+
+While attempting motion blur, if the updates were too quick, or if the transform matrix was not updated properly, I got some funny results
 
 
 
+Motion Blur Rip Through                    |  Motion Blur Shaved               
+:-------------------------:|:-------------------------:
+![](data/blooper_motion_blur.png)| 		![](data/blooper_motion_blur_2.png)
 
 
+
+While calculatitng the refracted ray using Snell's law, if the normal to the surface was not flipped correctly, we get a doughnout. 
+
+
+<p align="center">
+<img src="data/blooper_refract.png" width=500>
+</p>
