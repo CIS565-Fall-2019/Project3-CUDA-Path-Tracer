@@ -49,11 +49,43 @@ void checkCUDAErrorFn(const char *msg, const char *file, int line) {
 #endif
 }
 
+__device__ glm::mat4 buildTransformationMatrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
+	glm::mat4 translationMat = glm::translate(glm::mat4(), translation);
+	glm::mat4 rotationMat = glm::rotate(glm::mat4(), rotation.x * (float)PI / 180, glm::vec3(1, 0, 0));
+	rotationMat = rotationMat * glm::rotate(glm::mat4(), rotation.y * (float)PI / 180, glm::vec3(0, 1, 0));
+	rotationMat = rotationMat * glm::rotate(glm::mat4(), rotation.z * (float)PI / 180, glm::vec3(0, 0, 1));
+	glm::mat4 scaleMat = glm::scale(glm::mat4(), scale);
+	return translationMat * rotationMat * scaleMat;
+}
+
 __host__ __device__
 thrust::default_random_engine makeSeededRandomEngine(int iter, int index, int depth) {
 	int h = utilhash((1 << 31) | (depth << 22) | iter) ^ utilhash(index);
 	return thrust::default_random_engine(h);
 }
+
+__global__ void kernMotionBlur(int n, Geom* dev_geoms) {
+
+	//geom.transform = geom.initialTransform * 0.1f + 0.9f*glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
+	//	0.0f, 1.0f, 0.0f, 0.05f * iter,
+	//	0.0f, 0.0f, 1.0f, 0.0f,
+	//	0.0f, 0.0f, 0.0f, 1.0f) * geom.initialTransform;
+
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if (idx > n) return;
+
+	
+	if (dev_geoms[idx].type == SPHERE) {
+		printf("%f %f %f\n", dev_geoms[idx].translation.x, dev_geoms[idx].translation.y, dev_geoms[idx].translation.z);
+		dev_geoms[idx].translation -= 0.001f;
+		dev_geoms[idx].transform = buildTransformationMatrix(dev_geoms[idx].translation, dev_geoms[idx].rotation, dev_geoms[idx].scale);
+
+		dev_geoms[idx].inverseTransform = glm::inverse(dev_geoms[idx].transform);
+		dev_geoms[idx].invTranspose = glm::inverseTranspose(dev_geoms[idx].transform);
+	}
+}
+
 
 //Kernel that writes the image to the OpenGL PBO directly.
 __global__ void sendImageToPBO(uchar4* pbo, glm::ivec2 resolution,
@@ -157,8 +189,10 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
 
 		// antialiasing by jittering
-		float x_shift = x + u01(rng);
-		float y_shift = y + u01(rng);
+		//float x_shift = x + u01(rng);
+		//float y_shift = y + u01(rng);
+		float x_shift = x;
+		float y_shift = y;
 		
 
 		segment.ray.direction = glm::normalize(cam.view
@@ -215,15 +249,7 @@ __global__ void computeIntersections(
 			else if (geom.type == SPHERE)
 			{
 
-#if MOTION_BLUR
-				geom.transform = geom.initialTransform * 0.1f + 0.9f*glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
-					0.0f, 1.0f, 0.0f, 0.05f * iter,
-					0.0f, 0.0f, 1.0f, 0.0f,
-					0.0f, 0.0f, 0.0f, 1.0f) * geom.initialTransform;
-
-				geom.inverseTransform = glm::inverse(geom.transform);
-				geom.invTranspose = glm::inverseTranspose(geom.transform);
-#endif			
+			
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 
 			}
@@ -329,7 +355,7 @@ __global__ void diffuseShader(
 		  // Set up the RNG
 		  // LOOK: this is how you use thrust's RNG! Please look at
 		  // makeSeededRandomEngine as well.
-			thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, depth);
+			thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, pathSegments[idx].remainingBounces);
 			thrust::uniform_real_distribution<float> u01(0, 1);
 
 			Material material = materials[intersection.materialId];
@@ -448,8 +474,21 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		cudaDeviceSynchronize();
 	}
 
+#if MOTION_BLUR
+	kernMotionBlur << <1, hst_scene->geoms.size() >>> (hst_scene->geoms.size(), dev_geoms);
+#endif
+
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+
+	cudaEventRecord(start);
+
 	bool iterationComplete = false;
 	while (!iterationComplete) {
+
+
+
 
 		// clean shading chunks
 		cudaMemset(dev_intersections, 0, num_paths * sizeof(ShadeableIntersection));
@@ -493,16 +532,19 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 #endif
 
 #if STREAM_COMPACT_THRUST
-		//dev_path_end = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, isTerminated());
 		int* dev_alive_paths_end = thrust::partition(thrust::device, dev_alive_paths, dev_alive_paths + num_paths, isTerminated());
 		num_paths = dev_alive_paths_end - dev_alive_paths;
 #endif
 
-		if (iter == 1) {
-			printf("Live Paths: %d\n", num_paths);
-		}
 		iterationComplete = (num_paths == 0) || depth > traceDepth;
 	}
+	
+	cudaEventRecord(stop);
+	cudaEventSynchronize(stop);
+	float milliseconds = 0;
+	cudaEventElapsedTime(&milliseconds, start, stop);
+	
+	//printf("%.4f\n", milliseconds);
 
 	num_paths = pixelcount;
 
