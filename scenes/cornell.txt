@@ -43,9 +43,19 @@ MATERIAL 4
 RGB         .98 .98 .98
 SPECEX      0
 SPECRGB     .98 .98 .98
-REFL        1
+REFL        0
 REFR        0
 REFRIOR     0
+EMITTANCE   0
+
+// Specular white
+MATERIAL 5
+RGB         .98 .98 .98
+SPECEX      0
+SPECRGB     .524 .80 .92.2
+REFL        0.8
+REFR        0.2
+REFRIOR     1.66
 EMITTANCE   0
 
 // Camera
@@ -111,7 +121,16 @@ SCALE       .01 10 10
 // Sphere
 OBJECT 6
 sphere
-material 4
+material 5
 TRANS       -1 4 -1
 ROTAT       0 0 0
 SCALE       3 3 3
+
+
+// Ceiling light 2
+OBJECT 7
+cube
+material 0
+TRANS       0 10 4
+ROTAT       0 0 0
+SCALE       5 .2 1

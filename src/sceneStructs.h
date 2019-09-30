@@ -24,6 +24,7 @@ struct Geom {
     glm::vec3 rotation;
     glm::vec3 scale;
     glm::mat4 transform;
+	glm::mat4 transformInitial;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
 };
@@ -73,4 +74,5 @@ struct ShadeableIntersection {
   float t;
   glm::vec3 surfaceNormal;
   int materialId;
+  glm::vec3 intersectionPoint;
 };
