@@ -426,9 +426,9 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 #if SORT
 	 	//thrust::sort_by_key(intersection_sorting, intersection_sorting, paths_sorting + num_paths, sort_by_material());
-
-	 //	thrust::sort_by_key(intersection_sorting, intersection_sorting + num_paths, sort_by_material());
-	thrust::sort_by_key(intersection_sorting, intersection_sorting + num_paths, paths_sorting, sort_by_material());
+	  // thrust::sort_by_key(intersection_sorting, intersection_sorting + num_paths, paths_sorting, sort_by_material());
+			thrust::sort(intersection_sorting, intersection_sorting + num_paths, sort_by_material());
+	
 #endif
 
 	// TODO:

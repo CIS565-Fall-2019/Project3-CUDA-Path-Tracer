@@ -78,15 +78,30 @@ void scatterRay(
     // calculateRandomDirectionInHemisphere defined above.
     thrust::uniform_real_distribution<float> u01(0, 1);
 	float random_num = u01(rng);
-	if (random_num < m.hasReflective) {
+	//developed from ray tracing in one weekend
+	if (random_num < m.hasRefractive) {
+		glm::vec3 outward_normal;
+		glm::vec3 reflect = glm::normalize(glm::reflect(pathSegment.ray.direction, normal));
+		float ni_over_nt;
+		glm::vec3 attenuation(1.0f, 1.0f, 1.0f);
+		float reflect_prob;
+		float cosine;
+		float ref_idx = (glm::dot(pathSegment.ray.direction, normal) > 0) ? 1.0f / m.indexOfRefraction : m.indexOfRefraction;
+		glm::vec3 refract = glm::normalize(glm::refract(pathSegment.ray.direction, normal, ref_idx));
+        float r0 = powf((1.f - ref_idx) / (1.f + ref_idx), 2.f);
+        float rTheta = r0 + (1 - r0) * powf(1 - glm::abs(glm::dot(pathSegment.ray.direction, normal)), 5.f);
+		pathSegment.color *= m.specular.color;
+
+		pathSegment.ray.direction = glm::normalize(refract);
+		pathSegment.ray.origin = intersect + EPSILON * -normal;
+
+	}
+   else if (random_num < m.hasReflective) {
 		//color
 		pathSegment.color *= m.specular.color;
 		//bounce
 		pathSegment.ray.direction = glm::normalize(glm::reflect(pathSegment.ray.direction, normal));
 		pathSegment.ray.origin = intersect + EPSILON * normal;
-	}
-	else if (random_num < m.hasRefractive) {
-		
 	}
 	else {
 		//color
