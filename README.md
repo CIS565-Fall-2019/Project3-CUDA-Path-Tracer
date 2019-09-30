@@ -11,6 +11,14 @@ CUDA Path Tracer
 
 Path tracing is a realistic lighting algorithm that simulates light bouncing around a scene. it is based on Monte-Carlo based sampling technique and simulate realistic images through rendering. The path tracer is continually rendering, so the scene will start off grainy and become smoother over time. The side by side comparision below shows the importance of rendering the scene in iterations which removed the blurring of the image and noise.
 
+<p align="center">
+    After 200 iteration    |    After 1500 iterations
+</p>
+<p align="center">
+  <img src="img/img_diffuion_500_iter.png" width="260" alt="After 200 iteration" />
+  <img src="img/image_diffusion.png" width="260" alt="After 1500 iterations"/> 
+</p>     
+
 * [After 200 iterations](https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img/img_diffuion_500_iter.png)
 * [After 1500 iteration](https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img/image_diffusion.png)
 
