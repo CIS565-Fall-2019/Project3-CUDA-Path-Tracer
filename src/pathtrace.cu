@@ -240,14 +240,11 @@ __global__ void computeIntersections(
 				}
 				else if (geom.type == SPHERE)
 				{
-					// MOTION BLUR: Figure out what to transform by
-					/*geom.transform = glm::translate(geom.transform, glm::vec3(0.0, 0.00001, 0.0));
-					geom.inverseTransform = glm::inverse(geom.transform);
-					geom.invTranspose = glm::inverseTranspose(geom.transform);
-	*/
-
 					t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 				}
+				/*if bounding volume, check intersection with bounding box
+				if hits, go through every triangle and call glm triange intersection*/
+				// TODO: add more intersection tests here... triangle? metaball? CSG?
 				else if (geom.type == MESH) {
 					if (bboxIntersectionTest(geom, pathSegment.ray, geom.minXYZ, geom.maxXYZ)) {
 						t = -1;
@@ -258,9 +255,7 @@ __global__ void computeIntersections(
 						}
 					}
 				}
-				/*if bounding volume, check intersection with bounding box
-				if hits, go through every triangle and call glm triange intersection*/
-				// TODO: add more intersection tests here... triangle? metaball? CSG?
+				
 
 				// Compute the minimum t from the intersection tests to determine what
 				// scene geometry object was hit first.
