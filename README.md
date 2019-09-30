@@ -6,6 +6,8 @@ Caroline Lachanski: [LinkedIn](https://www.linkedin.com/in/caroline-lachanski/),
 
 Tested on: Windows 10, i5-6500 @ 3.20GHz 16GB, GTX 1660 (personal computer)
 
+![](/img/skull_10000samp.png) 
+
 ## Project Description
 
 The purpose of this project was to create a GPU-parallelized path tracer using CUDA.
@@ -34,16 +36,33 @@ We can create a physically-based depth of field effect in our renders using a th
 
 ### Bokeh
 
-A fun consequence of the thin lens approximation is the creation of [bokeh](https://en.wikipedia.org/wiki/Bokeh), "blur produced in the out-of-focus parts of an image produced by a lens." The thin lens approximation typically features a circular lens, creating circular bokeh, but one can create other shapes by sampling points from a shape other than a disk.
+A fun consequence of the thin lens approximation is the creation of [bokeh](https://en.wikipedia.org/wiki/Bokeh), "blur produced in the out-of-focus parts of an image produced by a lens." The thin lens approximation typically features a circular lens, creating circular bokeh, but one can create other shapes by sampling points from a shape other than a disk. This projects supports bokeh in the shape of circles, squares, diamonds (rotated squares), and triangles.
+
+
+| Circle | Diamond | Triangle |
+| ------------- | ----------- | ----------- |
+| ![](img/circleBokeh.png) | ![](img/diamondBokeh.png) | ![](img/triangleBokeh.png) |
+
 
 ### Various Materials
 
 This project features diffuse reflection, perfectly specular reflection, transmission, and specular refraction using the Fresnel coefficient.
 
+| Diffuse Reflection | Perfect Specular Reflection | Transmission | Specular Refraction |
+| ------------- | ----------- | ----------- | ----------- |
+| ![](img/noAA_5000samp.png) | ![](img/yesAA_5000samp.png) | ![](img/yesAA_5000samp.png) | ![](img/yesAA_5000samp.png) | 
+
 ### Anti-Aliasing
 
-The anti-aliasing used in this project is an easy-to-implement way to improve visual quality with little to no effect on performance. When shooting a ray from the camera, we jitter its starting position slightly, resulting in less jaggies.
+The anti-aliasing used in this project is an easy-to-implement way to improve visual quality with little to no effect on performance. When shooting a ray from the camera, we jitter its starting position slightly, resulting in less jaggies. See an example below, each with 5000 spp.
+
+| No AA | With AA |
+| ------------- | ----------- |
+| ![](img/noAA_5000samp.png) | ![](img/yesAA_5000samp.png) | 
 
 ## Analysis
 
 ## Bloopers
+
+Me trying some wild things with refraction:
+![](img/skull_blooper.png)
