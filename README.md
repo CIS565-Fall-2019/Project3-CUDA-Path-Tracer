@@ -80,6 +80,7 @@ Loading 3D models (Reference: https://free3d.com/) using [tinyObj](http://syoyo.
 <p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/droid_1.png" width="600"/> </p>
 <p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/3D_Android.png" width="600"/> </p>
 <p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/scene2.png" width="600"/> </p>
+
 ## Optimizations
 ### Stream Compaction
 A lot of rays die after a few iterations by either merging into light or the ones which do not intersect with any object. So, we can use stream compaction to limit the number of rays we are tracing and the number of threads launched at each iteration. I am using my Work-efficient stream compaction implementation across multiple blocks which uses shared memory for performance. 
@@ -108,5 +109,5 @@ Following plot shows average time per iteration with and without using cache. It
 <p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/Performance_Cache.PNG" width="300"/> </p>
 
 ## Bloopers
-Following are some of the bloopers. First one was caused when I used an offset of 0.00001f instead of 0.0001f. The second was when I gave the reverse of eta to the refract function instead of eta
+Following are some of the bloopers. First one was caused when I used an offset of 0.00001f instead of 0.0001f. The second was when I gave the reverse of eta to the refract function instead of eta.
 <p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/Blooper1_0.00001.png" width="400"/>   <img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/Blooper2_inverse_eta.png" width="400"/> </p>
