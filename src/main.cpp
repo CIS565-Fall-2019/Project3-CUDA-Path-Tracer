@@ -135,7 +135,18 @@ void runCuda() {
 
         // execute the kernel
         int frame = 0;
+		cudaEvent_t startTimer, stopTimer;
+		cudaEventCreate(&startTimer);
+		cudaEventCreate(&stopTimer);
+
+		cudaEventRecord(startTimer);
         pathtrace(pbo_dptr, frame, iteration);
+		cudaEventRecord(stopTimer);
+
+		cudaEventSynchronize(stopTimer);
+		float milliseconds = 0;
+		cudaEventElapsedTime(&milliseconds, startTimer, stopTimer);
+		std::cout << "Elapsed time over pathtrace: " << milliseconds << std::endl;
 
 		/*scene->geoms.at(6).translation += glm::vec3(1, 1, 10);
 	

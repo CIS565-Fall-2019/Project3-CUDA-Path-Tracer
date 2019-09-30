@@ -36,7 +36,7 @@ Scene::Scene(string filename) {
 //	tinyobj::attrib_t attribs;
 //	std::string warning;
 //	std::string error;
-//	std::string objfile = "../objs/alpaca.obj";
+//	std::string objfile = "../objs/torus.obj";
 //	bool objLoad = tinyobj::LoadObj(&attribs, &shapes, &materials, &warning, &error, objfile.c_str());
 //	if (!warning.empty()) {
 //		std::cout << "WARN: " << warning << std::endl;
@@ -53,9 +53,9 @@ Scene::Scene(string filename) {
 //	Geom cubeMesh;
 //	cubeMesh.materialid = 4;
 //	cubeMesh.type = MESH;
-//	cubeMesh.rotation = glm::vec3(0, 40, 0);
-//	cubeMesh.scale = glm::vec3(4, 4, 4);
-//	cubeMesh.translation = glm::vec3(0, 0, 2);
+//	cubeMesh.rotation = glm::vec3(30, -10, -15);
+//	cubeMesh.scale = glm::vec3(3, 3, 3);
+//	cubeMesh.translation = glm::vec3(0, 4, 0);
 //
 //	cubeMesh.transform = utilityCore::buildTransformationMatrix(
 //		cubeMesh.translation, cubeMesh.rotation, cubeMesh.scale);
@@ -71,7 +71,6 @@ Scene::Scene(string filename) {
 //	// Get out the vertices and normals from attribs
 //	std::vector<float> &positions = attribs.vertices;
 //	std::vector<float> &normals = attribs.normals;
-//	std::cout << positions.size() << std::endl;
 //
 //	// Iterate over every shape in the obj
 //	for (tinyobj::shape_t shape : shapes) {
@@ -166,6 +165,7 @@ Scene::Scene(string filename) {
 //
 //		}
 //	}
+//	std::cout << this->triangles.size();
 //	cubeMesh.lastTriangle = this->triangles.size();
 //	this->geoms.push_back(cubeMesh);
 
