@@ -27,9 +27,9 @@
 
 #define ERRORCHECK 1
 
-const int STREAM_COMPACT = 1;
+const int STREAM_COMPACT = 0;
 const int SORT_BY_MATERIAL = 0;
-const int CACHE__FIRST_BOUNCE = 0;
+const int CACHE__FIRST_BOUNCE = 1;
 const int MOTION_BLUR = 0;
 const int STREAM_COMPACT_SHARED = 0;
 const int MESH_LOADING = 0;

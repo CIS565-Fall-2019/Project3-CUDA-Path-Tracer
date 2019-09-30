@@ -89,7 +89,9 @@ void scatterRay(
 		materialColor = m.specular.color;
 	}
 	else if (prob <= (m.hasRefractive + m.hasReflective)) {
-		
+		/*new_ray = glm::refract(pathSegment.ray.direction, normal, 1.0f/m.indexOfRefraction);
+
+		materialColor = m.specular.color;*/
 		glm::vec3 new_normal;
 		float ior = m.indexOfRefraction;
 		float r;
@@ -155,7 +157,7 @@ void scatterRay(
 	}
 
 	//Update the new ray in place in pathSegment
-	pathSegment.ray.origin = intersect + new_ray * 0.0001f;
+	pathSegment.ray.origin = intersect + new_ray * 0.01f;
 	pathSegment.ray.direction = new_ray;
 
 	//Update the color in place
