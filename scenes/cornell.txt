@@ -48,6 +48,16 @@ REFR        0
 REFRIOR     1.52
 EMITTANCE   0
 
+// Specular white
+MATERIAL 5
+RGB         .98 .98 .98
+SPECEX      0
+SPECRGB     .98 .98 .98
+REFL        0
+REFR        1
+REFRIOR     1.52
+EMITTANCE   0
+
 // Camera
 CAMERA
 RES         800 800
@@ -113,5 +123,13 @@ OBJECT 6
 sphere
 material 4
 TRANS       -1 4 -1
+ROTAT       0 75 -25
+SCALE       3 3 3
+
+// Sphere
+OBJECT 7
+sphere
+material 5
+TRANS       3 4 -1
 ROTAT       0 75 -25
 SCALE       3 3 3
