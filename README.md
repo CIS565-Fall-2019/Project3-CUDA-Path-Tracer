@@ -9,6 +9,8 @@ CUDA Path Tracer
 
 ### Highlights
 
+![](img/gold.png)
+
 ![](img/complex_without_cube_yellow.png)
 
 ![](img/cornell_multiple.png)
