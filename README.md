@@ -91,13 +91,13 @@ Blooper 1       |  Blooper 2 | Blooper 3 | Blooper 4
 :-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:
 ![](img/denoise_blooper.png) | ![](img/denoise_blooper2.png)|  ![](img/denoise_blooper3.png) |  ![](img/denoise_blooper4.png)
 
-I was able to get one decent result though. 
+Finally after fixing my issues I was able to get it working:
 
 Original      |  Denoised
 :-------------------------:|:-------------------------:
 ![](img/denoise_orig.png) | ![](img/denoise_decent.png)
 
-The library expects the pixel values to be in little endian format according to the documentation, so I had written a ReverseFloat function to convert big-endian to little endian, but doing so resulted in the blooper reel, when I did not use that function, I got this result for output after 5 iterations. However when I go more than 25 iterations, the output goes completely dark. I could not dig deeper into why that happened within time but I wish to do so later.
+The library expects the pixel values to be in little endian format according to the documentation, so I had written a ReverseFloat function to convert big-endian to little endian, but doing so resulted in the blooper reel, when I did not use that function, I got this result for output after 5 iterations.
 
 It was a hard task to set it up and build it. I have listed down the steps I had to take here and I think this can serve as an easy documentation of how to set it up and get it running because the existing one is simply great!!
 
