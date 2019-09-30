@@ -8,7 +8,7 @@ CUDA Path Tracer
 ## Path Tracer
 <p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/scene3.png" width="600"/> </p>
 
-<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/scene1.png" width="600"/> </p>
+<p align="center"><img src="https://github.com/DishaJindal/Project3-CUDA-Path-Tracer/blob/mesh-loading/img/scene11.png" width="600"/> </p>
 
 ## Overview
 This is an implementation of CUDA-based path tracer capable of rendering globally-illuminated images very quickly. Path tracing is a computer graphics Monte Carlo method of rendering images so that we can achieve good results with tracing a finite number out of the infinite space of rays.
