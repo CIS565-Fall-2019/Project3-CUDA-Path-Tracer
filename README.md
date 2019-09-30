@@ -90,6 +90,10 @@ The anti-aliasing used in this project is an easy-to-implement way to improve vi
 | ------------- | ----------- |
 | ![](img/noAA_detail.png) | ![](img/yesAA_detail.png) | 
 
+## Next Steps
+
+The next steps for this path tracer would be supporting textures, including normal maps, as this would allow for much greater visual detail without adding any new geometry. A second major feature to add is a bounding volume hierachy, such as a k-d tree or octtree as rendering meshes with hundreds of thousands of triangles can still be quite slow.
+
 ## Bloopers
 
 | Me trying some wild things with refraction | Never did figure out what happened here |
