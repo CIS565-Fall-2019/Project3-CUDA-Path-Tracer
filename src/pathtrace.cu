@@ -27,15 +27,21 @@
 // FEATURE SWITCH
 //=======================
 
-//Basic Features
-#define SORTBYMATERIAL	0
+// Core Feature Switch
+//========================
+// Kernel and BSDF
+// Basic Stream Compaction
+#define THRUSTSTCOMP	1 //slow 
+#define SORTBYMATERIAL	0 //slow 
 #define FIRSTCACHE		1
-
+#define TIMEDEPTH       1
 // Advance Features
+//========================
 #define ANTIALIASING	0
+#define WORKEFFCOMP     0
 #define MOTIONBLUR		0
+#define MOTIONBLUR2     0
 #define DEPTHOFFIELD	0
-#define WORKEFFCOMP     1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -100,6 +106,9 @@ static ShadeableIntersection * dev_intersections_cache = NULL;
 static int * materials_to_sort = NULL;
 int * dev_paths_idx = NULL;
 
+// time iteration
+cudaEvent_t start, stop;
+
 
 void pathtraceInit(Scene *scene) {
     hst_scene = scene;
@@ -131,6 +140,9 @@ void pathtraceInit(Scene *scene) {
 	cudaMemset(dev_paths_idx, 0, pixelcount * sizeof(int));
 
     checkCUDAError("pathtraceInit");
+
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
 }
 
 void pathtraceFree() {
@@ -183,6 +195,38 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
 		dev_paths_idx[index] = index;
+		//printf("%d generateRayFromCamera indices %d %d\n", iter, index, dev_paths_idx[index]);
+	}
+}
+
+__global__ void KernMotionBlur(int depth
+	, Geom * geoms
+	, int geoms_size
+	, int iter
+	, glm::vec3 speed) {
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	if (idx == 0)
+	{
+		for (int i = 0; i < geoms_size; i++)
+		{
+			Geom & geom = geoms[i];
+			if (geom.type == SPHERE && (geom.materialid != 0)) {
+
+				glm::vec3 translation = geom.translation + speed;
+
+				glm::mat4 translationMat = glm::translate(glm::mat4(), (1.0f*iter)*translation);
+				glm::mat4 rotationMat = glm::rotate(glm::mat4(), geom.rotation.x * (float)PI / 180, glm::vec3(1, 0, 0));
+				rotationMat = rotationMat * glm::rotate(glm::mat4(), geom.rotation.y * (float)PI / 180, glm::vec3(0, 1, 0));
+				rotationMat = rotationMat * glm::rotate(glm::mat4(), geom.rotation.z * (float)PI / 180, glm::vec3(0, 0, 1));
+				glm::mat4 scaleMat = glm::scale(glm::mat4(), geom.scale);
+				
+				
+				geom.transform = translationMat * rotationMat * scaleMat;
+				geom.inverseTransform = glm::inverse(geom.transform);
+				geom.invTranspose = glm::inverseTranspose(geom.transform);
+
+			}
+		}
 	}
 }
 
@@ -203,10 +247,11 @@ __global__ void computeIntersections(
 {
 	int path_index = blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (path_index < num_paths)
-	{
+	if (path_index < num_paths &&dev_paths_idx[path_index]!=-1)
+	{	
+		//printf("%d inComputeInteractions numpaths %d %d %d \n", iter, num_paths, path_index, dev_paths_idx[path_index]);
 		PathSegment pathSegment = pathSegments[dev_paths_idx[path_index]];
-
+		
 		float t;
 		glm::vec3 intersect_point;
 		glm::vec3 normal;
@@ -217,9 +262,9 @@ __global__ void computeIntersections(
 		glm::vec3 tmp_intersect;
 		glm::vec3 tmp_normal;
 
-		float alpha = 0.9;
+		float alpha = 0.8;
 		glm::mat4 motion = glm::mat4(1.0f, 0.0f, 0.0f, iter*0.0f,
-			0.0f, 1.0f, 0.0f, iter*0.05f,
+			0.0f, 1.0f, 0.0f, iter*0.005f,
 			0.0f, 0.0f, 1.0f, iter*0.0f,
 			0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -228,7 +273,7 @@ __global__ void computeIntersections(
 		{
 			Geom & geom = geoms[i];
 
-			if (geom.type == CUBE)
+			if (geom.type == CUBE )
 			{
 				t = boxIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
 			}
@@ -236,9 +281,11 @@ __global__ void computeIntersections(
 			{   
 
 #if MOTIONBLUR
-				geom.transform			= alpha*geom.transformInitial + (1 - alpha)*motion*geom.transformInitial;
-				geom.inverseTransform	= glm::inverse(geom.transform);
-				geom.invTranspose		= glm::inverseTranspose(geom.transform);
+				if (geom.materialid != 0) {
+					geom.transform = alpha * geom.transformInitial + (1 - alpha)*motion*geom.transformInitial;
+					geom.inverseTransform = glm::inverse(geom.transform);
+					geom.invTranspose = glm::inverseTranspose(geom.transform);
+				}
 #endif
 
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
@@ -343,6 +390,8 @@ __global__ void shadeMaterial (
 	int idxd = blockIdx.x * blockDim.x + threadIdx.x;
 	int idx = dev_paths_idx[idxd];
 
+	if (dev_paths_idx[idxd] == -1) return;
+
 	if (idxd < num_paths && (pathSegments[idx].remainingBounces > 0))
 	
 	{
@@ -370,13 +419,13 @@ __global__ void shadeMaterial (
 				if (material.hasReflective == 0.0f && material.hasRefractive == 0.0f) {
 					scase = 'D'; // Diffuse
 				}
-				else if (material.hasRefractive > 0.0f && material.hasReflective == 0.0f) {
+				else if (material.hasRefractive == 1.0f && material.hasReflective == 0.0f) {
 					scase = 'F'; // Refractive
 				}
-				else if (material.hasReflective > 0.0f && material.hasRefractive == 0.0f) {
+				else if (material.hasReflective == 1.0f && material.hasRefractive == 0.0f) {
 					scase = 'R'; // Reflective
 				}
-				else if (material.hasReflective > 0.0f && material.hasRefractive > 0.0f) {
+				else if (material.hasReflective >= 0.0f && material.hasRefractive >= 0.0f) {
 					// randomly pick between the three cases
 					float rand = u01(rng);
 					float reflect = material.hasReflective;
@@ -473,12 +522,22 @@ __global__ void finalGather(int nPaths, glm::vec3 * image, PathSegment * iterati
 	}
 }
 
+//struct hasExited
+//{
+//	__host__ __device__
+//		bool operator()(const PathSegment &dev_path)
+//	{return (dev_path.remainingBounces > 0);}
+//};
+
 struct hasExited
 {
 	__host__ __device__
-		bool operator()(const PathSegment &dev_path)
-	{return (dev_path.remainingBounces > 0);}
+		bool operator()(const int &dev_path_idx)
+	{
+		return (dev_path_idx >= 0);
+	}
 };
+
 
 struct materialCmp{
 	__host__ __device__
@@ -552,9 +611,24 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 	bool iterationComplete = false;
 	
-	
-	while (!iterationComplete) {
+	bool flag = false;
+	if (iter == 2) {
+		flag = true;
+	}
 
+#if MOTIONBLUR2
+	glm::vec3 speed(0.0f, 0.0005f, 0.0f);
+	KernMotionBlur <<<1, blockSize1d >> > (depth,
+		dev_geoms,
+		hst_scene->geoms.size(), iter, speed);
+#endif
+
+
+		
+	while (!iterationComplete) {
+#if TIMEDEPTH
+		cudaEventRecord(start);
+#endif
 #if FIRSTCACHE
 		if (depth == 0) {
 			if (iter == 1) {//cache first bounce
@@ -647,23 +721,35 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 #if WORKEFFCOMP
 		//Compute stream compaction here
 		num_paths = StreamCompaction::Efficient::compact(num_paths, dev_paths_idx);
-		iterationComplete = (num_paths <= 0) || (depth > traceDepth);
 		//cout << "num_paths " << num_paths << endl;
-#else
+#elif THRUSTSTCOMP
 		//Compute stream compaction here
-		dev_path_end = thrust::partition(thrust::device, dev_paths_idx, dev_paths_idx + num_paths, hasExited());
-		num_paths = dev_path_end - dev_paths;
-		iterationComplete = (num_paths <= 0) || (depth > traceDepth);
+		int *end = thrust::partition(thrust::device, dev_paths_idx, dev_paths_idx + num_paths, hasExited());
+		num_paths = end - dev_paths_idx;
+#else
+		; // No cpmaction at all
 #endif
 
+		iterationComplete = (num_paths <= 0) || (depth > traceDepth);
+
+#if TIMEDEPTH
+		cudaEventRecord(stop);
+		cudaEventSynchronize(stop);
+		float milliseconds = 0;
+		cudaEventElapsedTime(&milliseconds, start, stop);
+		printf("Iter %d \t depth %d \t LiveRays %d  ElapsedTimems %0.04f\n", iter, depth, num_paths, milliseconds);
+#endif
+
+
 #if SORTBYMATERIAL
-		sort by matrial 
+		//sort by matrial 
 		if (iterationComplete == false) {
 			thrust::stable_sort_by_key(thrust::device, dev_intersections, dev_intersections+num_paths, dev_paths, materialCmp());
 		}
 #endif
 
 	}
+
 
 	num_paths = pixelcount;
 

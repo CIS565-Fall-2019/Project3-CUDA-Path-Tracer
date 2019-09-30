@@ -48,51 +48,9 @@ REFR        0
 REFRIOR     0
 EMITTANCE   0
 
-// Specular white // Glassy material
-MATERIAL 5
-RGB         .98 .98 .98
-SPECEX      0
-SPECRGB     .98 .98 .98
-REFL        0.5
-REFR        0.5
-REFRIOR     1.33
-EMITTANCE   0
-
-// Specular white 
-MATERIAL 6
-RGB         .98 .98 .98
-SPECEX      0
-SPECRGB     .98 .98 .98
-REFL        1
-REFR        0
-REFRIOR     0
-EMITTANCE   0
-
-//Specular white 
-MATERIAL 7
-RGB         .95 .95 .65
-SPECEX      0
-SPECRGB     .98 .98 .98
-REFL        0
-REFR        0
-REFRIOR     0
-EMITTANCE   0
-
-// Specular white 
-//MATERIAL 8
-//RGB         .98 .98 .98
-//SPECEX      0
-//SPECRGB     .98 .98 .98
-//REFL        0.7
-//REFR        0.3
-//REFRIOR     1.33
-//EMITTANCE   0
-
-
-
 // Camera
 CAMERA
-RES        720 720
+RES         800 800
 FOVY        45
 ITERATIONS  5000
 DEPTH       8
@@ -135,57 +93,25 @@ ROTAT       0 90 0
 SCALE       .01 10 10
 
 // Left wall
-OBJECT 4
-cube
-material 2
-TRANS       -5 5 0
-ROTAT       0 0 0
-SCALE       .01 10 10
+//OBJECT 4
+//cube
+//material 2
+//TRANS       -5 5 0
+//ROTAT       0 0 0
+//SCALE       .01 10 10
 
 // Right wall
-OBJECT 5
-cube
-material 3
-TRANS       5 5 0
-ROTAT       0 0 0
-SCALE       .01 10 10
+//OBJECT 5
+//cube
+//material 3
+//TRANS       5 5 0
+//ROTAT       0 0 0
+//SCALE       .01 10 10
 
 // Sphere
-OBJECT 6
+OBJECT 4
 sphere
-material 6
+material 4
 TRANS       -1 4 -1
 ROTAT       0 0 0
 SCALE       3 3 3
-
-// Box on the floor
-OBJECT 7
-cube
-material 7
-TRANS        0 0.85 1
-ROTAT        0 0 0
-SCALE        2 2 2
-
-// Ceiling light 2
-OBJECT 8
-cube
-material 0
-TRANS       0 10 4
-ROTAT       0 0 0
-SCALE       5 .2 0.5
-
-// Sphere
-//OBJECT 8
-//sphere
-//material 5
-//TRANS       3 4 -3
-//ROTAT       0 0 0
-//SCALE       2.5 2.5 2.5
-
-// Sphere
-//OBJECT 9
-//sphere
-//material 8
-//TRANS       3 3 6
-//ROTAT       0 0 0
-//SCALE       1 1 1
