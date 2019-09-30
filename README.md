@@ -49,13 +49,9 @@ Notably, these assets provide a few different attributes. In addition to base co
 
 ![Altar mesh with base color and emissivity implemented](progressImages/day7AltarTexture2.png)
 
-Here is a series of images of the same scene, with differing level of textures applied to them.
+I acheived this by loading each of four different potential texture layers into the GPU's texture memory: color, emissivity, metallicRoughness (which also encoded an (unused) ambient occlusion parameter), and a bump texture (normal mapping). If a loaded model had a texture, I would keep track of its existence, and when applicable, pull it from memory. This was able to cut down on some amount of frustration of interpolating between values, as CUDA handled that for me. This convenience was counterbalanced by the frustration of figuring out how to navigate texture memory like CUDA wanted me to.
 
-None: 2:51
-Color: 2:52
-Emissive: 2:53
-MetallicRoughness: 3:09
-Normal: 3:18
+Here is a series of images of the same scene, with differing level of textures applied to them.
 
 <figure>
 <img src="progressImages/altar0.png" alt="No Textures"
@@ -89,9 +85,17 @@ Normal: 3:18
 
 ##### Performance
 
-TODO: Performance analysis
+The above images took the following times to complete (across 2000 iterations):
 
-I also implemented a *very* simple procedural texture for use on my cube primitives (though, in theory, it could be applied to the triangle meshes as well without too much issue).
+| Textures | None | Color | Emissive | Metallic/Roughness | Normal |
+|----------|------|-------|----------|--------------------|--------|
+| Time(s)  | 171  | 172   | 173      | 189                | 198    |
+
+It is unsurprising that the color textures and emissivity textures did not affect performance much, as their values were easy to pull directly from texture memory. I imagine the metallic/roughness textures worsened performance at least a little bit because they introduced variance in the rendering method for the mesh; instead of always being diffuse, it needed to occasionally bounce off in a specular pattern, which may (due to the roughness) have involved a power function for the non-perfect specularity. The normal maps, as well, likely hurt performance for how the variation amongst warps changed.
+
+I also implemented a *very* simple procedural texture for use on my cube primitives (though, in theory, it could be applied to the triangle meshes as well without too much issue). It was a simple checkerboard color texture, as well as a slight set of normal variations to create a waviness in a rough grid pattern. It is, reluctantly, shown here (the back wall combines the checkerboard and some bumpiness/"waviness"):
+
+![Checkerboard mirror](progressImages/day8checkerboard.png)
 
 However, all it did was fill in texture memory in the same way that the loaded textures did; given that the GPU accesses both in the same way, there was no noticeable performance difference.
 
