@@ -386,13 +386,21 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 #if CACHE
 	  if (depth == 0) {
 		  if (iter == 1) {
+	computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (
+		depth
+		, num_paths
+		, dev_paths
+		, dev_geoms
+		, hst_scene->geoms.size()
+		, dev_intersections
+		);
 			  cudaMemcpy(first_intersections, dev_intersections, pixelcount * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
 		  }
 		  else {
 			  cudaMemcpy(dev_intersections, first_intersections, pixelcount * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
 		  }
 	  }
-#endif
+	  else {
 
 	computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (
 		depth
@@ -402,13 +410,25 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		, hst_scene->geoms.size()
 		, dev_intersections
 		);
-	checkCUDAError("trace one bounce");
+	  }
+#else 
+	computeIntersections <<<numblocksPathSegmentTracing, blockSize1d>>> (
+		depth
+		, num_paths
+		, dev_paths
+		, dev_geoms
+		, hst_scene->geoms.size()
+		, dev_intersections
+		);
+#endif
 	cudaDeviceSynchronize();
 	depth++;
 
 #if SORT
-	 	thrust::sort_by_key(intersection_sorting, intersection_sorting, paths_sorting + num_paths, sort_by_material());
-	// thrust::sort_by_key(intersection_sorting, intersection_sorting + num_paths, paths_sorting, sort_by_material());
+	 	//thrust::sort_by_key(intersection_sorting, intersection_sorting, paths_sorting + num_paths, sort_by_material());
+
+	 //	thrust::sort_by_key(intersection_sorting, intersection_sorting + num_paths, sort_by_material());
+	thrust::sort_by_key(intersection_sorting, intersection_sorting + num_paths, paths_sorting, sort_by_material());
 #endif
 
 	// TODO:
@@ -432,7 +452,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	  if ((num_paths = new_end - dev_paths) < 1) {
 		  depth = traceDepth + 1;
 	  }
-	  std::cout << num_paths << std::endl;
+	  //std::cout << num_paths << std::endl;
 	  //std::cout << "Bounces left:" << dev_paths->remainingBounces << std::endl; 
 #endif
 

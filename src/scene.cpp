@@ -57,7 +57,7 @@ int Scene::loadGeom(string objectid) {
 			else if (strcmp(line.c_str(), "obj") == 0) {
 				newGeom.type = TRI;
 				cout << "adding synth... " << endl;
-				load_obj("../scenes/cube.obj", &obj);
+				load_obj("../scenes/wahoo.obj", &obj);
 				newGeom.triangles = obj.size();
 			}
         }
