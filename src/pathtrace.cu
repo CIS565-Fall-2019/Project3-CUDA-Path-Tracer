@@ -257,11 +257,11 @@ __global__ void computeIntersections(
 			else if (geom.type == SPHERE)
 			{
 				if (MOTION_BLUR) {
-					geom.translation.x += 1.f;
-					geom.transform = utilityCore::buildTransformationMatrix(
-						geom.translation, geom.rotation, geom.scale);
+					float lerp_index = glm::sin(iter / 250.0f);
+					glm::mat4 start = geom.originalTransform;
+					glm::mat4 offset(1.f); offset[2] += glm::vec4(0.f, 1.0f, 0.f, 0.f);
 
-					//geom.transform = start + glm::sin(iter) * offset;
+					geom.transform = start + lerp_index * offset;
 
 					geom.inverseTransform = glm::inverse(geom.transform);
 					geom.invTranspose = glm::transpose(glm::inverse(geom.transform));
