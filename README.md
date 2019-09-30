@@ -96,9 +96,13 @@ Finally after fixing my issues I was able to get it working:
 
 
 The library expects the pixel values to be in little endian format according to the documentation, so I had written a ReverseFloat function to convert big-endian to little endian, but doing so resulted in the blooper reel, when I did not use that function, I got this result for output after 5 iterations.
+
+
+
 Original      |  Denoised
 :-------------------------:|:-------------------------:
 ![](img/denoise_orig.png) | ![](img/denoise_decent.png)
+
 
 Then I also passed albedos and normals buffers to the library, the results after doing that were:
 
