@@ -19,10 +19,9 @@ CUDA Path Tracer
 - [Introduction](  )
 - [Implementation Details]( )
 - [Features]( )
+- [Description]( )
 - [Analysis]( )
 - [Some Results and Bloopers]( )
-- [Extra Credit]( )
-
 
 ### Introduction 
 
@@ -46,11 +45,11 @@ The bounce direction and colour intensity depend on various material properties 
    - [x] BSDF Shading (Refractive, Percentage Combinations)
    - [x] Stochasitc Sampled Anti Aliasing
    - [x] Work Efficient Stream Compaction usnig Shared Memory 
-   - [x] Motion Blur
+   - [x] Motion Blur (somewhat)
    - [ ] Depth of Field
    - [ ] Loading OBJ files
 
-### Analysis
+### Description
 1. Shading using [BSDF](https://en.wikipedia.org/wiki/Bidirectional_scattering_distribution_function)
       - Diffuse Reflection: Reflects all rays randomly in the normal facing semi-sphere.
       - Specular Reflection: Reflects the incoming ray about the normal where angle of incidence is equal to the angle of relection (mirror like behaviour).
@@ -71,15 +70,18 @@ The bounce direction and colour intensity depend on various material properties 
         <img src="build/cornell_70-30_ref_rel.png" width="280" alt="Refract-Reflect-30-70" />
       </p> 
 
-2. Stream Compaction: We reorganise the rays that have terminated, either by hitting a source of light, or reaching maximum depth, by using stream compaction so that more cuda aprs can exit early when they find all theri theireads terminated. This reduces unnecessary compute per bounce operation and in turn speeds up the rendering. We show the contrast in runtime and number ofrays processed with and without stream comapction in the following figures. These clearly show that stream comapction speeds u the rendergin 
+2. Stream Compaction: We reorganise the rays that have terminated, either by hitting a source of light, or reaching maximum depth, by using stream compaction so that more cuda aprs can exit early when they find all theri theireads terminated. This reduces unnecessary compute per bounce operation and in turn speeds up the rendering. We show the contrast in runtime and number ofrays processed with and without stream comapction in the following figures. These clearly show that stream comapction speeds u the rendering. 
 
-![](img/plots.png)
+![](img/plots.PNG)
 
 3. We also sort the rays by material type in order to allow continous memory access.
 4. First Bounce Intersection caching speeds up each iteration trememdously. Since there is no uncertanility in the first ray intersection computation we can cache the intersections at the begining of the first iteration and use it for all successive iterations. The first iteration als has the maximum number of rays therefore caching then at iter 0 shows drastic speedup for the rest of the iterations.
 
 ![](img/FBC.png)
 
+4. AntiALiasing: We use anti-aliasing, a technique used to add greater realism to a digital image by smoothing jagged edges on curved lines and diagonals. We do this by randomly dhifting the ray location per pixel instead of the center.
 
-
+  <p float="center">
+        <img src="img/aa.PNG" width="600" />
+  </p>
 
