@@ -45,16 +45,16 @@ The following basic features are implemented:
       - Percentage combinations of properties.   
       
 <p float="left">
-  <img src="build/cornell_refraction.png" width="100" />
-  <img src="build/cornell_reflection.png" width="100" />
-  <img src="build/cornell_diffuese.png" width="100" />   
+  <img src="build/cornell_refraction.png" width="300" />
+  <img src="build/cornell_reflection.png" width="300" />
+  <img src="build/cornell_diffuese.png" width="300" />   
 </p>      
 
       
 <p float="left">
-  <img src="build/cornell_Refract-Reflect-50-50.png" width="100" />
-  <img src="build/cornell_emmisive.png" width="100" />
-  <img src="build/cornell_emmisive.png" width="100" />
+  <img src="build/cornell_Refract-Reflect-50-50.png" width="300" />
+  <img src="build/cornell_emmisive.png" width="300" />
+  <img src="build/cornell_emmisive.png" width="300" />
 </p> 
 
 
