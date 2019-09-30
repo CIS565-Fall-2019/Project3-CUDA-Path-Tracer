@@ -11,6 +11,14 @@
 
 #include "utilities.h"
 
+
+////////////////////////////////////my code//////////////////////////////////////
+
+//float utilityCore::AbsDot(const glm::vec3& a, const glm::vec3& b) {
+//	return glm::abs(glm::dot(a, b));
+//}
+
+////////////////////////////////////origin code//////////////////////////////////////
 float utilityCore::clamp(float f, float min, float max) {
     if (f < min) {
         return min;

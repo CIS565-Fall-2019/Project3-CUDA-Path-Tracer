@@ -10,6 +10,7 @@
 enum GeomType {
     SPHERE,
     CUBE,
+	MESH
 };
 
 struct Ray {
@@ -20,12 +21,17 @@ struct Ray {
 struct Geom {
     enum GeomType type;
     int materialid;
+
     glm::vec3 translation;
     glm::vec3 rotation;
     glm::vec3 scale;
+
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
+
+	int Tri_start_Idx;
+	int Tri_end_Idx;
 };
 
 struct Material {
@@ -36,12 +42,13 @@ struct Material {
     } specular;
     float hasReflective;
     float hasRefractive;
-    float indexOfRefraction;
-    float emittance;
+    float indexOfRefraction;//index of refraction for Fresnel effects
+    float emittance;//the emittance strength of the material. 
+	//Material is a light source if emittance > 0.
 };
 
 struct Camera {
-    glm::ivec2 resolution;
+    glm::ivec2 resolution;// width, height
     glm::vec3 position;
     glm::vec3 lookAt;
     glm::vec3 view;
@@ -49,14 +56,16 @@ struct Camera {
     glm::vec3 right;
     glm::vec2 fov;
     glm::vec2 pixelLength;
+	float focaldistance;
+	float lenradius;
 };
 
 struct RenderState {
     Camera camera;
-    unsigned int iterations;
-    int traceDepth;
+    unsigned int iterations;//how many iterations to refine the image
+    int traceDepth;//depth of bounce
     std::vector<glm::vec3> image;
-    std::string imageName;
+    std::string imageName;//name 
 };
 
 struct PathSegment {
@@ -73,4 +82,21 @@ struct ShadeableIntersection {
   float t;
   glm::vec3 surfaceNormal;
   int materialId;
+  bool outside;
+  glm::vec3 point;//intersect point
 };
+
+struct Triangle {
+	int index;
+	glm::vec3 vertices[3];
+	glm::vec3 normals[3];
+	//glm::vec2 uvs[3];
+};
+
+struct Light {
+	int index;
+	glm::vec3 vertices[3];
+	glm::vec3 normals[3];
+	//glm::vec2 uvs[3];
+};
+

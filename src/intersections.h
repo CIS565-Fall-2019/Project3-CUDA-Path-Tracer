@@ -5,6 +5,9 @@
 
 #include "sceneStructs.h"
 #include "utilities.h"
+//#include "utilities.cpp"
+
+
 
 /**
  * Handy-dandy hash function that provides seeds for random number generation.
@@ -17,6 +20,10 @@ __host__ __device__ inline unsigned int utilhash(unsigned int a) {
     a = (a + 0xfd7046c5) + (a << 3);
     a = (a ^ 0xb55a4f09) ^ (a >> 16);
     return a;
+}
+
+__host__ __device__ float AbsDot(const glm::vec3& a, const glm::vec3& b) {
+	return glm::abs(glm::dot(a, b));
 }
 
 // CHECKITOUT
@@ -48,7 +55,7 @@ __host__ __device__ glm::vec3 multiplyMV(glm::mat4 m, glm::vec4 v) {
 __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
         glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
     Ray q;
-    q.origin    =                multiplyMV(box.inverseTransform, glm::vec4(r.origin   , 1.0f));
+    q.origin    = multiplyMV(box.inverseTransform, glm::vec4(r.origin, 1.0f));
     q.direction = glm::normalize(multiplyMV(box.inverseTransform, glm::vec4(r.direction, 0.0f)));
 
     float tmin = -1e38f;
@@ -141,4 +148,39 @@ __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
     }
 
     return glm::length(r.origin - intersectionPoint);
+}
+
+__host__ __device__ float meshIntersectionTest(Geom mesh, Triangle* tris,
+	Ray r, glm::vec3 &normal) {
+	float tMin = 1e38f;
+	int nearestTriInd = -1;
+	glm::vec3 barypos(0.0), min(0.0);
+
+	for (int i = mesh.Tri_start_Idx; i < mesh.Tri_end_Idx; i++) {
+		if (glm::intersectRayTriangle(r.origin, 
+			r.direction,
+			tris[i].vertices[0], 
+			tris[i].vertices[1], 
+			tris[i].vertices[2],//counter clock wise
+			barypos)) {
+			// Only consider forward tri
+			if (barypos.z > 0.f && barypos.z < tMin) {
+				tMin = barypos.z;
+				min = barypos;
+				nearestTriInd = i;
+			}
+		}
+	}
+	//no intersection
+	if (nearestTriInd == -1) {
+		return -1;
+	}
+	// set normal
+	Triangle temp = tris[nearestTriInd];
+	normal = temp.normals[0] * (1.0f - min.x - min.y) +
+			 temp.normals[1] * min.x +
+			 temp.normals[2] * min.y;
+	normal = glm::normalize(normal);
+
+	return tMin;
 }

@@ -16,11 +16,20 @@ private:
     int loadMaterial(string materialid);
     int loadGeom(string objectid);
     int loadCamera();
+	void LoadOBJ(const string &filepath);
 public:
     Scene(string filename);
     ~Scene();
 
     std::vector<Geom> geoms;
     std::vector<Material> materials;
+	std::vector<Geom> lights;
+
+	std::vector<Triangle> tris;
+
+#if TRI_2D_Array 
+	std::vector<std::vector<Triangle>> mesh_tris;
+#endif //  TRI_2D_Array 
+
     RenderState state;
 };
