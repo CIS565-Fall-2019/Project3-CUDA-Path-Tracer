@@ -23,7 +23,7 @@
 #define SORT_MATERIAL false 
 #define ANTI_ALIASING true
 #define STREAM_COMPACTION true
-#define MOTION_BLUR false
+#define MOTION_BLUR true
 bool CACHE_BOUNCE = true;
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
