@@ -10,7 +10,11 @@ CUDA Path Tracer
 
 
  <p align="center">
-  <img src="img/cornell_cover.png">
+  <img src="build/cornell_coverpic2.png">
+</p>
+
+ <p align="center">
+  <img src="build/cornell_coverpic.png">
 </p>
 
 
@@ -150,3 +154,7 @@ Motion Blur Screen Captures
      <p align="center">
       <img src="img/cornell.2019-09-29_23-59-06z.2393samp.png">
     </p>
+    
+     <p align="center">
+  <img src="build/cornell_coverpic2.png">
+</p>
