@@ -97,7 +97,7 @@ Different objects are loaded from their OBJ files using the TinyObj library func
 
 Different objects were loaded in the scene.
 
-![]()
+![](img/droid.png)
 
 ### Path termination using stream compaction
 
