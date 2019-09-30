@@ -30,11 +30,9 @@ Depth of field is the distance between the nearest and the farthest objects that
 ### Diffusion, Reflection and Refraction
 My path tracer is able to render diffusion, specular reflection and refraction with Frensel effects using Schlick's approximation.
 
-
-| Diffusion | ![](img/diffuse.png) |
-| -- | -- |
-| Reflection | ![](img/reflect.png) |
-| Refraction | ![](img/refract.png) |
+| Diffusion | Reflection | Refraction |
+| -- | -- | -- |
+| ![](img/diffuse.png) | ![](img/reflect.png) | ![](img/refract.png) |
 
 ### Motion Blur
 Motion blur is achieved by randomly jittering the camera position and therefore jittering the outgoing rays using a Gaussian distribution.
