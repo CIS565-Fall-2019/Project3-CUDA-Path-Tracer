@@ -9,13 +9,13 @@ CUDA Path Tracer
 
 ### Highlights
 
+![](img/gold_cubes.png)
+
 ![](img/gold.png)
 
 ![](img/complex_without_cube_yellow.png)
 
 ![](img/cornell_multiple.png)
-
-![](img/cornell_penn.png)
 
 ### Features implemented
 
