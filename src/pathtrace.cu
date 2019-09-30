@@ -34,7 +34,7 @@
 #define THRUSTSTCOMP	1 //slow 
 #define SORTBYMATERIAL	0 //slow 
 #define FIRSTCACHE		1
-#define TIMEDEPTH       1
+#define TIMEDEPTH       0
 // Advance Features
 //========================
 #define ANTIALIASING	0
