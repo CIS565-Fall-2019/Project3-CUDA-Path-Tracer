@@ -1,4 +1,4 @@
-#include <cstdio>BLUR 0
+#include <cstdio>
 #include <cuda.h>
 #include <cmath>
 #include <thrust/partition.h>
@@ -392,7 +392,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
 		
 		#ifdef BLURGEOM
-				blurGeom << <numblocksPathSegmentTracing, blockSize1d >> > (dev_geoms, hst_scene->geoms.size(), num_paths, glm::vec3(-1e-5f, -1e-5f, 0.0), iter);
+				blurGeom << <numblocksPathSegmentTracing, blockSize1d >> > (dev_geoms, hst_scene->geoms.size(), num_paths, glm::vec3(-1e-6f, -1e-6f, 0.0), iter);
 		#endif //BLURGEOM
 
 		if (depth == 0 && CACHE) {
