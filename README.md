@@ -9,9 +9,9 @@ CUDA Path Tracer
 
 ### Path Tracer
 
-![](build/tableSetting.png)
+![](img/tableSetting.png)
 
-![](build/cameramove.gif)
+![](img/cameramove.gif)
 
 A parallelized pathtracer to realistically render 3D information. This implementation supports arbitrary mesh loading, refractive and reflective surfaces, and microfaceted specular surfaces.
 
@@ -23,25 +23,25 @@ All iteration runtimes were timed on the GPU over 60 iterations with a max ray d
 
 *First Bounce Cache:* The first bounce of the pathtracer is deterministic across iterations (assuming no pixel-jitter for anti-aliasing). So, this bounce only needs to be computed once during the first iteration and can be reused later to save time. Without this optimization, a diffuse-only cornell box scene takes on average 453.705ms per iteration. As stated earlier, the same scene takes on average 451.021ms per iteration with this optimization. When the max ray depth is increased from 8 to 16, average iteration time without this optimization is 543.071ms, but only 542.196ms with this optimization. When the max ray depth is decreased from 8 to 4, average iteration time without this optimization is 330.374ms, but only 326.77ms with this optimization. This relationship is visualized in this figure:
 
-![](build/cache.png)
+![](img/cache.png)
 
 The iteration times with and without the cache converge. So, as max bounce depth increases, the impact of this optimization lessens.
 
 *Stream Compaction:* Stream compaction allows the pathtracer to eliminate dead rays from computation in parallel. This figure displays the number of rays remaining alive after each bounce.
 
-![](build/remainingbounces.png)
+![](img/remainingbounces.png)
 
 As such, performance improves with stream compaction. Without it, a diffuse-only cornell box takes 920.743ms per iteration: more than twice the render time with stream compaction.
 
 Enclosing the cornell box with a fourth wall and moving the camera inside the box results in a render time of 886.059ms with stream compaction on and 936.193ms with stream compaction off. With the wall removed, rays are able to escape the scene into the void where they can die and be removed, so stream compaction is better able to optimize rendering; 610.097ms with stream compaction on and 926.65ms with it off. This relationship is depicted in this chart:
 
-![](build/fourthwall.png)
+![](img/fourthwall.png)
 
 Stream compaction is better able to optimize iteration times in scenes where rays can escape the scene.
 
 ### Mesh Loading
 
-![](build/venus.png)
+![](img/venus.png)
 
 The pathtracer is able to load in any obj mesh file. It parses the mesh into triangles which it compares intersections with independently before choosing the closest one. Out of curiousity, I compared rendering a primitive cube against rendering a mesh-defined cube. The primitive cube took 446.066ms on average each iteration, while the mesh-defined cube took 450.803ms.
 
@@ -49,12 +49,12 @@ The mesh intersection test includes an optimization in which it first tests for 
 
 ### Refraction
 
-![](build/glassTorus.png)
+![](img/glassTorus.png)
 
 By refracting incoming rays according to indices of refraction, the pathtracer is able to achieve glass or water-like transmissive materials. A cornell box with a transmissive sphere with an ior of 1.54 takes 459.021ms to render each iteration.
 
 ### Imperfect Specular
 
-![](build/imperfectSpecular.gif)
+![](img/imperfectSpecular.gif)
 
 Instead of reflecting rays perfectly across the normal or distributing them equally in a hemisphere, microfacetted materials bounce rays in a lobe-shaped distribution. This distribution is between the two extremes; rays can be bounced in any direction, but are increasingly more likely to be bounced similarly to perfect reflection. How much more likely depends on the specular exponent defined by the material. A cornell box with an imperfect specular sphere with an exponent of 0.8 takes 454.336ms to render.
