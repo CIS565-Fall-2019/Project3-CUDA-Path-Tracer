@@ -88,22 +88,41 @@ void scatterRay(
 		pathSegment.color *= m.specular.color;
 	}
 		
-	else if (m.hasRefractive < dist && dist < 2* m.hasRefractive) {
+	else if (dist < m.hasRefractive + m.hasReflective) {
 
 
 		thrust::uniform_real_distribution<float> u01(0, 1);
 
-		glm::vec3 normalRefract = normal;
+		glm::vec3 normalRefract =  normal;
+		float r0 = powf(1- m.indexOfRefraction / (1 + m.indexOfRefraction), 2.0f);
+		float r1 = r0 + (1 - r0)*powf(1 - (glm::dot(glm::normalize(pathSegment.ray.direction), normalRefract)), 5.0f);
+		float eta = m.indexOfRefraction;
+		bool inward = glm::dot(glm::normalize(pathSegment.ray.direction), normalRefract) < 0.0f;
+		if (u01(rng) >  r1)
+			newDirection = glm::reflect(pathSegment.ray.direction, normalRefract);
+		else
+		{
+			normalRefract = inward ? normalRefract : -10.f * normalRefract;
+			eta = inward ? 1 / eta : eta;
+			newDirection = glm::refract(pathSegment.ray.direction, normalRefract, eta);
+			if (glm::length(newDirection) < 0.01f) {
+				pathSegment.color *= 0;
+				newDirection = glm::reflect(pathSegment.ray.direction, normalRefract);
+			}
+		}
+
+		/*
+		glm::vec3 normalRefract = 1.0f * normal;
 		float eta = 1/m.indexOfRefraction;
 		float r0,r1;
-		bool mediaAirToMaterial = glm::dot(pathSegment.ray.direction, normal) > 0.0f;
+		bool mediaAirToMaterial = glm::dot(pathSegment.ray.direction, normal) < 0.0f;
 		r0 = 1.0f- m.indexOfRefraction;
 		if (mediaAirToMaterial) {
 			normalRefract = -1.0f * normalRefract;
 			eta = 1 / eta;
 			r0 = m.indexOfRefraction - 1.0f;
 		}
-		newDirection = glm::refract(pathSegment.ray.direction, normalRefract, eta);
+		
 
 		if (glm::length(newDirection) < 0.01f) {
 			pathSegment.color *= 0;
@@ -111,9 +130,14 @@ void scatterRay(
 		}
 		r0 = powf(r0 / (1 + m.indexOfRefraction), 2.0f);
 		r1 = r0 + (1 - r0)*powf(1-(glm::dot(glm::normalize(pathSegment.ray.direction), normalRefract)),5.0f);
-
+		
 		if (r1 < u01(rng))
 			newDirection = glm::reflect(pathSegment.ray.direction, normalRefract);
+		else
+			newDirection = glm::refract(pathSegment.ray.direction, normalRefract, eta);
+			*/
+
+
 
 		pathSegment.color *= m.specular.color;
 	}

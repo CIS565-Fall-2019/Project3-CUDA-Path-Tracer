@@ -8,7 +8,9 @@
 #include <thrust/partition.h>
 #include <thrust/sort.h>
 #include <glm/gtc/matrix_inverse.hpp>
-
+#include <chrono>
+#include <ctime>
+#include <ratio>
 
 #include "sceneStructs.h"
 #include "scene.h"
@@ -20,13 +22,14 @@
 #include "interactions.h"
 #include "efficient.h"
 
-
+#define RECORD_TIMING 0
 #define ERRORCHECK 1
-#define CACHEFIRSTBOUNCE 1
+#define CACHEFIRSTBOUNCE 0
 #define RAYSORT 0
 #define MOTION_BLUR 0
 #define STREAMCOMPACT_BY_THRUST 0
 #define STREAM_COMPACT 1
+#define ANTI_ALIASING 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -87,6 +90,8 @@ static PathSegment * dev_paths = NULL;
 static ShadeableIntersection * dev_intersections = NULL;
 static ShadeableIntersection * dev_first_intersections = NULL;
 int *dev_remaining_paths = NULL;
+
+cudaEvent_t start, stop;
 // TODO: static variables for device memory, any extra info you need, etc
 // ...
 
@@ -152,18 +157,20 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 		segment.ray.origin = cam.position;
 		segment.ray.origin = cam.position;
 		segment.color = glm::vec3(1.0f, 1.0f, 1.0f);
+		
+		#if ANTI_ALIASING && !CACHEFIRSTBOUNCE
+			thrust::default_random_engine rng1 = makeSeededRandomEngine(iter , x , y);
+			thrust::default_random_engine rng2 = makeSeededRandomEngine(iter, y, x);
+			thrust::uniform_real_distribution<float> u01(-0.5, 0.5);
 
-		thrust::default_random_engine rng1 = makeSeededRandomEngine(iter , x , y);
-		thrust::default_random_engine rng2 = makeSeededRandomEngine(iter, y, x);
-		thrust::uniform_real_distribution<float> u01(0, 1);
-
-		float jitX = u01(rng1);
-		float jitY = u01(rng2);
+			x += u01(rng1);
+			y += u01(rng2);
+		#endif
 
 		// TODO: implement antialiasing by jittering the ray
 		segment.ray.direction = glm::normalize(cam.view
-			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f + cam.right*cam.pixelLength.x*jitX)
-			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f + cam.up*cam.pixelLength.y*jitY)
+			- cam.right * cam.pixelLength.x * ((float)x - (float)cam.resolution.x * 0.5f)
+			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f)
 			);
 
 		segment.pixelIndex = index;
@@ -216,20 +223,20 @@ __global__ void computeIntersections(
 			}
 			else if (geom.type == SPHERE)
 			{
+				// Motion Blur Code <<Not working>>
+			//for (int i = 0; i < hst_scene->geoms.size(); i++) {
+			//	float t = 0.01f;
+			//	Geom & motion_geom = hst_scene->geoms[i];
+			//	if (motion_geom.hasMotion) {
+			//		motion_geom.translation += mot * t;
+			//		motion_geom.transform = utilityCore::buildTransformationMatrix(motion_geom.translation, motion_geom.rotation, motion_geom.scale);
+			//		motion_geom.inverseTransform = glm::inverse(motion_geom.transform);
+			//		motion_geom.invTranspose = glm::inverseTranspose(motion_geom.transform);
+			//		printf("Hello motion value for object ID: %d is: %0.02f, %0.02f , %0.02f\n", motion_geom.materialid, motion_geom.translation.x, motion_geom.translation.y, motion_geom.translation.z);
+					//printf("Hello motion value for object ID: %d is: %0.02f, %0.02f , %0.02f\n", motion_geom.translation.x, motion_geom.translation.y, motion_geom.translation.z);
+					//printf("Hello motion value for object ID: %d is: %0.02f, %0.02f , %0.02f\n", motion_geom.translation.x, motion_geom.translation.y, motion_geom.translation.z);
 				
 				t = sphereIntersectionTest(geom, pathSegment.ray, tmp_intersect, tmp_normal, outside);
-				//for (int i = 0; i < hst_scene->geoms.size(); i++) {
-				//	float t = 0.01f;
-				//	Geom & motion_geom = hst_scene->geoms[i];
-				//	if (motion_geom.hasMotion) {
-				//		motion_geom.translation += mot * t;
-				//		motion_geom.transform = utilityCore::buildTransformationMatrix(motion_geom.translation, motion_geom.rotation, motion_geom.scale);
-				//		motion_geom.inverseTransform = glm::inverse(motion_geom.transform);
-				//		motion_geom.invTranspose = glm::inverseTranspose(motion_geom.transform);
-				//		printf("Hello motion value for object ID: %d is: %0.02f, %0.02f , %0.02f\n", motion_geom.materialid, motion_geom.translation.x, motion_geom.translation.y, motion_geom.translation.z);
-						//printf("Hello motion value for object ID: %d is: %0.02f, %0.02f , %0.02f\n", motion_geom.translation.x, motion_geom.translation.y, motion_geom.translation.z);
-						//printf("Hello motion value for object ID: %d is: %0.02f, %0.02f , %0.02f\n", motion_geom.translation.x, motion_geom.translation.y, motion_geom.translation.z);
-					
 				
 				//cudaMemcpy(dev_geoms, &(hst_scene->geoms)[0], hst_scene->geoms.size() * sizeof(Geom), cudaMemcpyHostToDevice);
 
@@ -284,11 +291,11 @@ __global__ void shaderKernel(int iter,int numPaths,int depth, ShadeableIntersect
 
 		}
 		else {
-			thrust::default_random_engine rng = makeSeededRandomEngine(iter, idx, depth);
-				if (intersection.materialId == 4)
+				thrust::default_random_engine rng = makeSeededRandomEngine(iter, idxx, depth);
+				//if (intersection.materialId == 4)
 					scatterRay(pathsegment, intersection.intersectionPoint, intersection.surfaceNormal, material, rng);
-				else
-					scatterRay(pathsegment, intersection.intersectionPoint, intersection.surfaceNormal, material, rng);
+				//else
+				//	scatterRay(pathsegment, intersection.intersectionPoint, intersection.surfaceNormal, material, rng);
 				pathsegment.remainingBounces--;
 		}	
 	}
@@ -454,12 +461,12 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	int depth = 0;
 
 	# if CACHEFIRSTBOUNCE
-	if (iter == 1) {
-		cacheFirstBounce = true;
-		printf("Cmhe here \n");
-	}
-			
+		if (iter == 1) {
+			cacheFirstBounce = true;
+			printf("Hello");
+		}	
 	#endif
+
 
 	while (!iterationComplete) {
 
@@ -468,6 +475,11 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 		// tracing
 		dim3 numblocksPathSegmentTracing = (numPaths + blockSize1d - 1) / blockSize1d;
+
+		#if RECORD_TIMING
+			using namespace std::chrono;
+			high_resolution_clock::time_point t1 = high_resolution_clock::now();
+		#endif
 
 		if (cacheFirstBounce) {
 			computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
@@ -497,7 +509,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 				, dev_intersections,
 				dev_remaining_paths
 				);
-			checkCUDAError("First trace bounce failed");
+			checkCUDAError("Computer Intersections failed");
 			cudaDeviceSynchronize();
 		}
 
@@ -524,6 +536,12 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		if (depth >= traceDepth || numPaths<=0)
 			iterationComplete = true; // TODO: should be based off stream compaction results.
 
+		#if RECORD_TIMING
+			high_resolution_clock::time_point t2 = high_resolution_clock::now();
+			duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
+			if (iter < 5)
+				std::cout << "For iter "<<iter<<", and depth "<<depth<<", it took" << time_span.count() << " seconds. The number of live paths are "<<numPaths<<endl;
+		#endif
 		
 		// TODO:
 		// --- Shading Stage ---

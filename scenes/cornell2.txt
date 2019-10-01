@@ -6,7 +6,7 @@ SPECRGB     0 0 0
 REFL        0
 REFR        0
 REFRIOR     0
-EMITTANCE   0
+EMITTANCE   5
 
 // Diffuse white
 MATERIAL 1
@@ -50,10 +50,10 @@ EMITTANCE   0
 
 // Camera
 CAMERA
-RES         800 800
+RES         720 720
 FOVY        45
 ITERATIONS  5000
-DEPTH       2
+DEPTH       8
 FILE        cornell
 EYE         0.0 5 10.5
 LOOKAT      0 5 0
