@@ -78,11 +78,11 @@ For each iteration, the rays are generated from the camera are likely to hit the
 Anti-aliasing is the way of remove the jaggering happening during the rendering by sending out the rays from the camera and adding on the noise a little bit so that the smoothning effect could be seen the image. The effect of the anti-aliasing could be seen at the interections of the wall and the floor where the lines are more smoother as compared to the normal ones. The comparision of the effect is shown below:
 
 <p align="center">
-    Without Ant-Aliasing           |           With Aliasing
+    Without Anti-Aliasing           |           With Aliasing
 </p>
 <p align="center">
-  <img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img/Image_before_aliasing_zoomin.png"="300" alt="Without Ant-Aliasing" />
-  <img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img//Image_after_aliasing_zoomin.png" width="300" alt="With Aliasing"/> 
+  <img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img/Image_before_aliasing_zoomin.png"="300" alt="Without Antialiasing" />
+  <img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img//Image_after_aliasing_zoomin.png" width="300" alt="With Antialiasing"/> 
 </p>     
 
 
