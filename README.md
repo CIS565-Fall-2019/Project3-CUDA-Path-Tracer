@@ -75,7 +75,7 @@ This is a clever optimization to avoid recomputing the first bounce for depth=0.
 Divergence is a seriously perfomance killer in CUDA, as if different threads in a warp diverge then the benefits of parralelilzation begin to dissapear. This would most likely happen in a path tracing scenario when materials that reflect differently run at the same time. To avoid warp divergence while the kernel is running, I sorted by material to ensure that similar materials most likley get placed in the same warp as they are contiguous in memory. 
 
 # Performance Analysis
-I proceeded to remove walls from my cornell scene and to printed out the decrease in number of elements left in the array post stream compaction. Removing walls exposed more black space and thereby would result in a more rapid decrease of elements in the compacted array.   
+I proceeded to remove walls from my cornell scene and to printed out the decrease in number of elements left in the array post stream compaction. Removing walls exposed more black space and thereby would result in a more rapid decrease of elements in the compacted array. I started with only 2 walls, and this had the greatest decrease as it started at approx 2000 values and went to near zero in about 4 bounces. 
 
 # Questions 
 
