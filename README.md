@@ -49,3 +49,11 @@ I created procedural shapes via a variation of ***Constructive Solid Geometry***
 | 1 | 2 | 3 |
 | ------------- | ----------- |----------- |
 | ![](img/SphereAndNotCube.PNG)  | ![](img/SphereCubeUnion.PNG) | ![](img/SphereAndCubeMatrix.PNG) |
+
+## Motion Blur
+I created a kernel function ```blurGeom``` that allows users to specify a ``glm::vec3 offset`` so they could direct the blur towards their desired position. I implemented motion blur by targeting a subset of  ``geom`` objects to respond to changes in ``dt = epsilon * iter``. This resulted in exciting blur effects as illustrated below:
+**Motion Blur in the Mirror Dimension***
+![](img/Motion Blur Mirror Dimension.PNG)
+
+The following run illustrates motion blur with first bounce cache on - This is not the right thing to do, but resulted in this cool image:
+![](img/More Mirror Dim Stuff.PNG)
