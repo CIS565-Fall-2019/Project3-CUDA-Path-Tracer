@@ -60,6 +60,10 @@ The rays after bouncing from the objects are sprted on the basis of the material
 
 The stream compaction has benn done in the path tracer using Thrust library initially so that the basic working of the path tracer could be verified. After designing the basic path tracer, I worked on performing Stream Compaction using Shared Memory. The algorithm uses two stages of scanning where the first scanning happens using Shared Memory. The performace as shown in the graphs below. After performing the Work Efficient usign Shared memory algorithm across the blocks, we are getting the last element of each of the block and adding the last element in the original array in the block and performing again scan operation on the new array. 
 
+The graph below shows the runtime for Work Efficient Shared memory vs Thrust library.
+
+![](https://github.com/somanshu25/Project3-CUDA-Path-Tracer/tree/master/img)
+
 ### Caching the First Bounce
 
 For each iteration, the rays are generated from the camera are likely to hit the same intersection material. Thus, computing the intersections every iteration would be costly and we can preserve that time by caching the first bounces that takes place in the first iteration and then later on just load those intersections for next iterations and prcess for the shading. The performance analysis for the caching and non-cahing as the function of depth in the first and second iteration is given below:
