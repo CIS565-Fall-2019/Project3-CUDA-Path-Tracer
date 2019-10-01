@@ -36,6 +36,7 @@ Perfectly diffuse materials can reflect light from any direction, and so the nex
 
 ### Stream Compaction, Partitioning by Material, and Cacheing for Speed
 
+Scene           |  Performance
 :-------------------------:|:-------------------------:
 ![](img/Main/0cornell5000samp.png)  |  ![](img/graphcomp)
 
@@ -97,9 +98,9 @@ All pictures at 5000 samples per pixel.
 
 ![](img/Main/maincap.png)
 
+Cappy Front           |  Cappy Back
 :-------------------------:|:-------------------------:
 ![](img/Main/2cappy-side1.1000samp.png)  |  ![](img/Main/3cappy-back.1000samp.png)
-Cappy Front           |  Cappy Back
 
 ![](img/Main/1duck-5000samp.png)
 
@@ -111,9 +112,9 @@ The larger pictures are both at 5000 samples, while the smaller are 1000 samples
 
 ![](img/Texture/1spheretext5000samp.png)
 
+Wall Texturing           |  Box Texturing
 :-------------------------:|:-------------------------:
 ![](img/Texture/2walltext5000samp.png)  |  ![](img/Texture/3boxtext5000samp.png)
-Wall Texturing           |  Box Texturing
 
 I used two implementations of a noise function (my favorite that I have used for years :D) to get these two different procedural textures. One call to this function makes use of `glm::abs` to get such vivid lines, while the other is at a greater scale and more smoothely blended, to almost look like spots.
 
