@@ -56,6 +56,8 @@ For different combinations of relective and refractive probabilies, here are the
 
 The rays after bouncing from the objects are sprted on the basis of the material ID, sicne, there is high chance that all these rays might strike the same object again and we have the rays at contigous memeory allocation in the memory which would quicken up the effect. In our cornell scene, we mostly observe that the sorting does not improve the performance that greatly because of lack of different materials in the scenes.
 
+<p align="center"><img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img/ray_sorting_graph.png" width="700"/></p>
+
 ### Stream Compaction by using Thrust Library and Work Efficient using Shared memory
 
 The stream compaction has benn done in the path tracer using Thrust library initially so that the basic working of the path tracer could be verified. After designing the basic path tracer, I worked on performing Stream Compaction using Shared Memory. The algorithm uses two stages of scanning where the first scanning happens using Shared Memory. The performace as shown in the graphs below. After performing the Work Efficient usign Shared memory algorithm across the blocks, we are getting the last element of each of the block and adding the last element in the original array in the block and performing again scan operation on the new array. 
@@ -74,6 +76,15 @@ For each iteration, the rays are generated from the camera are likely to hit the
 ### Anti-Aliasing
 
 Anti-aliasing is the way of remove the jaggering happening during the rendering by sending out the rays from the camera and adding on the noise a little bit so that the smoothning effect could be seen the image. The effect of the anti-aliasing could be seen at the interections of the wall and the floor where the lines are more smoother as compared to the normal ones. The comparision of the effect is shown below:
+
+<p align="center">
+    Without Ant-Aliasing           |           With Aliasing
+</p>
+<p align="center">
+  <img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img/Image_before_aliasing_zoomin.png"="300" alt="Without Ant-Aliasing" />
+  <img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img//Image_after_aliasing_zoomin.png" width="300" alt="With Aliasing"/> 
+</p>     
+
 
 ### Motion Blur
 
