@@ -10,6 +10,10 @@ Tested on: Windows 10 Home, Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz, 16GM, GTX 2
 ____________________________________________________________________________________
 ![Developer](https://img.shields.io/badge/Developer-Dhruv-0f97ff.svg?style=flat) ![CUDA 10.1](https://img.shields.io/badge/CUDA-10.1-yellow.svg) ![Built](https://img.shields.io/appveyor/ci/gruntjs/grunt.svg) ![Issues](https://img.shields.io/badge/issues-none-green.svg)
 ____________________________________________________________________________________
+<p align="center">
+  <img  src="img/frontpage.png">
+</p>
+____________________________________________________________________________________
 
 Table of contents
 =================
