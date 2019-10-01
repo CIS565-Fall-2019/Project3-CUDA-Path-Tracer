@@ -38,13 +38,16 @@ Perfectly diffuse materials can reflect light from any direction, and so the nex
 
 ![](img/Main/0cornell5000samp.png) ![](img/graphcomp)
 
-&#x1F537; Toggleable options in `pathtrace.cu`: 
+&#x1F537; **Toggleable options** in `pathtrace.cu`: 
 * Line 21, set `TOGGLESTREAM = true` for Stream Compaction
 * Line 22, set `TOGGLESORT = true` to sort paths by Material
 * Line 23, set `TOGGLECACHE = true` to cache the first bounce intersections
 
+All three methods added here decrease the runtime for more complex scenes.
 
-Minimizes the chances of divergent warps; every path completing the same tasks (since many are based on material, see `scatterRay()`)
+Stream Compaction, as we know from my previous repository, culls current paths that don't fit a certain criteria. In this case, we look to see if a bath is complete (`remaininBounces==0`), and if so we remove it from the list. Because of this, we don't have to uselessly call `shadeNaive()` on our completed paths.
+
+Organizing our paths based on intersection materials minimizes the chances of divergent warps; every path completing the same tasks (since many are based on material, see `scatterRay()`)
 
 Measurements were taken on the scene pictured at left, (but for 1000 samples rather than 5000).
 Diffuse Cornell, Diffuse and Specular Cornell (specular sphere), My Cornell (diffuse walls and box, two transmissive and one reflective spheres)
