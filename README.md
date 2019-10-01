@@ -19,8 +19,8 @@ In computer graphics, ray tracing is a rendering technique for generating photo 
 
 - [CUDA Path Tracing Implementation](#cuda-path-tracing-implementation)
   * [Core Implementation](#core-implementation)
-  * [Core Implementation + Anti-Aliasing](#core-implementation---anti-aliasing)
-  * [Core Implementation + Anti-Aliasing + Motion Blur](#core-implementation---anti-aliasing---motion-blur)
+  * [Core Implementation + Anti-Aliasing](#core-implementation-+-anti-aliasing)
+  * [Core Implementation + Anti-Aliasing + Motion Blur](#core-implementation-+-anti-aliasing-+-motion-blur)
 - [Perfomance Implementation and Analysis](#perfomance-implementation-and-analysis)
   * [Stream Compaction](#stream-compaction)
   * [First bounce intersections Caching](#first-bounce-intersections-caching)
