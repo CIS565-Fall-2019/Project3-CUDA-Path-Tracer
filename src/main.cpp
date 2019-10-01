@@ -29,74 +29,79 @@ int height;
 //-------------------------------
 //-------------MAIN--------------
 //-------------------------------
-
 int main(int argc, char** argv) {
-    startTimeString = currentTimeString();
+	startTimeString = currentTimeString();
 
-    if (argc < 2) {
-        printf("Usage: %s SCENEFILE.txt\n", argv[0]);
-        return 1;
-    }
+	if (argc < 2) {
+		printf("Usage: %s SCENEFILE.txt\n", argv[0]);
+		return 1;
+	}
 
-    const char *sceneFile = argv[1];
+	const char *sceneFile = argv[1];
 
-    // Load scene file
-    scene = new Scene(sceneFile);
+	// Load scene file
+	scene = new Scene(sceneFile);
 
-    // Set up camera stuff from loaded path tracer settings
-    iteration = 0;
-    renderState = &scene->state;
-    Camera &cam = renderState->camera;
-    width = cam.resolution.x;
-    height = cam.resolution.y;
+	// Set up camera stuff from loaded path tracer settings
+	iteration = 0;
+	renderState = &scene->state;
+	Camera &cam = renderState->camera;
+	width = cam.resolution.x;
+	height = cam.resolution.y;
 
-    glm::vec3 view = cam.view;
-    glm::vec3 up = cam.up;
-    glm::vec3 right = glm::cross(view, up);
-    up = glm::cross(right, view);
+	glm::vec3 view = cam.view;
+	glm::vec3 up = cam.up;
+	glm::vec3 right = glm::cross(view, up);
+	up = glm::cross(right, view);
 
-    cameraPosition = cam.position;
+	cameraPosition = cam.position;
 
-    // compute phi (horizontal) and theta (vertical) relative 3D axis
-    // so, (0 0 1) is forward, (0 1 0) is up
-    glm::vec3 viewXZ = glm::vec3(view.x, 0.0f, view.z);
-    glm::vec3 viewZY = glm::vec3(0.0f, view.y, view.z);
-    phi = glm::acos(glm::dot(glm::normalize(viewXZ), glm::vec3(0, 0, -1)));
-    theta = glm::acos(glm::dot(glm::normalize(viewZY), glm::vec3(0, 1, 0)));
-    ogLookAt = cam.lookAt;
-    zoom = glm::length(cam.position - ogLookAt);
+	// compute phi (horizontal) and theta (vertical) relative 3D axis
+	// so, (0 0 1) is forward, (0 1 0) is up
+	glm::vec3 viewXZ = glm::vec3(view.x, 0.0f, view.z);
+	glm::vec3 viewZY = glm::vec3(0.0f, view.y, view.z);
+	phi = glm::acos(glm::dot(glm::normalize(viewXZ), glm::vec3(0, 0, -1)));
+	theta = glm::acos(glm::dot(glm::normalize(viewZY), glm::vec3(0, 1, 0)));
+	ogLookAt = cam.lookAt;
+	zoom = glm::length(cam.position - ogLookAt);
 
-    // Initialize CUDA and GL components
-    init();
+	// Initialize CUDA and GL components
+	init();
 
-    // GLFW main loop
-    mainLoop();
+	// GLFW main loop
+	mainLoop();
 
-    return 0;
+	return 0;
 }
 
 void saveImage() {
-    float samples = iteration;
-    // output image file
-    image img(width, height);
+	float samples = iteration;
+	// output image file
+	image img(width, height);
 
-    for (int x = 0; x < width; x++) {
-        for (int y = 0; y < height; y++) {
-            int index = x + (y * width);
-            glm::vec3 pix = renderState->image[index];
-            img.setPixel(width - 1 - x, y, glm::vec3(pix) / samples);
-        }
-    }
+	for (int x = 0; x < width; x++) {
+		for (int y = 0; y < height; y++) {
+			int index = x + (y * width);
+			glm::vec3 pix = renderState->image[index];
+			img.setPixel(width - 1 - x, y, glm::vec3(pix) / samples);
+		}
+	}
 
-    std::string filename = renderState->imageName;
-    std::ostringstream ss;
-    ss << filename << "." << startTimeString << "." << samples << "samp";
-    filename = ss.str();
+	std::string filename = renderState->imageName;
+	std::ostringstream ss;
+	ss << filename << "." << startTimeString << "." << samples << "samp";
+	filename = ss.str();
 
-    // CHECKITOUT
-    img.savePNG(filename);
-    //img.saveHDR(filename);  // Save a Radiance HDR file
+	// CHECKITOUT
+	img.savePNG(filename);
+	//img.saveHDR(filename);  // Save a Radiance HDR file
 }
+/**
+		* This class is used for timing the performance
+		* Uncopyable and unmovable
+		*
+		* Adapted from WindyDarian(https://github.com/WindyDarian)
+		*/
 
 void runCuda() {
     if (camchanged) {

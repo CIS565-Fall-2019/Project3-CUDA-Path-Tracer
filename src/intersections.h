@@ -82,7 +82,8 @@ __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
             tmin_n = tmax_n;
             outside = false;
         }
-        intersectionPoint = multiplyMV(box.transform, glm::vec4(getPointOnRay(q, tmin), 1.0f));
+		glm::vec3 pointOnRay = getPointOnRay(q, tmin);
+        intersectionPoint = multiplyMV(box.transform, glm::vec4(pointOnRay, 1.0f));
         normal = glm::normalize(multiplyMV(box.transform, glm::vec4(tmin_n, 0.0f)));
         return glm::length(r.origin - intersectionPoint);
     }
@@ -141,4 +142,117 @@ __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
     }
 
     return glm::length(r.origin - intersectionPoint);
+}
+
+
+
+__host__ __device__ float triArea(const glm::vec3 &p1, const glm::vec3 &p2, const glm::vec3 &p3) {
+	return glm::length(glm::cross(p1 - p2, p3 - p2)) * 0.5f;
+}
+
+__host__ __device__ glm::vec3 triGetNormal(const glm::vec3 &P, const Triangle tri) {
+	float A = triArea(tri.p1, tri.p2, tri.p3);
+	float A0 = triArea(tri.p2, tri.p3, P);
+	float A1 = triArea(tri.p1, tri.p3, P);
+	float A2 = triArea(tri.p1, tri.p2, P);
+	return glm::normalize(tri.n1 * A0 / A + tri.n2 * A1 / A + tri.n3 * A2 / A);
+}
+
+__host__ __device__ glm::vec2 triGetUV(const glm::vec3 &P, const Triangle tri) {
+	float A = triArea(tri.p1, tri.p2, tri.p3);
+	float A0 = triArea(tri.p2, tri.p3, P);
+	float A1 = triArea(tri.p1, tri.p3, P);
+	float A2 = triArea(tri.p1, tri.p2, P);
+	return glm::normalize(tri.uv1 * A0 / A + tri.uv2 * A1 / A + tri.uv3 * A2 / A);
+}
+
+__host__ __device__ float triangleIntersectionTest(Triangle triangle, Ray r,
+	glm::vec3 &intersectionPoint, glm::vec3 &normal, glm::vec2 &uv, bool &outside) {
+	glm::vec3 p1 = triangle.p1;
+	glm::vec3 p2 = triangle.p2;
+	glm::vec3 p3 = triangle.p3;
+	glm::vec3 planeNormal = glm::normalize(glm::cross(p2 - p1, p3 - p2));
+	//1. Ray-plane intersection
+	float t = glm::dot(planeNormal, (p1 - r.origin)) / glm::dot(planeNormal, r.direction);
+	if (t < 0) return -1;
+
+	glm::vec3 P = r.origin + t * r.direction;
+	//2. Barycentric test
+	float S = 0.5f * glm::length(glm::cross(p1 - p2, p1 - p3));
+	float s1 = 0.5f * glm::length(glm::cross(P - p2, P - p3)) / S;
+	float s2 = 0.5f * glm::length(glm::cross(P - p3, P - p1)) / S;
+	float s3 = 0.5f * glm::length(glm::cross(P - p1, P - p2)) / S;
+	float sum = s1 + s2 + s3;
+
+	if (s1 >= 0 && s1 <= 1 && s2 >= 0 && s2 <= 1 && s3 >= 0 && s3 <= 1 && std::fabsf(sum - 1.0f) < 0.0001) {
+		intersectionPoint = P;
+		glm::vec3 n1 = triangle.n1;
+		glm::vec3 n2 = triangle.n2;
+		glm::vec3 n3 = triangle.n3;
+		normal = triGetNormal(intersectionPoint, triangle);
+		uv = triGetUV(intersectionPoint, triangle);
+		outside = glm::dot(normal, r.direction) < 0;
+		if (!outside) normal = -normal;
+		return t;
+	}
+	return -1;
+}
+
+__host__ __device__ float meshIntersectionTest(Geom mesh, Triangle *triangles, Ray r,
+	glm::vec3 &intersectionPoint, glm::vec3 &normal, glm::vec2 &uv, bool &outside) {
+	Ray q;
+	q.origin = multiplyMV(mesh.inverseTransform, glm::vec4(r.origin, 1.0f));
+	q.direction = glm::normalize(multiplyMV(mesh.inverseTransform, glm::vec4(r.direction, 0.0f)));
+
+	float tmin = -1e38f;
+	float tmax = 1e38f;
+	glm::vec3 tmin_n;
+	glm::vec3 tmax_n;
+	for (int xyz = 0; xyz < 3; ++xyz) {
+		float qdxyz = q.direction[xyz];
+		/*if (glm::abs(qdxyz) > 0.00001f)*/ {
+			float t1 = (mesh.bottomCornerBound[xyz] - q.origin[xyz]) / qdxyz;
+			float t2 = (mesh.topCornerBound[xyz] - q.origin[xyz]) / qdxyz;
+			float ta = glm::min(t1, t2);
+			float tb = glm::max(t1, t2);
+			glm::vec3 n;
+			n[xyz] = t2 < t1 ? +1 : -1;
+			if (ta > 0 && ta > tmin) {
+				tmin = ta;
+				tmin_n = n;
+			}
+			if (tb < tmax) {
+				tmax = tb;
+				tmax_n = n;
+			}
+		}
+	}
+
+	if (!(tmax >= tmin && tmax > 0)) {
+		return -1;
+	}
+
+	float smallestT = -1;
+	for (int i = mesh.firstTriangle; i < mesh.lastTriangle; i++) {
+		glm::vec3 intersectionPoint_new;
+		glm::vec3 normal_new;
+		glm::vec2 uv_new;
+		bool outside_new = false;
+		float t_new = triangleIntersectionTest(triangles[i], q, intersectionPoint_new, normal_new, uv_new, outside_new);
+		if (t_new >= 0 && (smallestT < 0 || t_new < smallestT)) {
+			smallestT = t_new;
+			intersectionPoint = intersectionPoint_new;
+			normal = normal_new;
+			outside = outside_new;
+			uv = uv_new;
+		}
+	}
+
+	if (smallestT >= 0) {
+		intersectionPoint = multiplyMV(mesh.transform, glm::vec4(intersectionPoint, 1.f));
+		normal = glm::normalize(multiplyMV(mesh.transform, glm::vec4(normal, 0.f)));
+		return glm::length(r.origin - intersectionPoint);
+	}
+
+	return -1;
 }
