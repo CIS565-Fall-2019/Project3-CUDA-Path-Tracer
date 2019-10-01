@@ -62,7 +62,7 @@ I created a kernel function ```blurGeom``` that allows users to specify a ``glm:
 
 | 1 | 2 | 3 |
 | ------------- | ----------- | ----------- |
-| ![](img/mblurmirror.PNG)  | ![](img/mirrordim.PNG) | ![](motionblur.PNG) |
+| ![](img/mblurmirror.PNG)  | ![](img/mirrordim.PNG) | ![](img/motionblur.PNG) |
 
 
 
