@@ -93,11 +93,13 @@ I have attemmpted to do motion blur n the path tracer and was going through lot 
 ### Bloopers
 
 Some of the bloopers across all the experiments and features:
-![](img/blooper_1.png)
 
-On the above my refraction was wrong as I was always refractive and then checking the condtiino for reflection.
+<p align="center"><img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img/blooper%201.png" width="500"/></p>
+On the above blooper, my refraction was wrong as I was always refractive and then checking the condtiino for reflection.
+
 ![](img/cornell.2019-09-26_03-37-21z.49samp.png)
 When my stream cpoompaction Implementation was wrong with Work Efficient. I was not sorting in the last stage.
+
 ![](img/cornell.2019-09-27_00-14-50z.5000samp.png)
 This when I didn't invert the normal vector for checking the refraction.
 
