@@ -2,6 +2,8 @@
 
 #include "intersections.h"
 
+#define COSINEW true
+
 // CHECKITOUT
 /**
  * Computes a cosine-weighted random direction in a hemisphere.
@@ -319,7 +321,11 @@ void scatterRay(
 	// the calculateRandomDirectionInHemisphere defined above.
 	} else {
 		pathSegment.color *= currCol;
+#if COSINEW
+		pathSegment.ray.direction = calculateCosineDirectionInHemisphere(normal, rng);
+#else
 		pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
+#endif
 	}
 		
 	// Offset origin to avoid repeat collisions

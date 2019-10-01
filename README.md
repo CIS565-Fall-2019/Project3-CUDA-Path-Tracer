@@ -145,7 +145,9 @@ As you can see below, the Direct Lighting converges faster.
 
 ### "Cosine Weighted" Hemisphere Sampling
 
-
+The Given Sampling           |  My Sampling
+:-------------------------:|:-------------------------:
+![](img/normSamp.png)  |  ![](img/mySamp.png)
 
 Left is using the given sampling, right is using my own.
 
@@ -153,8 +155,6 @@ Hemisphere sampling, used in this project to determine the direction of an outgo
 
 Illustrated below, without jittering the random values, we have the initial square of points, the disk form, and then the cosine weighted hemisphere form.
 
-Square           |  Disk
-:-------------------------:|:-------------------------:
-![](img/grid.png)  |  ![](img/diskcon.png)
-
-![](img/hemicos.png)
+Square           |  Disk           |  Hemisphere
+:-------------------------:|:-------------------------:|:-------------------------:
+![](img/grid.png)  |  ![](img/diskcon.png)  |  ![](img/hemicos.png)
