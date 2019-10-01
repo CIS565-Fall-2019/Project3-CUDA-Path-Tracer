@@ -59,7 +59,7 @@ under each: No optimization, Stream compaction, partitioning, cache, all three
 
 &#x1F537; **Toggleable option:** Line 26 of `pathtrace.cu`, set `DEPTHOFFIELD` to `true` if you desire this effect, `false` if you do not
 
-    **Important** You must turn off the first bounce-caching, because this method relies on having slightly random rays coming from the camera. This is controlled by `TOGGLECACHE`
+: **Important** You must turn off the first bounce-caching, because this method relies on having slightly random rays coming from the camera. This is controlled by `TOGGLECACHE`
 
 
 
