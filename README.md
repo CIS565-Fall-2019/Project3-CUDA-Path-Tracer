@@ -55,6 +55,15 @@ For diffusing, I have used the already defined cosign weighted distribution func
 
 For different combinations of relective and refractive probabilies, here are the effects shown in the images:
 
+<p align="center">
+    Reflection:70%, Refract:30%            |           Reflection:30%, Refract:70%
+</p>
+<p align="center">
+  <img src="img/less_refrac_more_reflect.png" width="300" alt="Reflection:70%, Refract:30%" />
+  <img src="img/more_refrac_less_reflect.png" width="300" alt="Reflection:30%, Refract:70%"/> 
+</p>     
+
+In above, we can see for the material with more refract probabilty than reflect, the light is passing through and there is light in place of shadow.
 ### Sorting the rays by material ID
 
 The rays after bouncing from the objects are sprted on the basis of the material ID, sicne, there is high chance that all these rays might strike the same object again and we have the rays at contigous memeory allocation in the memory which would quicken up the effect. In our cornell scene, we mostly observe that the sorting does not improve the performance that greatly because of lack of different materials in the scenes. 
