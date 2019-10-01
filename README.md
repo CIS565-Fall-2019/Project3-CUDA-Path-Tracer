@@ -67,6 +67,20 @@ I created a kernel function ```blurGeom``` that allows users to specify a ``glm:
 | ![](img/mblurmirror.PNG)  | ![](img/mirrordim.PNG) | ![](img/motionblur.PNG) |
 
 # Optimizations 
+## Stream Compaction to Remove Terminated Rays
+CUDA can only launch a fininite number of blocks at a time. As a result, if some threads are tracing more bounces, and some are tracing a few, we can end up with a lot of idling threads. One solution to this is to stream compact away idling threads. This means terminated threads are removed at the every kernel's launch, so that running threads are grouped together. 
+## First Bounce Caching
+This is a clever optimization to avoid recomputing the first bounce for depth=0. This is because this bounce stays the same regardless of iterations, so we precompute this in the first bounce and reload it whenvever depth=0.
+## Sort By Material
+Divergence is a seriously perfomance killer in CUDA, as if different threads in a warp diverge then the benefits of parralelilzation begin to dissapear. This would most likely happen in a path tracing scenario when materials that reflect differently run at the same time. To avoid warp divergence while the kernel is running, I sorted by material to ensure that similar materials most likley get placed in the same warp as they are contiguous in memory. 
+
+# Performance Analysis
+I proceeded to remove walls from my cornell scene and to printed out the decrease in number of elements left in the array post stream compaction. Removing walls exposed more black space and thereby would result in a more rapid decrease of elements in the compacted array.   
+
+# Questions 
+
+**Compare scenes which are open (like the given cornell box) and closed (i.e. no light can escape the scene). Again, compare the performance effects of stream compaction! Remember, stream compaction only affects rays which terminate, so what might you expect?**
+If no light can escape the scene, then the benefits of stream compaction are nullified as rays only terminate when they reach the end of their depth. As a result, the presence of stream compaction had no effect on the closed box scene. 
 
 
 
