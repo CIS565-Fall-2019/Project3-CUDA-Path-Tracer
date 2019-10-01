@@ -20,13 +20,13 @@ Table of contents
    * [Features Overview]
       * [BSDF Scattering: Diffuse, Specular-Reflective, Specular Transmissive]
       * [Procedural Shapes]
-      * [Motion Blur](#remote-files)
+      * [Motion Blur]
       * [Stochastic Sampled Anti Aliasing]
   * [Optimizations ]
     * [Stream compaction to remove terminated rays]
     * [First bounce caching]
     * [Sort by Material]
-   * [Questions](#tests)
+   * [Questions]
    * [Performance Analysis]
    * [Credits & Acknowledgments]
 
