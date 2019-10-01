@@ -52,6 +52,7 @@ I created procedural shapes via a variation of ***Constructive Solid Geometry***
 
 # Stochastic Sampled Anti Aliasing
 Implementing this simply required that randomly I nudge the ray direction by epsilon in the x & and y axis. Notice how the pre-AA image has jagged edges where the yellow light reflects off it. Notice how this issue dissappears post AA!
+
 | Pre AA | Post AA |
 | ------------- | ----------- |
 | ![](img/preAA.jpg)  | ![](img/postAA.jpg) | 
