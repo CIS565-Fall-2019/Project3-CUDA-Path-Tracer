@@ -99,7 +99,7 @@ EMITTANCE   0
 CAMERA
 RES         800 800
 FOVY        45
-ITERATIONS  1000
+ITERATIONS  5000
 DEPTH       8
 FILE        cornell
 EYE         0.0 5 10.5
@@ -159,6 +159,6 @@ SCALE       .01 10 10
 OBJECT 6
 cappy
 material 2
-TRANS       -1 5 5
-ROTAT       0 0 20
+TRANS       1 5 5
+ROTAT       0 180 20
 SCALE       1.5 1.5 1.5
