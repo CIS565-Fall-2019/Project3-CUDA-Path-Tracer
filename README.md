@@ -8,7 +8,7 @@ Peyman Norouzi
 * Tested on: Windows 10, i7-6700 @ 3.40GHz 16GB, Quadro P1000 4096MB (Moore 100B Lab)
 
 
-## CUDA Path Ray Tracer:
+## CUDA Path Tracer:
 
 ![](img/w_MB.png)
 
@@ -17,7 +17,7 @@ In computer graphics, ray tracing is a rendering technique for generating photo 
 
 ## Table of Contents:
 
-- [CUDA Ray Tracing Implementation](#cuda-ray-tracing-implementation)
+- [CUDA Path Tracing Implementation](#cuda-path-tracing-implementation)
   * [Core Implementation](#core-implementation)
   * [Core Implementation + Anti-Aliasing](#core-implementation---anti-aliasing)
   * [Core Implementation + Anti-Aliasing + Motion Blur](#core-implementation---anti-aliasing---motion-blur)
@@ -29,7 +29,7 @@ In computer graphics, ray tracing is a rendering technique for generating photo 
 - [Bloopers](#bloopers)
 
 
-## CUDA Ray Tracing Implementation:
+## CUDA Path Tracing Implementation:
 
 I am implementing ray tracing on CUDA capable of rendering globally-illuminated images very quickly. The basic idea of the implementation can be seen below:
 
