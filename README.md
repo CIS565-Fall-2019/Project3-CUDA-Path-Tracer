@@ -48,4 +48,4 @@ I created procedural shapes via a variation of ***Constructive Solid Geometry***
 
 | 1 | 2 | 3 |
 | ------------- | ----------- |----------- |
-| ![](img/Sphere and NotCube.PNG)  | ![](img/SphereCubeUnion.PNG) | ![](img/SphereAndCubeMatrix.PNG) |
+| ![](img/SphereAndNotCube.PNG)  | ![](img/SphereCubeUnion.PNG) | ![](img/SphereAndCubeMatrix.PNG) |
