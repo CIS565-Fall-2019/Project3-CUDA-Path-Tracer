@@ -3,8 +3,10 @@
 #include <cstring>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include "tinyobj/tiny_obj_loader.h"
 
 Scene::Scene(string filename) {
+	triCount = 0;
     cout << "Reading scene from " << filename << " ..." << endl;
     cout << " " << endl;
     char* fname = (char*)filename.c_str();
@@ -51,7 +53,72 @@ int Scene::loadGeom(string objectid) {
             } else if (strcmp(line.c_str(), "cube") == 0) {
                 cout << "Creating new cube..." << endl;
                 newGeom.type = CUBE;
-            }
+            } else if (strcmp(line.c_str(), "mesh") == 0) {
+				string line2;
+				utilityCore::safeGetline(fp_in, line2);
+				newGeom.firstTriangle = triCount;
+				if (!line2.empty() && fp_in.good()) {
+					std::vector<tinyobj::shape_t> shapes;
+					std::vector<tinyobj::material_t> materials;
+					string output = tinyobj::LoadObj(shapes, materials, line2.c_str());
+					if (output != "") cout << output << endl;
+
+					//Read the information from the vector of shape_ts
+					for (unsigned int i = 0; i < shapes.size(); i++)
+					{
+						std::vector<float> &positions = shapes[i].mesh.positions;
+						std::vector<float> &normals = shapes[i].mesh.normals;
+						std::vector<float> &uvs = shapes[i].mesh.texcoords;
+						std::vector<unsigned int> &indices = shapes[i].mesh.indices;
+						for (unsigned int j = 0; j < indices.size(); j += 3)
+						{
+							glm::vec3 p1(positions[indices[j] * 3], positions[indices[j] * 3 + 1], positions[indices[j] * 3 + 2]);
+							glm::vec3 p2(positions[indices[j + 1] * 3], positions[indices[j + 1] * 3 + 1], positions[indices[j + 1] * 3 + 2]);
+							glm::vec3 p3(positions[indices[j + 2] * 3], positions[indices[j + 2] * 3 + 1], positions[indices[j + 2] * 3 + 2]);
+
+							for (int k = 0; k < 3; k++) {
+								if (newGeom.bottomCornerBound[k] > p1[k]) newGeom.bottomCornerBound[k] = p1[k];
+								if (newGeom.topCornerBound[k] < p1[k]) newGeom.topCornerBound[k] = p1[k];
+
+								if (newGeom.bottomCornerBound[k] > p2[k]) newGeom.bottomCornerBound[k] = p2[k];
+								if (newGeom.topCornerBound[k] < p2[k]) newGeom.topCornerBound[k] = p2[k];
+
+								if (newGeom.bottomCornerBound[k] > p3[k]) newGeom.bottomCornerBound[k] = p3[k];
+								if (newGeom.topCornerBound[k] < p3[k]) newGeom.topCornerBound[k] = p3[k];
+							}
+
+							Triangle t = Triangle();
+							t.p1 = p1;
+							t.p2 = p2;
+							t.p3 = p3;
+							if (normals.size() > 0)
+							{
+								glm::vec3 n1(normals[indices[j] * 3], normals[indices[j] * 3 + 1], normals[indices[j] * 3 + 2]);
+								glm::vec3 n2(normals[indices[j + 1] * 3], normals[indices[j + 1] * 3 + 1], normals[indices[j + 1] * 3 + 2]);
+								glm::vec3 n3(normals[indices[j + 2] * 3], normals[indices[j + 2] * 3 + 1], normals[indices[j + 2] * 3 + 2]);
+								t.n1 = n1;
+								t.n2 = n2;
+								t.n3 = n3;
+							}
+							if (uvs.size() > 0)
+							{
+								/*glm::vec2 t1(uvs[indices[j] * 2], uvs[indices[j] * 2 + 1]);
+								glm::vec2 t2(uvs[indices[j + 1] * 2], uvs[indices[j + 1] * 2 + 1]);
+								glm::vec2 t3(uvs[indices[j + 2] * 2], uvs[indices[j + 2] * 2 + 1]);
+								t->uvs[0] = t1;
+								t->uvs[1] = t2;
+								t->uvs[2] = t3;*/
+							}
+							
+							triCount++;
+							tris.push_back(t);
+						}
+					}
+				}
+				cout << "Creating new mesh..." << endl;
+				newGeom.type = MESH;
+				newGeom.lastTriangle = triCount;
+			}
         }
 
         //link material
