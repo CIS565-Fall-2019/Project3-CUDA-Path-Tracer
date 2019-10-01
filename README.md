@@ -57,7 +57,7 @@ For different combinations of relective and refractive probabilies, here are the
 
 ### Sorting the rays by material ID
 
-The rays after bouncing from the objects are sprted on the basis of the material ID, sicne, there is high chance that all these rays might strike the same object again and we have the rays at contigous memeory allocation in the memory which would quicken up the effect. In our cornell scene, we mostly observe that the sorting does not improve the performance that greatly because of lack of different materials in the scenes.
+The rays after bouncing from the objects are sprted on the basis of the material ID, sicne, there is high chance that all these rays might strike the same object again and we have the rays at contigous memeory allocation in the memory which would quicken up the effect. In our cornell scene, we mostly observe that the sorting does not improve the performance that greatly because of lack of different materials in the scenes. 
 
 <p align="center"><img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img/ray_sorting_graph.png" width="700"/></p>
 
@@ -65,7 +65,7 @@ The rays after bouncing from the objects are sprted on the basis of the material
 
 The stream compaction has benn done in the path tracer using Thrust library initially so that the basic working of the path tracer could be verified. After designing the basic path tracer, I worked on performing Stream Compaction using Shared Memory. The algorithm uses two stages of scanning where the first scanning happens using Shared Memory. The performace as shown in the graphs below. After performing the Work Efficient usign Shared memory algorithm across the blocks, we are getting the last element of each of the block and adding the last element in the original array in the block and performing again scan operation on the new array. Referred for the following reference for writing the code [GPU Gem Ch 39 ](https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch39.html) 
 
-The graph below shows the runtime for Work Efficient Shared memory vs Thrust library.
+The graph below shows the runtime for Work Efficient Shared memory vs Thrust library. It clearly indicated that the work efficent implementation with Shared Memory is much faster than Thrust.
 
 <p align="center"><img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img/graph_stream_compaction_comparision.png" width="700"/></p>
 
@@ -75,6 +75,8 @@ The graph below shows the runtime for Work Efficient Shared memory vs Thrust lib
 For each iteration, the rays are generated from the camera are likely to hit the same intersection material. Thus, computing the intersections every iteration would be costly and we can preserve that time by caching the first bounces that takes place in the first iteration and then later on just load those intersections for next iterations and prcess for the shading. The performance analysis for the caching and non-cahing as the function of depth in the first and second iteration is given below:
 
 <p align="center"><img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img/graph_cache_first_bounce_difference.png" width="700"/></p>
+
+We can observe that for `depth = 0`, the runtime has increased drastically as we are not computing the intersections again.
 
 ### Anti-Aliasing
 
@@ -88,6 +90,7 @@ Anti-aliasing is the way of remove the jaggering happening during the rendering 
   <img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img//Image_after_aliasing_zoomin.png" width="300" alt="With Antialiasing"/> 
 </p>     
 
+Here, we can see that some of the jaggered lines in the left hand side which are not in the right hand side. 
 
 ### Motion Blur
 
