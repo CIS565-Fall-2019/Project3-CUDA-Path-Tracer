@@ -36,7 +36,7 @@ Perfectly diffuse materials can reflect light from any direction, and so the nex
 
 ### Stream Compaction, Partitioning by Material, and Cacheing for Speed
 
-![](img/Main/0cornell5000samp.png) ![](img/graphcomp)
+![](img/Main/0cornell5000samp.png)  |  ![](img/graphcomp)
 
 &#x1F537; **Toggleable options** in `pathtrace.cu`: 
 * Line 21, set `TOGGLESTREAM = true` for Stream Compaction
@@ -95,7 +95,7 @@ All pictures at 5000 samples per pixel.
 ### Procedural Surfaces
 
 ![](img/Main/maincap.png)
-![](img/Main/2cappy-side1.1000samp.png) ![](img/Main/3cappy-back.1000samp.png)
+![](img/Main/2cappy-side1.1000samp.png)  |  ![](img/Main/3cappy-back.1000samp.png)
 ![](img/Main/1duck-5000samp.png)
 
 For these shapes I used the formulas for implicit surfaces, as taught by IQ on his website. These mathematical formulas tell you how far a given ray is from a surface, and by combining different primitive formulas, you can get very complex shapes, like Cappy from Super Mario Odyssey and some Duck.
@@ -105,7 +105,7 @@ The larger pictures are both at 5000 samples, while the smaller are 1000 samples
 ### Procedural Textures
 
 ![](img/Texture/1spheretext5000samp.png)
-![](img/Texture/2walltext5000samp.png) ![](img/Texture/3boxtext5000samp.png)
+![](img/Texture/2walltext5000samp.png)  |  ![](img/Texture/3boxtext5000samp.png)
 
 I used two implementations of a noise function (my favorite that I have used for years :D) to get these two different procedural textures. One call to this function makes use of `glm::abs` to get such vivid lines, while the other is at a greater scale and more smoothely blended, to almost look like spots.
 
