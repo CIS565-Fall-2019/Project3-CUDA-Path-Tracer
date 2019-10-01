@@ -44,7 +44,7 @@ A combination of ***reflection*** and ***transmission*** functions that describe
 | ![](img/bsdf3.png)  | ![](img/bsdf1.png) | ![](img/bsdf2.png) |
 
 ## Procedural Shapes
-I created procedural shapes via a variation of ***Constructive Solid Geometry*** ray tracing. Using the provided primitives, I modified in the code in ```intersection.h``` to generate three different procedural of the original primitive geometry:
+I created procedural shapes via a variation of ***Constructive Solid Geometry*** ray tracing. Using the provided primitives, I modified in the code in ```intersection.h``` to generate three different constructive of the original primitive geometry that used portions of the original geometry and negated others:
 
 | 1 | 2 | 3 |
 | ------------- | ----------- |----------- |
