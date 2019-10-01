@@ -36,6 +36,7 @@ Perfectly diffuse materials can reflect light from any direction, and so the nex
 
 ### Stream Compaction, Partitioning by Material, and Cacheing for Speed
 
+:-------------------------:|:-------------------------:
 ![](img/Main/0cornell5000samp.png)  |  ![](img/graphcomp)
 
 &#x1F537; **Toggleable options** in `pathtrace.cu`: 
@@ -98,6 +99,7 @@ All pictures at 5000 samples per pixel.
 
 :-------------------------:|:-------------------------:
 ![](img/Main/2cappy-side1.1000samp.png)  |  ![](img/Main/3cappy-back.1000samp.png)
+Cappy Front           |  Cappy Back
 
 ![](img/Main/1duck-5000samp.png)
 
@@ -111,6 +113,7 @@ The larger pictures are both at 5000 samples, while the smaller are 1000 samples
 
 :-------------------------:|:-------------------------:
 ![](img/Texture/2walltext5000samp.png)  |  ![](img/Texture/3boxtext5000samp.png)
+Wall Texturing           |  Box Texturing
 
 I used two implementations of a noise function (my favorite that I have used for years :D) to get these two different procedural textures. One call to this function makes use of `glm::abs` to get such vivid lines, while the other is at a greater scale and more smoothely blended, to almost look like spots.
 
@@ -133,6 +136,7 @@ As you can see below, the Direct Lighting converges faster.
 10 samples           |  10 samples
 :-------------------------:|:-------------------------:
 ![](img/ConvergeComp/10sampdirect.png)  |  ![](img/ConvergeComp/10sampnaive.png)
+
 50 samples           |  50 samples
 :-------------------------:|:-------------------------:
 ![](img/ConvergeComp/50sampdirect.png)  |  ![](img/ConvergeComp/50sampnaive.png)
@@ -148,6 +152,7 @@ Hemisphere sampling, used in this project to determine the direction of an outgo
 
 Illustrated below, without jittering the random values, we have the initial square of points, the disk form, and then the cosine weighted hemisphere form.
 
+Square           |  Disk
 :-------------------------:|:-------------------------:
 ![](img/grid.png)  |  ![](img/diskcon.png)
 
