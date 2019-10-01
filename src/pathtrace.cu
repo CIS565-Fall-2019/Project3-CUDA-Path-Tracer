@@ -21,7 +21,7 @@
 #include "interactions.h"
 
 #define ERRORCHECK 1
-#define ANTIALIASING 1
+#define ANTIALIASING 0
 #define SORTMATERIAL 1
 #define STREAMCOMPACT 1
 #define BLURGEOM 0

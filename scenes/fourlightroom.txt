@@ -195,7 +195,7 @@ SCALE       .01 10 10
 // Left wall
 OBJECT 7
 cube
-material 7
+material 9
 TRANS       -5 5 0
 ROTAT       0 0 0s
 SCALE       .01 10 10
@@ -203,7 +203,7 @@ SCALE       .01 10 10
 // Right wall
 OBJECT 8
 cube
-material 7
+material 9
 TRANS       5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
@@ -213,30 +213,7 @@ SCALE       .01 10 10
 OBJECT 9
 sphereAndNotCube
 material 8
-TRANS    2 6 -2
+TRANS    -1 4 -1
 ROTAT       0 10 45
 SCALE       3 3 3
 
-// SphereandNotCUBE
-OBJECT 10
-cube
-material 10
-TRANS    -1 4.0 1
-ROTAT       20 0  0
-SCALE       1  1  1
-
-// SphereandNotCUBE
-OBJECT 11
-sphereCubeUnion
-material 11
-TRANS    0 3 2
-ROTAT       20 10  45
-SCALE       1.2  1.2  1.2
-
-// SphereAndCUBE
-OBJECT 12
-sphereAndCube
-material 11
-TRANS    -2 3 -2
-ROTAT       20 10  45
-SCALE       1.2  1.2  1.2
