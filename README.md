@@ -38,22 +38,24 @@ Perfectly diffuse materials can reflect light from any direction, and so the nex
 
 Scene           |  Performance
 :-------------------------:|:-------------------------:
-![](img/Main/0cornell5000samp.png)  |  ![](img/graphcomp)
+![](img/Main/0cornell5000samp.png)  |  ![](img/graph.png)
 
 &#x1F537; **Toggleable options** in `pathtrace.cu`: 
 * Line 21, set `TOGGLESTREAM = true` for Stream Compaction
 * Line 22, set `TOGGLESORT = true` to sort paths by Material
 * Line 23, set `TOGGLECACHE = true` to cache the first bounce intersections
 
-All three methods added here decrease the runtime for more complex scenes.
+Theoretically, all three methods added here decrease the runtime for more complex scenes.
 
 Stream Compaction, as we know from my previous repository, culls current paths that don't fit a certain criteria. In this case, we look to see if a bath is complete (`remaininBounces==0`), and if so we remove it from the list. Because of this, we don't have to uselessly call `shadeNaive()` on our completed paths.
 
-Organizing our paths based on intersection materials minimizes the chances of divergent warps; every path completing the same tasks (since many are based on material, see `scatterRay()`)
+Organizing our paths based on intersection materials minimizes the chances of divergent warps; Most adjacent paths are completing the same tasks (since many are based on material, see `scatterRay()`), meaning the warps containing them should finish at the same times.
 
-Measurements were taken on the scene pictured at left, (but for 1000 samples rather than 5000).
-Diffuse Cornell, Diffuse and Specular Cornell (specular sphere), My Cornell (diffuse walls and box, two transmissive and one reflective spheres)
-under each: No optimization, Stream compaction, partitioning, cache, all three
+Cacheing the first pass allows us to not have to repeat the same ray-cast each iteration, and this can happen since this is the only step without randomness.
+
+Blue measurements were taken on the scene pictured at left (cornell.txt), but for 256 samples rather than 5000. The orange values were tested on an all diffuse Cornell Box.
+
+Conclusion: some methods sped up runtime, some slowed it down - I think my GPU is just weird.
 
 
 ## PART 2: More Surfaces and Shapes
@@ -125,6 +127,8 @@ I used two implementations of a noise function (my favorite that I have used for
 
 ![](img/ConvergeComp/5000sampdirect.png)
 
+&#x1F537; **Toggleable option:** Line 12 of `scene.h`, set `DIRECTLIGHTING` to `true` if you desire this effect, `false` if you do not.
+
 To get a much faster converging image, many path tracers utilize multiple importance sampling. At each bounce this casts both naively bouncing random rays, and light-wards aimed rays, weighs the two, and combines the resulting color. However, I did not implement this: I took a more simplistic approach. As the instructions suggested, I can take a final ray directly to a random point on an emissive object acting as a light source, and so I run most bounces as normal, until I hit the second to last bounce. This bounce alters the outgoing ray value to point to a light's surface. (The random position is chosen by taking a random (x, y) vector and projecting it onto a plane with the object's transformations. For simplicity's sake, this works best with cube and planar light sources.) The following and final bounce processes if that new ray indeed hits the light, and if so adds light to the path's current color. Because we directly hit a light at the end of most paths, and we don't utilize a PDF, the direct-lighting-influenced pictures tended to be brighter.
 
 As you can see below, the Direct Lighting converges faster.
@@ -149,9 +153,9 @@ The Given Sampling           |  My Sampling
 :-------------------------:|:-------------------------:
 ![](img/normSamp.png)  |  ![](img/mySamp.png)
 
-Left is using the given sampling, right is using my own.
+&#x1F537; **Toggleable option:** Line 12 of `interactions.h`, set `COSINEW` to `true` if you desire this effect, `false` if you do not.
 
-Hemisphere sampling, used in this project to determine the direction of an outgoing ray after bouncing on a diffuse surface, has many different varieties. In my implementation, I ensure that there is a higher density of outgoing rays that are more orthogonal to the surface. Due to lambert's law, rays more tangent o a surface deposit less light, and so the more tangential rays are less relevant to our pathtracing computation. I accomplish this by taking two random `float`s from [0, 1] (using these as (x, y) positions creates a 2D square of random points) and converting them onto a disk in 3D space. I then project this disk onto 
+Hemisphere sampling, used in this project to determine the direction of an outgoing ray after bouncing on a diffuse surface, has many different varieties. In my implementation, I ensure that there is a higher density of outgoing rays that are more orthogonal to the surface. Due to lambert's law, rays more tangent o a surface deposit less light, and so the more tangential rays are less relevant to our pathtracing computation. I accomplish this by taking two random `float`s from [0, 1] (using these as (x, y) positions creates a 2D square of random points) and converting them onto a disk in 3D space. I then project this disk onto a hemisphere to get the resulting values. Sadly, there is not too much of a dramatic visual difference here - some higher concentration of shadows - but it does make a slight difference overall!
 
 Illustrated below, without jittering the random values, we have the initial square of points, the disk form, and then the cosine weighted hemisphere form.
 

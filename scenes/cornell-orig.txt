@@ -133,7 +133,7 @@ SCALE       .01 10 10
 // SphereMirror
 OBJECT 6
 sphere
-material 5
+material 4
 TRANS       -1 4 -1
 ROTAT       0 0 0
 SCALE       3 3 3

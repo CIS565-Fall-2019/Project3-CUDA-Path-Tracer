@@ -2,7 +2,7 @@
 
 #include "intersections.h"
 
-#define COSINEW true
+#define COSINEW false
 
 // CHECKITOUT
 /**
