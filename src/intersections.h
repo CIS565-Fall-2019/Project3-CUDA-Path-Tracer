@@ -101,7 +101,8 @@ __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
  */
 __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
         glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
-    float radius = .5;
+    //float radius = .5;
+	float radius = 0.55;
 
     glm::vec3 ro = multiplyMV(sphere.inverseTransform, glm::vec4(r.origin, 1.0f));
     glm::vec3 rd = glm::normalize(multiplyMV(sphere.inverseTransform, glm::vec4(r.direction, 0.0f)));
@@ -111,6 +112,9 @@ __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
     rt.direction = rd;
 
     float vDotDirection = glm::dot(rt.origin, rt.direction);
+	//glm::dot(rt.origin, rt.origin): dot(A-C, A-C)
+	//powf(radius, 2) = R^2
+	//vDotDirection = dot(B, A-C)
     float radicand = vDotDirection * vDotDirection - (glm::dot(rt.origin, rt.origin) - powf(radius, 2));
     if (radicand < 0) {
         return -1;
@@ -141,4 +145,122 @@ __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
     }
 
     return glm::length(r.origin - intersectionPoint);
+}
+
+
+__host__ __device__ float sphereIntersectionTestRadius(Geom sphere, Ray r,
+        glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside, float radius) {
+
+    glm::vec3 ro = multiplyMV(sphere.inverseTransform, glm::vec4(r.origin, 1.0f));
+    glm::vec3 rd = glm::normalize(multiplyMV(sphere.inverseTransform, glm::vec4(r.direction, 0.0f)));
+
+    Ray rt;
+    rt.origin = ro;
+    rt.direction = rd;
+
+    float vDotDirection = glm::dot(rt.origin, rt.direction);
+	//glm::dot(rt.origin, rt.origin): dot(A-C, A-C)
+	//powf(radius, 2) = R^2
+	//vDotDirection = dot(B, A-C)
+    float radicand = vDotDirection * vDotDirection - (glm::dot(rt.origin, rt.origin) - powf(radius, 2));
+    if (radicand < 0) {
+        return -1;
+    }
+
+    float squareRoot = sqrt(radicand);
+    float firstTerm = -vDotDirection;
+    float t1 = firstTerm + squareRoot;
+    float t2 = firstTerm - squareRoot;
+
+    float t = 0;
+    if (t1 < 0 && t2 < 0) {
+        return -1;
+    } else if (t1 > 0 && t2 > 0) {
+        t = min(t1, t2);
+        outside = true;
+    } else {
+        t = max(t1, t2);
+        outside = false;
+    }
+
+    glm::vec3 objspaceIntersection = getPointOnRay(rt, t);
+
+    intersectionPoint = multiplyMV(sphere.transform, glm::vec4(objspaceIntersection, 1.f));
+    normal = glm::normalize(multiplyMV(sphere.invTranspose, glm::vec4(objspaceIntersection, 0.f)));
+    if (!outside) {
+        normal = -normal;
+    }
+
+    return glm::length(r.origin - intersectionPoint);
+}
+
+// CHECKITOUT
+/**
+ * Test intersection between a ray and Union of Sphere & Cube. Untransformed,
+ * the sphere always has radius 0.5, and untransformed cube has side lenghts 0.5 and is centered at the origin.
+ *
+ * @param intersectionPoint  Output parameter for point of intersection.
+ * @param normal             Output parameter for surface normal.
+ * @param outside            Output param for whether the ray came from outside.
+ * @return                   Ray parameter `t` value. -1 if no intersection.
+ */
+__host__ __device__ float sphereCubeUnion(Geom spherecube, Ray r,
+        glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
+	glm::vec3 cubeIntersection, cubeNormal;
+	glm::vec3 sphereIntersection, sphereNormal;
+	bool cubeOutside, sphereOutside;
+	float tCube, tSphere;
+	tSphere = sphereIntersectionTestRadius(spherecube, r, sphereIntersection, sphereNormal, sphereOutside, 0.65);
+	tCube = boxIntersectionTest(spherecube, r, cubeIntersection, cubeNormal, cubeOutside);
+	if (tSphere <= tCube) {
+		intersectionPoint = sphereIntersection;
+		normal = sphereNormal;
+		outside = sphereOutside;
+		return tSphere;
+	}
+	else {
+		intersectionPoint = cubeIntersection;
+		normal = cubeNormal;
+		outside = cubeOutside;
+		return tCube;
+	}
+}
+
+
+__host__ __device__ float sphereAndCube(Geom spherecube, Ray r,
+        glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
+	glm::vec3 cubeIntersection, cubeNormal;
+	glm::vec3 sphereIntersection, sphereNormal;
+	bool cubeOutside, sphereOutside;
+	float tCube, tSphere;
+	tSphere = sphereIntersectionTestRadius(spherecube, r, sphereIntersection, sphereNormal, sphereOutside, 0.55);
+	tCube = boxIntersectionTest(spherecube, r, cubeIntersection, cubeNormal, cubeOutside);
+	if (tCube <= tSphere) {
+		intersectionPoint = sphereIntersection;
+		normal = sphereNormal;
+		outside = sphereOutside;
+		return tSphere;
+	}
+	else {
+		return -1;
+	}
+}
+
+__host__ __device__ float sphereAndNotCube(Geom spherecube, Ray r,
+        glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
+	glm::vec3 cubeIntersection, cubeNormal;
+	glm::vec3 sphereIntersection, sphereNormal;
+	bool cubeOutside, sphereOutside;
+	float tCube, tSphere;
+	tSphere = sphereIntersectionTestRadius(spherecube, r, sphereIntersection, sphereNormal, sphereOutside, 0.60);
+	tCube = boxIntersectionTest(spherecube, r, cubeIntersection, cubeNormal, cubeOutside);
+	if (tSphere <= tCube) {
+		intersectionPoint = sphereIntersection;
+		normal = sphereNormal;
+		outside = sphereOutside;
+		return tSphere;
+	}
+	else {
+		return -1;
+	}
 }

@@ -66,6 +66,13 @@ glm::vec3 calculateRandomDirectionInHemisphere(
  *
  * You may need to change the parameter list for your purposes!
  */
+
+
+__host__ __device__
+float schlick(float cosine, float ref_idx) {
+    float r0 = powf((1.f - ref_idx) / (1.f + ref_idx), 2.f);
+    return r0 + (1.f - r0) * powf((1.f - cosine), 5.f);
+}
 __host__ __device__
 void scatterRay(
 		PathSegment & pathSegment,
@@ -73,7 +80,47 @@ void scatterRay(
         glm::vec3 normal,
         const Material &m,
         thrust::default_random_engine &rng) {
-    // TODO: implement this.
-    // A basic implementation of pure-diffuse shading will just call the
-    // calculateRandomDirectionInHemisphere defined above.
+
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	float prob = u01(rng);
+	if (prob < m.hasRefractive) {
+		//Refract
+		glm::vec3 inDirection = pathSegment.ray.direction;
+		//Dot is positive if normal & inDirection face the same dir -> the ray is inside the object getting out
+		bool insideObj = glm::dot(inDirection, normal) > 0.0f;
+		
+		//glm::refract (followed raytracing.github.io trick for hollow glass sphere effect by reversing normals)
+		float eta = insideObj ? m.indexOfRefraction : (1.0f / m.indexOfRefraction);
+		glm::vec3 outwardNormal = insideObj ? -1.0f * normal : normal;
+		glm::vec3 finalDir = glm::refract(glm::normalize(inDirection), glm::normalize(outwardNormal), eta);
+
+		//Check for TIR (if magnitude of refracted ray is very small)
+		if (glm::length(finalDir) < 0.01f) {
+			pathSegment.color *= 0.0f;
+			finalDir = glm::reflect(inDirection, normal);
+		}
+
+		//Use schlicks to calculate reflective probability (also followed raytracing.github.io)
+		float cosine = glm::dot(inDirection, normal);
+		float reflectProb = schlick(cosine, m.indexOfRefraction);
+		float sampleFloat = u01(rng);
+
+		pathSegment.ray.direction = reflectProb < sampleFloat ? glm::reflect(inDirection, normal) : finalDir;
+		pathSegment.ray.origin = intersect + 0.001f * pathSegment.ray.direction;
+		pathSegment.color *= m.specular.color;
+	}
+	else if (prob < m.hasReflective) {
+		//Reflective Surface
+		pathSegment.ray.direction = glm::reflect(pathSegment.ray.direction, normal);
+		pathSegment.ray.origin = intersect + 0.01f * normal;
+		pathSegment.color *= m.specular.color;
+	}
+	else {
+		//Diffuse Surface
+		pathSegment.ray.direction = calculateRandomDirectionInHemisphere(normal, rng);
+		pathSegment.ray.origin = intersect + EPSILON * normal;
+	}
+	pathSegment.remainingBounces--;
+	pathSegment.color *= m.color;
+	pathSegment.color = glm::clamp(pathSegment.color, glm::vec3(0.0f), glm::vec3(1.0f));
 }

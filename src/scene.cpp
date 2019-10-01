@@ -51,6 +51,18 @@ int Scene::loadGeom(string objectid) {
             } else if (strcmp(line.c_str(), "cube") == 0) {
                 cout << "Creating new cube..." << endl;
                 newGeom.type = CUBE;
+            } 
+			else if (strcmp(line.c_str(), "sphereCubeUnion") == 0) {
+                cout << "Creating new sphereCubeUnion..." << endl;
+                newGeom.type = SPHERECUBEUNION;
+            }
+			else if (strcmp(line.c_str(), "sphereAndCube") == 0) {
+                cout << "Creating new sphereAndCube..." << endl;
+                newGeom.type = SPHEREANDCUBE;
+            }
+			else if (strcmp(line.c_str(), "sphereAndNotCube") == 0) {
+                cout << "Creating new sphereAndNotCube..." << endl;
+                newGeom.type = SPHEREANDNOTCUBE;
             }
         }
 
@@ -125,7 +137,6 @@ int Scene::loadCamera() {
         } else if (strcmp(tokens[0].c_str(), "UP") == 0) {
             camera.up = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
         }
-
         utilityCore::safeGetline(fp_in, line);
     }
 
