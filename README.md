@@ -26,8 +26,8 @@ Table of contents
     * [Stream compaction to remove terminated rays](#stream-compaction-to-remove-terminated-rays)
     * [First bounce caching](#first-bounce-caching)
     * [Sort by Material](#sort-by-material)
-   * [Questions]
-   * [Performance Analysis]
+   * [Questions](#questions)
+   * [Performance Analysis](#performance-analysis)
    * [Credits & Acknowledgments](#credits)
 
 # What is path tracing?
@@ -83,5 +83,6 @@ I proceeded to remove walls from my cornell scene and to printed out the decreas
 If no light can escape the scene, then the benefits of stream compaction are nullified as rays only terminate when they reach the end of their depth. As a result, the presence of stream compaction had no effect on the closed box scene. 
 
 # Credits
-rayttracing.github.io
+See wayyy more images and bloopers in the imgs folder!
+[rayttracing.github.io](raytracing.github.io)
 
