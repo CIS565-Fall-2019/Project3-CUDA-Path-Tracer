@@ -37,8 +37,15 @@ Path tracing refers to a set of techniques to virtually render images by emulati
 
 # Features Overview
 ## BSDF Scattering
-A combination of ***reflection*** and ***transmission*** functions that describe how rays must bounce once they intersect an object. For transmissive and refractive objects, we use schlicks approximation to calculate the probability of the refractive surface being reflective at high incidence angles. We illustrate BSDF on three material properties below:
+A combination of ***reflection*** and ***transmission*** functions that describe how rays must bounce once they intersect an object. For transmissive and refractive objects, I used schlicks approximation to calculate the probability of the refractive surface being reflective at high incidence angles. The following illustrates BSDF on three material properties:
 
 | Diffuse | Reflective | Refractive |
 | ------------- | ----------- |----------- |
 | ![](img/bsdf3.png)  | ![](img/bsdf1.png) | ![](img/bsdf2.png) |
+
+## Procedural Shapes
+I created procedural shapes via a variation of ***Constructive Solid Geometry*** ray tracing. Using the provided primitives, I modified in the code in ```intersection.h``` to generate three different procedural of the original primitive geometry:
+
+| 1 | 2 | 3 |
+| ------------- | ----------- |----------- |
+| ![](img/SphereAndNotCube.png)  | ![](img/SphereCubeUnion.png) | ![](img/SphereAndCubeMatrix.png) |
