@@ -38,6 +38,7 @@ Path tracing refers to a set of techniques to virtually render images by emulati
 # Features Overview
 ## BSDF Scattering
 A combination of ***reflection*** and ***transmission*** functions that describe how rays must bounce once they intersect an object. For transmissive and refractive objects, we use schlicks approximation to calculate the probability of the refractive surface being reflective at high incidence angles. We illustrate BSDF on three material properties below:
+
 | Diffuse | Reflective | Refractive |
 | ------------- | ----------- |----------- |
-| ![](imgs/bsdf3.png)  | ![](imgs/bsdf1.png) | ![](imgs/bsdf2.png) |
+| ![](img/bsdf3.png)  | ![](img/bsdf1.png) | ![](img/bsdf2.png) |
