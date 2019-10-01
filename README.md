@@ -88,7 +88,7 @@ Anti-aliasing is the way of remove the jaggering happening during the rendering 
 
 ### Motion Blur
 
-I have attemmpted to do motion blur n the path tracer and was going through lot of issues as the image is getting dark and lot of other stuff. 
+I have attemmpted to do motion blur n the path tracer and was going through lot of issues as the image is getting dark and lot of other stuff. The code for motion blur is in the code file "pathrace.cu".
 
 ### Bloopers
 
