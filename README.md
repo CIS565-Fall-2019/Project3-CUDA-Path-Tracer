@@ -17,16 +17,16 @@ In computer graphics, ray tracing is a rendering technique for generating photo 
 
 ## Table of Contents:
 
-- [CUDA Ray Tracing Implementation:](#cuda-ray-tracing-implementation-)
-  * [Core Implementation:](#core-implementation-)
-  * [Core Implementation + Anti-Aliasing:](#core-implementation---anti-aliasing-)
-  * [Core Implementation + Anti-Aliasing + Motion Blur:](#core-implementation---anti-aliasing---motion-blur-)
-- [Perfomance Implementation and Analysis:](#perfomance-implementation-and-analysis-)
-  * [Stream Compaction:](#stream-compaction-)
-  * [First bounce intersections Caching:](#first-bounce-intersections-caching-)
-  * [Material Sort:](#material-sort-)
-- [Cool Renders:](#cool-renders-)
-- [Bloopers:](#bloopers-)
+- [CUDA Ray Tracing Implementation](#cuda-ray-tracing-implementation)
+  * [Core Implementation](#core-implementation)
+  * [Core Implementation + Anti-Aliasing](#core-implementation---anti-aliasing)
+  * [Core Implementation + Anti-Aliasing + Motion Blur](#core-implementation---anti-aliasing---motion-blur)
+- [Perfomance Implementation and Analysis](#perfomance-implementation-and-analysis)
+  * [Stream Compaction](#stream-compaction)
+  * [First bounce intersections Caching](#first-bounce-intersections-caching)
+  * [Material Sort](#material-sort)
+- [Cool Renders](#cool-renders)
+- [Bloopers](#bloopers)
 
 
 ## CUDA Ray Tracing Implementation:
@@ -87,7 +87,9 @@ In the naive approach, we track each rays motion and bounce, throughout its jour
 
 Stream compaction would allow us to get rid of rays that have already terminated by hitting the light source or a diffusing surface. This way we can exit earlier in each iteration thus improving our performance. This is especially useful when our depth is a larger number such as 64. We can see the performance improved significantly as follows (the depth is 8):
 
+
 ![](img/SC.png)
+
 
 As you can see the time it takes for each depth decreases as we bounce further and further which is as predicted. This is due to having less and less active rays to track as we bounce further and further. The performance improvement is especially significant when we have an open environment (no surrounding walls) which makes sense since a lot more rays would get eliminated because of space being open. Overall if we have a high depth(32 and above) stream compaction can improve the performance significantly. 
 
@@ -95,6 +97,7 @@ As you can see the time it takes for each depth decreases as we bounce further a
 ### First bounce intersections Caching:
 
 The first bounce (rays leaving the camera) is the same for each frame iteration so we are technically able to calculate the first bounce intersection and cache it in our memory and use it for future frame iteration which can help further improve the performance of the implementation which can be seen in the plot below: 
+
 
 <p align="center">
   <img src="img/Cache.png">
