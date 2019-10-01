@@ -52,7 +52,7 @@ I created procedural shapes via a variation of ***Constructive Solid Geometry***
 | ------------- | ----------- |----------- |
 | ![](img/SphereAndNotCube.PNG)  | ![](img/SphereCubeUnion.PNG) | ![](img/SphereAndCubeMatrix.PNG) |
 
-# Stochastic Sampled Anti Aliasing
+## Stochastic Sampled Anti Aliasing
 Implementing this simply required that randomly I nudge the ray direction by epsilon in the x & and y axis. Notice how the pre-AA image has jagged edges where the yellow light reflects off it. Notice how this issue dissappears post AA!
 
 | Pre AA | Post AA |
@@ -66,6 +66,7 @@ I created a kernel function ```blurGeom``` that allows users to specify a ``glm:
 | ------------- | ----------- | ----------- |
 | ![](img/mblurmirror.PNG)  | ![](img/mirrordim.PNG) | ![](img/motionblur.PNG) |
 
+# Optimizations 
 
 
 
