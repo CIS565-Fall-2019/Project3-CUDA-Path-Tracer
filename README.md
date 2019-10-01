@@ -120,12 +120,14 @@ To get a much faster converging image, many path tracers utilize multiple import
 
 As you can see below, the Direct Lighting converges faster.
 
-**Direct**            |  **Naive**
-1 sample           |  1 sample 10 50
+
+**Direct** 1 sample           |  **Naive** 1 sample
 :-------------------------:|:-------------------------:
 ![](img/ConvergeComp/1sampdirect.png)  |  ![](img/ConvergeComp/1sampnaive.png)
+
 10 samples           |  10 samples
 :-------------------------:|:-------------------------:
+
 ![](img/ConvergeComp/10sampdirect.png)  |  ![](img/ConvergeComp/10sampnaive.png)
 50 samples           |  50 samples
 :-------------------------:|:-------------------------:
