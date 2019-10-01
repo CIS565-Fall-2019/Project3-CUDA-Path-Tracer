@@ -82,7 +82,8 @@ __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
             tmin_n = tmax_n;
             outside = false;
         }
-        intersectionPoint = multiplyMV(box.transform, glm::vec4(getPointOnRay(q, tmin), 1.0f));
+		glm::vec3 pointOnRay = getPointOnRay(q, tmin);
+        intersectionPoint = multiplyMV(box.transform, glm::vec4(pointOnRay, 1.0f));
         normal = glm::normalize(multiplyMV(box.transform, glm::vec4(tmin_n, 0.0f)));
         return glm::length(r.origin - intersectionPoint);
     }
@@ -157,8 +158,16 @@ __host__ __device__ glm::vec3 triGetNormal(const glm::vec3 &P, const Triangle tr
 	return glm::normalize(tri.n1 * A0 / A + tri.n2 * A1 / A + tri.n3 * A2 / A);
 }
 
+__host__ __device__ glm::vec2 triGetUV(const glm::vec3 &P, const Triangle tri) {
+	float A = triArea(tri.p1, tri.p2, tri.p3);
+	float A0 = triArea(tri.p2, tri.p3, P);
+	float A1 = triArea(tri.p1, tri.p3, P);
+	float A2 = triArea(tri.p1, tri.p2, P);
+	return glm::normalize(tri.uv1 * A0 / A + tri.uv2 * A1 / A + tri.uv3 * A2 / A);
+}
+
 __host__ __device__ float triangleIntersectionTest(Triangle triangle, Ray r,
-	glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
+	glm::vec3 &intersectionPoint, glm::vec3 &normal, glm::vec2 &uv, bool &outside) {
 	glm::vec3 p1 = triangle.p1;
 	glm::vec3 p2 = triangle.p2;
 	glm::vec3 p3 = triangle.p3;
@@ -181,6 +190,7 @@ __host__ __device__ float triangleIntersectionTest(Triangle triangle, Ray r,
 		glm::vec3 n2 = triangle.n2;
 		glm::vec3 n3 = triangle.n3;
 		normal = triGetNormal(intersectionPoint, triangle);
+		uv = triGetUV(intersectionPoint, triangle);
 		outside = glm::dot(normal, r.direction) < 0;
 		if (!outside) normal = -normal;
 		return t;
@@ -189,7 +199,7 @@ __host__ __device__ float triangleIntersectionTest(Triangle triangle, Ray r,
 }
 
 __host__ __device__ float meshIntersectionTest(Geom mesh, Triangle *triangles, Ray r,
-	glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
+	glm::vec3 &intersectionPoint, glm::vec3 &normal, glm::vec2 &uv, bool &outside) {
 	Ray q;
 	q.origin = multiplyMV(mesh.inverseTransform, glm::vec4(r.origin, 1.0f));
 	q.direction = glm::normalize(multiplyMV(mesh.inverseTransform, glm::vec4(r.direction, 0.0f)));
@@ -226,13 +236,15 @@ __host__ __device__ float meshIntersectionTest(Geom mesh, Triangle *triangles, R
 	for (int i = mesh.firstTriangle; i < mesh.lastTriangle; i++) {
 		glm::vec3 intersectionPoint_new;
 		glm::vec3 normal_new;
+		glm::vec2 uv_new;
 		bool outside_new = false;
-		float t_new = triangleIntersectionTest(triangles[i], q, intersectionPoint_new, normal_new, outside_new);
+		float t_new = triangleIntersectionTest(triangles[i], q, intersectionPoint_new, normal_new, uv_new, outside_new);
 		if (t_new >= 0 && (smallestT < 0 || t_new < smallestT)) {
 			smallestT = t_new;
 			intersectionPoint = intersectionPoint_new;
 			normal = normal_new;
 			outside = outside_new;
+			uv = uv_new;
 		}
 	}
 

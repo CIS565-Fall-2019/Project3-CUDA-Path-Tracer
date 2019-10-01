@@ -42,11 +42,12 @@ EMITTANCE   0
 MATERIAL 4
 RGB         .98 .98 .98
 SPECEX      0
-SPECRGB     .98 .98 .98
+SPECRGB     .4 .98 .4
 REFL        0
 REFR        0
 REFRIOR     1.54
 EMITTANCE   0
+SPECSTREN   0
 
 // Camera
 CAMERA
@@ -55,18 +56,19 @@ FOVY        45
 ITERATIONS  5000
 DEPTH       8
 FILE        cornell
-EYE         0.0 5 4.5
+EYE         0.0 5 10.5
 LOOKAT      0 5 0
 UP          0 1 0
-
+LENSRADIUS  0.5
+FOCUSDIST   9.5
 
 // Ceiling light
 OBJECT 0
 cube
 material 0
-TRANS       0 10 0
+TRANS       0 10 2
 ROTAT       0 0 0
-SCALE       3 .3 3
+SCALE       4 .3 4
 
 // Floor
 OBJECT 1
@@ -115,11 +117,3 @@ material 4
 TRANS       -1 4 -1
 ROTAT       0 0 0
 SCALE       3 3 3
-
-// Front wall
-OBJECT 7
-cube
-material 1
-TRANS       0 5 5
-ROTAT       0 -90 0
-SCALE       .01 10 10

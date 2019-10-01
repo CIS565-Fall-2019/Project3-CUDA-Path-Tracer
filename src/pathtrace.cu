@@ -24,6 +24,8 @@
 #include <stdexcept>
 
 #define ERRORCHECK 1
+#define CACHE_FIRST_BOUNCE
+#define SORT_INTERSECTIONS
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -185,6 +187,7 @@ static ShadeableIntersection * dev_intersections = NULL;
 static PathSegment * dev_first_paths = NULL;
 static ShadeableIntersection * dev_first_intersections = NULL;
 static Triangle * dev_tris = NULL;
+static glm::vec3 * dev_pixels = NULL;
 
 static float totalIterationTime;
 
@@ -213,6 +216,8 @@ void pathtraceInit(Scene *scene) {
 	cudaMemset(dev_first_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
 	cudaMalloc(&dev_tris, scene->tris.size() * sizeof(Triangle));
 	cudaMemcpy(dev_tris, scene->tris.data(), scene->tris.size() * sizeof(Triangle), cudaMemcpyHostToDevice);
+	cudaMalloc(&dev_pixels, scene->imagePixels.size() * sizeof(glm::vec3));
+	cudaMemcpy(dev_pixels, scene->imagePixels.data(), scene->imagePixels.size() * sizeof(glm::vec3), cudaMemcpyHostToDevice);
 
 	totalIterationTime = 0;
 
@@ -229,8 +234,46 @@ void pathtraceFree() {
 	cudaFree(dev_first_paths);
 	cudaFree(dev_first_intersections);
 	cudaFree(dev_tris);
+	cudaFree(dev_pixels);
 
 	checkCUDAError("pathtraceFree");
+}
+
+__host__ __device__ glm::vec2 squareToDiskConcentric(const glm::vec2 &sample)
+{
+	// Code adapted from https://pdfs.semanticscholar.org/4322/6a3916a85025acbb3a58c17f6dc0756b35ac.pdf
+	float Pi = 3.1415926;
+	float phi, r, u, v;
+	float a = 2 * sample.x - 1;
+	float b = 2 * sample.y - 1;
+	if (a > -b) {
+		if (a > b) {
+			r = a;
+			phi = (Pi / 4) * (b / a);
+		}
+		else {
+			r = b;
+			phi = (Pi / 4) * (2 - (a / b));
+		}
+	}
+	else {
+		if (a < b) {
+			r = -a;
+			phi = (Pi / 4) * (4 + (b / a));
+		}
+		else {
+			r = -b;
+			if (b != 0) {
+				phi = (Pi / 4) * (6 - (a / b));
+			}
+			else {
+				phi = 0;
+			}
+		}
+	}
+	u = r * std::cosf(phi);
+	v = r * std::sinf(phi);
+	return glm::vec2(u, v);
 }
 
 /**
@@ -262,6 +305,18 @@ __global__ void generateRayFromCamera(Camera cam, int iter, int traceDepth, Path
 			- cam.up * cam.pixelLength.y * ((float)y - (float)cam.resolution.y * 0.5f + u01(rng))
 		);
 
+		if (cam.lensRadius > 0) {
+			glm::vec2 squareSample = glm::vec2(u01(rng), u01(rng));
+			glm::vec2 lensSample = cam.lensRadius * squareToDiskConcentric(squareSample);
+
+			float ft = cam.focusDist;
+			glm::vec3 pFocus = segment.ray.origin + segment.ray.direction * ft;
+
+			segment.ray.origin += lensSample.x * cam.right;
+			segment.ray.origin += lensSample.y * cam.up;
+			segment.ray.direction = glm::normalize(pFocus - segment.ray.origin);
+		}
+
 		segment.pixelIndex = index;
 		segment.remainingBounces = traceDepth;
 	}
@@ -290,12 +345,14 @@ __global__ void computeIntersections(
 		float t;
 		glm::vec3 intersect_point;
 		glm::vec3 normal;
+		glm::vec2 uv;
 		float t_min = FLT_MAX;
 		int hit_geom_index = -1;
 		bool outside = true;
 
 		glm::vec3 tmp_intersect;
 		glm::vec3 tmp_normal;
+		glm::vec2 tmp_uv;
 
 		// naive parse through global geoms
 
@@ -313,7 +370,7 @@ __global__ void computeIntersections(
 			}
 			else if (geom.type == MESH)
 			{
-				t = meshIntersectionTest(geom, tris, pathSegment.ray, tmp_intersect, tmp_normal, outside);
+				t = meshIntersectionTest(geom, tris, pathSegment.ray, tmp_intersect, tmp_normal, tmp_uv, outside);
 			}
 
 			// Compute the minimum t from the intersection tests to determine what
@@ -324,6 +381,7 @@ __global__ void computeIntersections(
 				hit_geom_index = i;
 				intersect_point = tmp_intersect;
 				normal = tmp_normal;
+				uv = tmp_uv;
 			}
 		}
 
@@ -337,6 +395,7 @@ __global__ void computeIntersections(
 			intersections[path_index].t = t_min;
 			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
 			intersections[path_index].surfaceNormal = normal;
+			intersections[path_index].surfaceUV = uv;
 		}
 	}
 }
@@ -386,7 +445,7 @@ __global__ void shadeMaterial(
 				// TODO: replace this! you should be able to start with basically a one-liner
 				else {
 					float absDot = std::abs(glm::dot(glm::normalize(pathSegment->ray.direction), glm::normalize(intersection.surfaceNormal)));
-					scatterRay(pathSegment, pathSegment->ray.origin + glm::normalize(pathSegment->ray.direction) * intersection.t, intersection.surfaceNormal, material, rng);
+					scatterRay(pathSegment, pathSegment->ray.origin + glm::normalize(pathSegment->ray.direction) * intersection.t, intersection.surfaceNormal, intersection.surfaceUV, material, rng);
 				}
 			}
 		}
@@ -502,6 +561,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
 		// tracing
 		dim3 numblocksPathSegmentTracing = (num_paths + blockSize1d - 1) / blockSize1d;
+#ifdef CACHE_FIRST_BOUNCE
 		if (iter > 1 && depth == 0) {
 			cudaMemcpy(dev_intersections, dev_first_intersections, num_paths * sizeof(ShadeableIntersection), cudaMemcpyDeviceToDevice);
 			cudaMemcpy(dev_paths, dev_first_paths, num_paths * sizeof(PathSegment), cudaMemcpyDeviceToDevice);
@@ -521,6 +581,17 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 				cudaMemcpy(dev_first_paths, dev_paths, num_paths * sizeof(PathSegment), cudaMemcpyDeviceToDevice);
 			}
 		}
+#else
+		computeIntersections << <numblocksPathSegmentTracing, blockSize1d >> > (
+			depth
+			, remainingPaths
+			, dev_paths
+			, dev_geoms
+			, dev_tris
+			, hst_scene->geoms.size()
+			, dev_intersections
+			);
+#endif
 		checkCUDAError("trace one bounce");
 		cudaDeviceSynchronize();
 		depth++;
@@ -533,9 +604,11 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		// materials you have in the scenefile.
 		// TODO: compare between directly shading the path segments and shading
 		// path segments that have been reshuffled to be contiguous in memory.
+#ifdef SORT_INTERSECTIONS
 		if (sortRaysByMaterial) {
 			thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + remainingPaths, dev_paths, material_comparator());
 		}
+#endif
 
 		shadeMaterial << <numblocksPathSegmentTracing, blockSize1d >> > (
 			iter,

@@ -23,6 +23,7 @@ public:
 
     std::vector<Geom> geoms;
 	std::vector<Triangle> tris;
+	std::vector<glm::vec3> imagePixels;
     std::vector<Material> materials;
     RenderState state;
 };

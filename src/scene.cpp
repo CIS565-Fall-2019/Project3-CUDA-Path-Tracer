@@ -4,6 +4,7 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include "tinyobj/tiny_obj_loader.h"
+#include <iostream>
 
 Scene::Scene(string filename) {
 	triCount = 0;
@@ -102,12 +103,12 @@ int Scene::loadGeom(string objectid) {
 							}
 							if (uvs.size() > 0)
 							{
-								/*glm::vec2 t1(uvs[indices[j] * 2], uvs[indices[j] * 2 + 1]);
+								glm::vec2 t1(uvs[indices[j] * 2], uvs[indices[j] * 2 + 1]);
 								glm::vec2 t2(uvs[indices[j + 1] * 2], uvs[indices[j + 1] * 2 + 1]);
 								glm::vec2 t3(uvs[indices[j + 2] * 2], uvs[indices[j + 2] * 2 + 1]);
-								t->uvs[0] = t1;
-								t->uvs[1] = t2;
-								t->uvs[2] = t3;*/
+								t.uv1 = t1;
+								t.uv2 = t2;
+								t.uv3 = t3;
 							}
 							
 							triCount++;
@@ -161,6 +162,8 @@ int Scene::loadCamera() {
     RenderState &state = this->state;
     Camera &camera = state.camera;
     float fovy;
+	camera.focusDist = 10.5f;
+	camera.lensRadius = 0.f;
 
     //load static properties
     for (int i = 0; i < 5; i++) {
@@ -191,10 +194,14 @@ int Scene::loadCamera() {
             camera.lookAt = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
         } else if (strcmp(tokens[0].c_str(), "UP") == 0) {
             camera.up = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
-        }
+		} else if (strcmp(tokens[0].c_str(), "LENSRADIUS") == 0) {
+			camera.lensRadius = atof(tokens[1].c_str());
+		} else if (strcmp(tokens[0].c_str(), "FOCUSDIST") == 0) {
+			camera.focusDist = atof(tokens[1].c_str());
+		}
 
-        utilityCore::safeGetline(fp_in, line);
-    }
+		utilityCore::safeGetline(fp_in, line);
+	}
 
     //calculate fov based on resolution
     float yscaled = tan(fovy * (PI / 180));
@@ -225,6 +232,10 @@ int Scene::loadMaterial(string materialid) {
     } else {
         cout << "Loading Material " << id << "..." << endl;
         Material newMaterial;
+		newMaterial.specular.strength = 0;
+		newMaterial.hasDiffuseMap = 0;
+		newMaterial.hasSpecExpMap = 0;
+		newMaterial.hasSpecStrMap = 0;
 
         //load static properties
         for (int i = 0; i < 7; i++) {
@@ -249,6 +260,32 @@ int Scene::loadMaterial(string materialid) {
                 newMaterial.emittance = atof(tokens[1].c_str());
             }
         }
+
+		string line;
+		utilityCore::safeGetline(fp_in, line);
+		while (!line.empty() && fp_in.good()) {
+			vector<string> tokens = utilityCore::tokenizeString(line);
+			if (strcmp(tokens[0].c_str(), "SPECSTREN") == 0) {
+				newMaterial.specular.strength = atof(tokens[1].c_str());
+			} else if (strcmp(tokens[0].c_str(), "RGBMAP") == 0) {
+				newMaterial.hasDiffuseMap = 1;
+				string filename = tokens[1];
+				FILE * image = std::fopen(filename.c_str(), "r");
+				int label;
+				int dimensions;
+				fscanf(image, "%d", &label);
+				fscanf(image, "%d", &dimensions);
+				float *colors = new float[dimensions];
+				for (int j = 0; j < dimensions; j++) {
+					int color;
+					fscanf(image, "%d", &color);
+					colors[j] = color;
+				}
+			}
+
+			utilityCore::safeGetline(fp_in, line);
+		}
+
         materials.push_back(newMaterial);
         return 1;
     }

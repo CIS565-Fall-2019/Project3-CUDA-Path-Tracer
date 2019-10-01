@@ -47,6 +47,8 @@ REFL        0
 REFR        0
 REFRIOR     0
 EMITTANCE   0
+SPECSTREN   0
+RGBMAP	    ..\scenes\files\mat.png
 
 // Camera
 CAMERA
@@ -111,8 +113,8 @@ SCALE       .01 10 10
 // Sphere
 OBJECT 6
 mesh
-C:\Users\Josh\Documents\School\UPenn\2019-2020\CIS 565\Project3-CUDA-Path-Tracer\scenes\files\cube.obj
+C:\Users\Josh\Documents\School\UPenn\2019-2020\CIS 565\Project3-CUDA-Path-Tracer\scenes\files\plane.obj
 material 4
 TRANS       -1 4 -1
-ROTAT       0 0 0
-SCALE       1 1 1
+ROTAT       45 0 0
+SCALE       3 3 3

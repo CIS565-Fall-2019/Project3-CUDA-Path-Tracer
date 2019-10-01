@@ -129,6 +129,7 @@ void scatterRay(
 		PathSegment *pathSegment,
         glm::vec3 intersect,
         glm::vec3 normal,
+		glm::vec2 uv,
         const Material &m,
         thrust::default_random_engine &rng) {
     // TODO: implement this.
@@ -155,6 +156,7 @@ void scatterRay(
 
 	if (doReflective) {
 		pathSegment->ray.direction = glm::reflect(pathSegment->ray.direction, normal);
+		pathSegment->color *= m.specular.color;
 	}
 	else if (doRefractive) {
 		glm::vec3 newDir;
@@ -179,16 +181,30 @@ void scatterRay(
 		}
 			
 		pathSegment->ray.direction = newDir;
+		pathSegment->color *= m.specular.color;
 	}
 	else {
-		if (m.specular.exponent == 1 || m.specular.exponent == 0) {
+		if (m.specular.strength == 0) {
 			pathSegment->ray.direction = glm::normalize(calculateRandomDirectionInHemisphere(glm::normalize(normal), rng));
+			if (m.hasDiffuseMap == 1) {
+				pathSegment->color *= glm::vec3(uv, 0);
+			}
+			else {
+				pathSegment->color *= m.color;
+			}
 		}
 		else {
-			pathSegment->ray.direction = glm::normalize(calculateRandomDirectionInLobe(glm::normalize(normal), pathSegment->ray.direction, m.specular.exponent, rng));
+			thrust::uniform_real_distribution<float> u01(0, 1);
+			if (u01(rng) < m.specular.strength) {
+				pathSegment->ray.direction = glm::normalize(calculateRandomDirectionInLobe(glm::normalize(normal), pathSegment->ray.direction, m.specular.exponent, rng));
+				pathSegment->color *= m.specular.color;
+			}
+			else {
+				pathSegment->ray.direction = glm::normalize(calculateRandomDirectionInHemisphere(glm::normalize(normal), rng));
+				pathSegment->color *= m.color;
+			}
 		}
 	}
 	pathSegment->ray.origin = intersect + 0.001f * pathSegment->ray.direction;
 	pathSegment->remainingBounces--;
-	pathSegment->color *= m.color;
 }

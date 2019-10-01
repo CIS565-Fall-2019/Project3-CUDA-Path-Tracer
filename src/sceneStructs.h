@@ -40,6 +40,9 @@ struct Triangle {
 	glm::vec3 n1;
 	glm::vec3 n2;
 	glm::vec3 n3;
+	glm::vec2 uv1;
+	glm::vec2 uv2;
+	glm::vec2 uv3;
 };
 
 struct Material {
@@ -47,11 +50,21 @@ struct Material {
     struct {
         float exponent;
         glm::vec3 color;
+		float strength;
     } specular;
     float hasReflective;
     float hasRefractive;
     float indexOfRefraction;
     float emittance;
+	float hasDiffuseMap;
+	float hasSpecExpMap;
+	float hasSpecStrMap;
+};
+
+struct ImageStruct {
+	glm::ivec2 dimensions;
+	int firstPixel;
+	int lastPixel;
 };
 
 struct Camera {
@@ -63,6 +76,8 @@ struct Camera {
     glm::vec3 right;
     glm::vec2 fov;
     glm::vec2 pixelLength;
+	float lensRadius;
+	float focusDist;
 };
 
 struct RenderState {
@@ -86,5 +101,6 @@ struct PathSegment {
 struct ShadeableIntersection {
   float t;
   glm::vec3 surfaceNormal;
+  glm::vec2 surfaceUV;
   int materialId;
 };

@@ -55,7 +55,7 @@ FOVY        45
 ITERATIONS  5000
 DEPTH       8
 FILE        cornell
-EYE         0.0 5 10.5
+EYE         0.0 5 6.5
 LOOKAT      0 5 0
 UP          0 1 0
 
@@ -64,7 +64,7 @@ UP          0 1 0
 OBJECT 0
 cube
 material 0
-TRANS       0 10 4
+TRANS       0 10 1
 ROTAT       0 0 0
 SCALE       3 .3 3
 
@@ -113,6 +113,6 @@ OBJECT 6
 mesh
 C:\Users\Josh\Documents\School\UPenn\2019-2020\CIS 565\Project3-CUDA-Path-Tracer\scenes\files\venus.obj
 material 1
-TRANS       0 0 3
+TRANS       0 0 0
 ROTAT       0 0 0
 SCALE       1 1 1
