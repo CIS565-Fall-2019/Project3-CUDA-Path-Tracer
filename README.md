@@ -17,18 +17,18 @@ ________________________________________________________________________________
 Table of contents
 =================
    * [What is Path Tracing](#what-is-path-tracing)
-   * [Features Overview]
-      * [BSDF Scattering: Diffuse, Specular-Reflective, Specular Transmissive]
-      * [Procedural Shapes]
-      * [Stochastic Sampled Anti Aliasing]
-      * [Motion Blur]
-  * [Optimizations ]
-    * [Stream compaction to remove terminated rays]
-    * [First bounce caching]
-    * [Sort by Material]
+   * [Features Overview](#features-overview)
+      * [BSDF Scattering: Diffuse, Specular-Reflective, Specular Transmissive](#bsdf-scattering)
+      * [Procedural Shapes](#procedural-shapes)
+      * [Stochastic Sampled Anti Aliasing](#stochastic-sampled-anti-aliasing)
+      * [Motion Blur](#motion-blur)
+  * [Optimizations ](#optimizations)
+    * [Stream compaction to remove terminated rays](#stream-compaction-to-remove-terminated-rays)
+    * [First bounce caching](#first-bounce-caching)
+    * [Sort by Material](#sort-by-material)
    * [Questions]
    * [Performance Analysis]
-   * [Credits & Acknowledgments]
+   * [Credits & Acknowledgments](#credits)
 
 # What is path tracing?
 Path tracing refers to a set of techniques to virtually render images by emulating certain physical properties of light. In real life, Rays of light leave light sources, bounce around the world, and hit pixels in the camera. Path traces simulates this effect by firing 'rays' out of the camera pixels, and considering those that hit a light source. 
@@ -82,5 +82,6 @@ I proceeded to remove walls from my cornell scene and to printed out the decreas
 **Compare scenes which are open (like the given cornell box) and closed (i.e. no light can escape the scene). Again, compare the performance effects of stream compaction! Remember, stream compaction only affects rays which terminate, so what might you expect?**
 If no light can escape the scene, then the benefits of stream compaction are nullified as rays only terminate when they reach the end of their depth. As a result, the presence of stream compaction had no effect on the closed box scene. 
 
-
+# Credits
+rayttracing.github.io - Helped me understand ray tracing
 
