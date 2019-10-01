@@ -3,6 +3,8 @@ MATERIAL 0
 RGB         1 1 1
 SPECEX      0
 SPECRGB     0 0 0
+WAVE        0
+NOISE       0
 REFL        0
 REFR        0
 REFRIOR     0

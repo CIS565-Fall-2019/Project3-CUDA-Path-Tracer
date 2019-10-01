@@ -8,6 +8,9 @@
 #include "utilities.h"
 #include "sceneStructs.h"
 
+// BONUS - Direct Lighting Component
+#define DIRECTLIGHTING false
+
 using namespace std;
 
 class Scene {
@@ -22,5 +25,8 @@ public:
 
     std::vector<Geom> geoms;
     std::vector<Material> materials;
+#if DIRECTLIGHTING
+	std::vector<Geom> lights; 
+#endif
     RenderState state;
 };

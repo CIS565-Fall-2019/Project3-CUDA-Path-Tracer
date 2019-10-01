@@ -51,7 +51,13 @@ int Scene::loadGeom(string objectid) {
             } else if (strcmp(line.c_str(), "cube") == 0) {
                 cout << "Creating new cube..." << endl;
                 newGeom.type = CUBE;
-            }
+            } else if (strcmp(line.c_str(), "cappy") == 0) {
+				cout << "Creating new cappy..." << endl;
+				newGeom.type = CAPPY;
+			} else if (strcmp(line.c_str(), "duck") == 0) {
+				cout << "Creating new duck..." << endl;
+				newGeom.type = DUCK;
+			}
         }
 
         //link material
@@ -85,6 +91,14 @@ int Scene::loadGeom(string objectid) {
         newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
 
         geoms.push_back(newGeom);
+		
+#if DIRECTLIGHTING
+		if (materials[newGeom.materialid].emittance > 0.0f) {
+			lights.push_back(newGeom);
+		}
+#endif // DIRECTLIGHTING
+
+
         return 1;
     }
 }
@@ -160,7 +174,7 @@ int Scene::loadMaterial(string materialid) {
         Material newMaterial;
 
         //load static properties
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < 9; i++) {
             string line;
             utilityCore::safeGetline(fp_in, line);
             vector<string> tokens = utilityCore::tokenizeString(line);
@@ -172,8 +186,12 @@ int Scene::loadMaterial(string materialid) {
             } else if (strcmp(tokens[0].c_str(), "SPECRGB") == 0) {
                 glm::vec3 specColor(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
                 newMaterial.specular.color = specColor;
-            } else if (strcmp(tokens[0].c_str(), "REFL") == 0) {
-                newMaterial.hasReflective = atof(tokens[1].c_str());
+			} else if (strcmp(tokens[0].c_str(), "WAVE") == 0) {
+				newMaterial.hasWave = atof(tokens[1].c_str());
+			} else if (strcmp(tokens[0].c_str(), "NOISE") == 0) {
+				newMaterial.hasNoise = atof(tokens[1].c_str());
+			} else if (strcmp(tokens[0].c_str(), "REFL") == 0) {
+				newMaterial.hasReflective = atof(tokens[1].c_str());
             } else if (strcmp(tokens[0].c_str(), "REFR") == 0) {
                 newMaterial.hasRefractive = atof(tokens[1].c_str());
             } else if (strcmp(tokens[0].c_str(), "REFRIOR") == 0) {
