@@ -83,5 +83,5 @@ I proceeded to remove walls from my cornell scene and to printed out the decreas
 If no light can escape the scene, then the benefits of stream compaction are nullified as rays only terminate when they reach the end of their depth. As a result, the presence of stream compaction had no effect on the closed box scene. 
 
 # Credits
-rayttracing.github.io - Helped me understand ray tracing
+rayttracing.github.io
 
