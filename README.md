@@ -62,7 +62,7 @@ The rays after bouncing from the objects are sprted on the basis of the material
 
 ### Stream Compaction by using Thrust Library and Work Efficient using Shared memory
 
-The stream compaction has benn done in the path tracer using Thrust library initially so that the basic working of the path tracer could be verified. After designing the basic path tracer, I worked on performing Stream Compaction using Shared Memory. The algorithm uses two stages of scanning where the first scanning happens using Shared Memory. The performace as shown in the graphs below. After performing the Work Efficient usign Shared memory algorithm across the blocks, we are getting the last element of each of the block and adding the last element in the original array in the block and performing again scan operation on the new array. 
+The stream compaction has benn done in the path tracer using Thrust library initially so that the basic working of the path tracer could be verified. After designing the basic path tracer, I worked on performing Stream Compaction using Shared Memory. The algorithm uses two stages of scanning where the first scanning happens using Shared Memory. The performace as shown in the graphs below. After performing the Work Efficient usign Shared memory algorithm across the blocks, we are getting the last element of each of the block and adding the last element in the original array in the block and performing again scan operation on the new array. Referred for the following reference for writing the code [GPU Gem Ch 39 ](https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch39.html) 
 
 The graph below shows the runtime for Work Efficient Shared memory vs Thrust library.
 
