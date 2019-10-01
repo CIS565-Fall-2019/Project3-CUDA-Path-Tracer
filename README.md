@@ -82,6 +82,12 @@ I proceeded to remove walls from my cornell scene and to printed out the decreas
 **Compare scenes which are open (like the given cornell box) and closed (i.e. no light can escape the scene). Again, compare the performance effects of stream compaction! Remember, stream compaction only affects rays which terminate, so what might you expect?**
 If no light can escape the scene, then the benefits of stream compaction are nullified as rays only terminate when they reach the end of their depth. As a result, the presence of stream compaction had no effect on the closed box scene. 
 
+# Bloopers
+Messed up refraction
+
+![](img/something.PNG)
+
+
 # Credits
 See wayyy more images and bloopers in the imgs folder!
 [rayttracing.github.io](raytracing.github.io)
