@@ -74,8 +74,7 @@ int Scene::loadGeom(string objectid) {
                 newGeom.rotation = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
             } else if (strcmp(tokens[0].c_str(), "SCALE") == 0) {
                 newGeom.scale = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
-            }
-
+			}
             utilityCore::safeGetline(fp_in, line);
         }
 
@@ -83,6 +82,18 @@ int Scene::loadGeom(string objectid) {
                 newGeom.translation, newGeom.rotation, newGeom.scale);
         newGeom.inverseTransform = glm::inverse(newGeom.transform);
         newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
+
+
+		while (!line.empty() && fp_in.good()) {
+			vector<string> tokens = utilityCore::tokenizeString(line);
+			if (strcmp(tokens[0].c_str(), "MOTION") == 0) {
+				newGeom.hasMotion = 1;
+			}
+			else if (strcmp(tokens[0].c_str(), "MOTDIR") == 0) {
+				newGeom.motion = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+			}
+			utilityCore::safeGetline(fp_in, line);
+		}
 
         geoms.push_back(newGeom);
         return 1;
