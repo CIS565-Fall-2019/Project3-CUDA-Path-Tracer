@@ -1,6 +1,6 @@
 // Emissive material (light)
 MATERIAL 0
-RGB         1 1 1
+RGB         .98 .98 .98
 SPECEX      0
 SPECRGB     0 0 0
 REFL        0
@@ -43,10 +43,53 @@ MATERIAL 4
 RGB         .98 .98 .98
 SPECEX      0
 SPECRGB     .98 .98 .98
+REFL        0.4
+REFR        0.6
+REFRIOR     1.33
+EMITTANCE   0
+
+// Specular white
+MATERIAL 5
+RGB         .85 .35 .35
+SPECEX      0
+SPECRGB     .85 .35 .35
+REFL        0.8
+REFR        0.2
+REFRIOR     1.33
+EMITTANCE   0
+
+// mirror
+MATERIAL 6
+RGB         .98 .98 .98
+SPECEX      0
+SPECRGB     .98 .98 .98
 REFL        1
 REFR        0
 REFRIOR     0
 EMITTANCE   0
+
+// blue material
+MATERIAL 7
+RGB         0.2 0.9 0.9
+SPECEX      0
+SPECRGB     0.2 0.9 0.9
+REFL        0.8
+REFR        0.2
+REFRIOR     1.33
+EMITTANCE   0
+
+// purple material
+MATERIAL 8
+RGB         0.3 0.1 0.5
+SPECEX      0
+SPECRGB     0.3 0.1 0.5
+REFL        0
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+
+
 
 // Camera
 CAMERA
@@ -64,9 +107,9 @@ UP          0 1 0
 OBJECT 0
 cube
 material 0
-TRANS       0 10 0
+TRANS       2 10 -2
 ROTAT       0 0 0
-SCALE       3 .3 3
+SCALE       .01 .01 .01
 
 // Floor
 OBJECT 1
@@ -95,7 +138,7 @@ SCALE       .01 10 10
 // Left wall
 OBJECT 4
 cube
-material 2
+material 8
 TRANS       -5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
@@ -111,7 +154,58 @@ SCALE       .01 10 10
 // Sphere
 OBJECT 6
 sphere
-material 4
-TRANS       -1 4 -1
+material 5
+TRANS       -1 1.5 1.7
 ROTAT       0 0 0
 SCALE       3 3 3
+SPEED .05 .05 .05
+
+// Cube
+OBJECT 7
+cube
+material 7
+TRANS       0 5.5 0
+ROTAT       50 0 0
+SCALE       3 3 3
+//SPEED .08 .08 .08
+
+// Ceiling light
+OBJECT 8
+cube
+material 0
+TRANS       -2 10 -2
+ROTAT       0 0 0
+SCALE       0.01 .01 .01
+
+// Ceiling light
+OBJECT 9
+sphere
+material 0
+TRANS       5 10 0
+ROTAT       0 0 0
+SCALE       3 3 3
+
+// Ceiling light
+OBJECT 10
+sphere
+material 0
+TRANS       -5 10 0
+ROTAT       0 0 0
+SCALE       3 3 3
+
+// side mirror
+OBJECT 11
+cube
+material 6
+TRANS       -5 5.3 2.7
+ROTAT       0 0 0
+SCALE       .3 3 4
+
+// side mirror
+OBJECT 12
+cube
+material 6
+TRANS       5 5.3 2.7
+ROTAT       0 0 0
+SCALE       .3 3 4
+
