@@ -58,10 +58,12 @@ Implementing this simply required that randomly I nudge the ray direction by eps
 | ![](img/preAA.jpg)  | ![](img/postAA.jpg) | 
 
 ## Motion Blur
-I created a kernel function ```blurGeom``` that allows users to specify a ``glm::vec3 offset`` so they could direct the blur towards their desired position. I implemented motion blur by targeting a subset of  ``geom`` objects to respond to changes in ``dt = epsilon * iter``. This resulted in exciting blur effects as illustrated below:
-**Motion Blur in the Mirror Dimension***
-![](img/mblurmirror.PNG)
+I created a kernel function ```blurGeom``` that allows users to specify a ``glm::vec3 offset`` so they could direct the blur towards their desired position. I implemented motion blur by targeting a subset of  ``geom`` objects to respond to changes in ``dt = epsilon * iter``. The second run illustrates motion blur with first bounce cache on - This is not the right thing to do, but resulted in a cool image.
 
-The following run illustrates motion blur with first bounce cache on - This is not the right thing to do, but resulted in this cool image:
+| 1 | 2 | 3 |
+| ------------- | ----------- | ----------- |
+| ![](img/mblurmirror.PNG)  | ![](img/mirrordim.PNG) | ![](motionblur.PNG) |
 
-![](img/mirrordim.PNG)
+
+
+
