@@ -62,7 +62,8 @@ The stream compaction has benn done in the path tracer using Thrust library init
 
 The graph below shows the runtime for Work Efficient Shared memory vs Thrust library.
 
-![](https://github.com/somanshu25/Project3-CUDA-Path-Tracer/tree/master/img)
+<p align="center"><img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img/graph_stream_compaction_comparision.png" width="700"/></p>
+
 
 ### Caching the First Bounce
 
