@@ -9,12 +9,6 @@ CUDA Path Tracer
   * [LinkedIn](https://www.linkedin.com/in/somanshu25)
 * Tested on: Windows 10, i7-6700 @ 3.4GHz 16GB, Quadro P1000 4GB (Moore 100B Lab)
 
-### Index
-
-- [What is Path Tracer and how it is different from Ray Tracing?]( https://github.com/chhavisharma/Project3-CUDA-Path-Tracer/blob/master/README.md#What is Path Tracer and how it is different from Ray Tracing?)
-- [Features](https://github.com/chhavisharma/Project3-CUDA-Path-Tracer/blob/master/README.md#features )
-- [BSDF Evaluation for Perfectly Specular, Diffusion Sufraces and Refraction Surfaces]( https://github.com/chhavisharma/Project3-CUDA-Path-Tracer/blob/master/README.md#BSDF Evaluation for Perfectly Specular, Diffusion Sufraces and Refraction Surfaces: )
-
 
 ### What is Path Tracer and how it is different from Ray Tracing?
 
