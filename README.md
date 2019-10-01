@@ -69,6 +69,8 @@ The graph below shows the runtime for Work Efficient Shared memory vs Thrust lib
 
 For each iteration, the rays are generated from the camera are likely to hit the same intersection material. Thus, computing the intersections every iteration would be costly and we can preserve that time by caching the first bounces that takes place in the first iteration and then later on just load those intersections for next iterations and prcess for the shading. The performance analysis for the caching and non-cahing as the function of depth in the first and second iteration is given below:
 
+<p align="center"><img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img/graph_cache_first_bounce_difference.png" width="700"/></p>
+
 ### Anti-Aliasing
 
 Anti-aliasing is the way of remove the jaggering happening during the rendering by sending out the rays from the camera and adding on the noise a little bit so that the smoothning effect could be seen the image. The effect of the anti-aliasing could be seen at the interections of the wall and the floor where the lines are more smoother as compared to the normal ones. The comparision of the effect is shown below:
