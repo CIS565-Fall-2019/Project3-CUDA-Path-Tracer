@@ -20,8 +20,8 @@ Table of contents
    * [Features Overview]
       * [BSDF Scattering: Diffuse, Specular-Reflective, Specular Transmissive]
       * [Procedural Shapes]
-      * [Motion Blur]
       * [Stochastic Sampled Anti Aliasing]
+      * [Motion Blur]
   * [Optimizations ]
     * [Stream compaction to remove terminated rays]
     * [First bounce caching]
@@ -32,8 +32,10 @@ Table of contents
 
 # What is path tracing?
 Path tracing refers to a set of techniques to virtually render images by emulating certain physical properties of light. In real life, Rays of light leave light sources, bounce around the world, and hit pixels in the camera. Path traces simulates this effect by firing 'rays' out of the camera pixels, and considering those that hit a light source. 
+<p align="center">
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Ray_trace_diagram.png/320px-Ray_trace_diagram.png"
      alt="Pathtrace" />
+</p>
 
 # Features Overview
 ## BSDF Scattering
@@ -50,11 +52,21 @@ I created procedural shapes via a variation of ***Constructive Solid Geometry***
 | ------------- | ----------- |----------- |
 | ![](img/SphereAndNotCube.PNG)  | ![](img/SphereCubeUnion.PNG) | ![](img/SphereAndCubeMatrix.PNG) |
 
+## Stochastic Sampled Anti Aliasing
+Implementing this simply required that randomly I nudge the ray direction by epsilon in the x & and y axis. Notice how the pre-AA image has jagged edges where the yellow light reflects off it. Notice how this issue dissappears post AA!
+
+| Pre AA | Post AA |
+| ------------- | ----------- |
+| ![](img/preAA.jpg)  | ![](img/postAA.jpg) | 
+
 ## Motion Blur
-I created a kernel function ```blurGeom``` that allows users to specify a ``glm::vec3 offset`` so they could direct the blur towards their desired position. I implemented motion blur by targeting a subset of  ``geom`` objects to respond to changes in ``dt = epsilon * iter``. This resulted in exciting blur effects as illustrated below:
-**Motion Blur in the Mirror Dimension***
-![](img/mblurmirror.PNG)
+I created a kernel function ```blurGeom``` that allows users to specify a ``glm::vec3 offset`` so they could direct the blur towards their desired position. I implemented motion blur by targeting a subset of  ``geom`` objects to respond to changes in ``dt = epsilon * iter``. The second run illustrates motion blur with first bounce cache on - This is not the right thing to do, but resulted in a cool image.
 
-The following run illustrates motion blur with first bounce cache on - This is not the right thing to do, but resulted in this cool image:
+| 1 | 2 | 3 |
+| ------------- | ----------- | ----------- |
+| ![](img/mblurmirror.PNG)  | ![](img/mirrordim.PNG) | ![](img/motionblur.PNG) |
 
-![](img/mirrordim.PNG)
+# Optimizations 
+
+
+
