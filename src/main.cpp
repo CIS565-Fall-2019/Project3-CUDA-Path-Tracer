@@ -1,4 +1,4 @@
-#include "main.h"
+﻿#include "main.h"
 #include "preview.h"
 #include <cstring>
 
@@ -26,6 +26,8 @@ int iteration;
 int width;
 int height;
 
+float oriheight;
+
 //-------------------------------
 //-------------MAIN--------------
 //-------------------------------
@@ -38,15 +40,39 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    const char *sceneFile = argv[1];
+	const char *sceneFile = argv[1];
 
-    // Load scene file
-    scene = new Scene(sceneFile);
+#if GLTF
+	scene = new Scene(sceneFile, true);
+#else
+	scene = new Scene(sceneFile, false);
+#endif
+
 
     // Set up camera stuff from loaded path tracer settings
     iteration = 0;
-    renderState = &scene->state;
-    Camera &cam = renderState->camera;
+
+	renderState = &(scene->state);
+	Camera &cam = renderState->camera;
+#if GLTF
+	cam.resolution.x = 1280;
+	cam.resolution.y = 720;
+	cam.lookAt = glm::vec3(0, 0, 6);// glm::vec3(scene->meshes.at(0).pivot_xform[3][0], scene->meshes.at(0).pivot_xform[3][1], scene->meshes.at(0).pivot_xform[3][2]);
+	cam.position = glm::vec3(4, -60, 20);
+	cam.view = cam.lookAt - cam.position;
+	cam.view = glm::normalize(cam.view);
+	cam.up = glm::vec3(0, 0, 1);
+	cam.right = glm::cross(cam.view, cam.up);
+	cam.up = glm::cross(cam.right, cam.view);
+	cam.fov = glm::vec2(80, 45);
+	cam.pixelLength = glm::vec2(1 / (float)cam.resolution.y, 1 / (float)cam.resolution.y);
+	int arraylen = cam.resolution.x * cam.resolution.y;
+	renderState->image.resize(arraylen);
+	std::fill((renderState->image).begin(), (renderState->image).end(), glm::vec3());
+	renderState->iterations = 5000;
+	renderState->traceDepth = 2;
+	renderState->imageName = "demo";
+#endif
     width = cam.resolution.x;
     height = cam.resolution.y;
 
@@ -59,12 +85,17 @@ int main(int argc, char** argv) {
 
     // compute phi (horizontal) and theta (vertical) relative 3D axis
     // so, (0 0 1) is forward, (0 1 0) is up
-    glm::vec3 viewXZ = glm::vec3(view.x, 0.0f, view.z);
-    glm::vec3 viewZY = glm::vec3(0.0f, view.y, view.z);
-    phi = glm::acos(glm::dot(glm::normalize(viewXZ), glm::vec3(0, 0, -1)));
-    theta = glm::acos(glm::dot(glm::normalize(viewZY), glm::vec3(0, 1, 0)));
+    phi = glm::atan(view.x / view.z);
+	if(view.z > 0) {
+		phi += PI;
+	}
+    theta = glm::acos(-view.y);
     ogLookAt = cam.lookAt;
     zoom = glm::length(cam.position - ogLookAt);
+
+#if MOTIONBLUR
+	oriheight = scene->geoms.at(6).transform[3][1];
+#endif
 
     // Initialize CUDA and GL components
     init();
@@ -93,7 +124,6 @@ void saveImage() {
     ss << filename << "." << startTimeString << "." << samples << "samp";
     filename = ss.str();
 
-    // CHECKITOUT
     img.savePNG(filename);
     //img.saveHDR(filename);  // Save a Radiance HDR file
 }
@@ -108,12 +138,12 @@ void runCuda() {
 
         cam.view = -glm::normalize(cameraPosition);
         glm::vec3 v = cam.view;
-        glm::vec3 u = glm::vec3(0, 1, 0);//glm::normalize(cam.up);
+		glm::vec3 u = glm::vec3(0, 1, 0);// glm::normalize(cam.up);
         glm::vec3 r = glm::cross(v, u);
         cam.up = glm::cross(r, v);
         cam.right = r;
 
-        cam.position = cameraPosition;
+        //cam.position = cameraPosition;
         cameraPosition += cam.lookAt;
         cam.position = cameraPosition;
         camchanged = false;
@@ -126,7 +156,6 @@ void runCuda() {
         pathtraceFree();
         pathtraceInit(scene);
     }
-
     if (iteration < renderState->iterations) {
         uchar4 *pbo_dptr = NULL;
         iteration++;
@@ -134,6 +163,13 @@ void runCuda() {
 
         // execute the kernel
         int frame = 0;
+#if MOTIONBLUR
+		glm::mat4 &trans = scene->geoms.at(6).transform;
+		trans[3][1] = oriheight - (iteration % 20) * 0.05f;
+		scene->geoms.at(6).invTranspose = glm::transpose(glm::inverse(trans));
+		scene->geoms.at(6).inverseTransform = glm::inverse(trans);
+		resetGeoms();
+#endif
         pathtrace(pbo_dptr, frame, iteration);
 
         // unmap buffer object

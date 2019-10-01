@@ -28,6 +28,17 @@ struct Geom {
     glm::mat4 invTranspose;
 };
 
+struct Triangle {
+	int materialid;
+	glm::vec3 v1;
+	glm::vec3 v2;
+	glm::vec3 v3;
+	glm::vec3 normal;
+	glm::vec2 uv1;
+	glm::vec2 uv2;
+	glm::vec2 uv3;
+};
+
 struct Material {
     glm::vec3 color;
     struct {
@@ -73,4 +84,5 @@ struct ShadeableIntersection {
   float t;
   glm::vec3 surfaceNormal;
   int materialId;
+  glm::vec3 texColor;
 };
