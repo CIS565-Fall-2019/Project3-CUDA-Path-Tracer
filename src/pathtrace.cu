@@ -20,11 +20,11 @@
 #include "interactions.h"
 
 #define ERRORCHECK 1
-#define SORT_MATERIAL false 
-#define ANTI_ALIASING false
-#define STREAM_COMPACTION true
-#define MOTION_BLUR false
-bool CACHE_BOUNCE = true;
+#define SORT_MATERIAL false
+#define ANTI_ALIASING true
+#define STREAM_COMPACTION false
+#define MOTION_BLUR true
+bool CACHE_BOUNCE = false;
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
@@ -418,13 +418,13 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 
   bool iterationComplete = false;
 
-  int count = 0;
-  double time = 0;
+  //int count = 0;
+  //double time = 0;
   while (!iterationComplete) {
 
-	  count++;
-	  using namespace std::chrono;
-	  high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	  //count++;
+	  //using namespace std::chrono;
+	  //high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	  
 	  // clean shading chunks
 	  cudaMemset(dev_intersections, 0, pixelcount * sizeof(ShadeableIntersection));
@@ -494,14 +494,14 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 		  num_paths = dev_path_end - dev_paths;
 	  }
 
-	  high_resolution_clock::time_point t2 = high_resolution_clock::now();
-	  duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
+	  //high_resolution_clock::time_point t2 = high_resolution_clock::now();
+	  //duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
 
-	  time += time_span.count();
+	  //time += time_span.count();
 	  
-	  std::cout << time/count << " seconds. " << count << " num left " << num_paths << " Actual time: " << time_span.count();
+	  //std::cout << time/count << " seconds. " << count << " num left " << num_paths << " Actual time: " << time_span.count();
 	  
-	  std::cout << std::endl;
+	  //std::cout << std::endl;
 	  
 	  
 	  if (num_paths == 0 || depth == traceDepth) {
