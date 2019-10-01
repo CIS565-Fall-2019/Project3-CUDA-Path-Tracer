@@ -104,8 +104,8 @@ MATERIAL 10
 RGB         1.0 1.0 1.0
 SPECEX      0
 SPECRGB     1.0 1.0 1.0
-REFL        0.1
-REFR        0.9
+REFL        0.5
+REFR        0.5
 REFRIOR     1.56
 EMITTANCE   0
 
@@ -195,7 +195,7 @@ SCALE       .01 10 10
 // Left wall
 OBJECT 7
 cube
-material 9
+material 7
 TRANS       -5 5 0
 ROTAT       0 0 0s
 SCALE       .01 10 10
@@ -203,7 +203,7 @@ SCALE       .01 10 10
 // Right wall
 OBJECT 8
 cube
-material 9
+material 7
 TRANS       5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10

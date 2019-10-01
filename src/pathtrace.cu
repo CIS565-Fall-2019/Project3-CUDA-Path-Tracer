@@ -25,7 +25,7 @@
 #define SORTMATERIAL 1
 #define STREAMCOMPACT 1
 #define BLURGEOM 0
-#define CACHE 0
+#define CACHE 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
