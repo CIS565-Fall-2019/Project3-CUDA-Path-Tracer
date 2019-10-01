@@ -2,6 +2,18 @@
 #include "preview.h"
 #include <cstring>
 
+#include <cstdio>
+#include <cmath>
+#include <algorithm>
+#include <chrono>
+#include <stdexcept>
+
+template<typename T>
+void printElapsedTime(T time, std::string note = "")
+{
+	std::cout << "   elapsed time: " << time << "ms    " << note << std::endl;
+}
+
 static std::string startTimeString;
 
 // For camera controls
@@ -29,6 +41,19 @@ int height;
 //-------------------------------
 //-------------MAIN--------------
 //-------------------------------
+
+cudaEvent_t event_start = nullptr;
+cudaEvent_t event_end = nullptr;
+
+using time_point_t = std::chrono::high_resolution_clock::time_point;
+time_point_t time_start_cpu;
+time_point_t time_end_cpu;
+
+bool cpu_timer_started = false;
+bool gpu_timer_started = false;
+
+float prev_elapsed_time_cpu_milliseconds = 0.f;
+float prev_elapsed_time_gpu_milliseconds = 0.f;
 
 int main(int argc, char** argv) {
     startTimeString = currentTimeString();
@@ -69,8 +94,20 @@ int main(int argc, char** argv) {
     // Initialize CUDA and GL components
     init();
 
+	
+
+	cudaEventCreate(&event_start);
+	cudaEventCreate(&event_end);
+
+	if (cpu_timer_started) { throw std::runtime_error("CPU timer already started"); }
+	cpu_timer_started = true;
+
+	time_start_cpu = std::chrono::high_resolution_clock::now();
+
     // GLFW main loop
     mainLoop();
+
+	
 
     return 0;
 }
@@ -142,6 +179,22 @@ void runCuda() {
         saveImage();
         pathtraceFree();
         cudaDeviceReset();
+
+		time_end_cpu = std::chrono::high_resolution_clock::now();
+
+		if (!cpu_timer_started) { throw std::runtime_error("CPU timer not started"); }
+
+		std::chrono::duration<double, std::milli> duro = time_end_cpu - time_start_cpu;
+		prev_elapsed_time_cpu_milliseconds =
+			static_cast<decltype(prev_elapsed_time_cpu_milliseconds)>(duro.count());
+
+		cpu_timer_started = false;
+
+		printElapsedTime(prev_elapsed_time_cpu_milliseconds, "(std::chrono Measured)");
+
+		cudaEventDestroy(event_start);
+		cudaEventDestroy(event_end);
+
         exit(EXIT_SUCCESS);
     }
 }

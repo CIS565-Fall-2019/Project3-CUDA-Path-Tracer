@@ -10,6 +10,8 @@
 enum GeomType {
     SPHERE,
     CUBE,
+	CAPPY,
+	DUCK,
 };
 
 struct Ray {
@@ -34,8 +36,10 @@ struct Material {
         float exponent;
         glm::vec3 color;
     } specular;
+	float hasWave;
+	float hasNoise;
     float hasReflective;
-    float hasRefractive;
+	float hasRefractive;
     float indexOfRefraction;
     float emittance;
 };
