@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 Table of contents
 =================
-   * [What is Path Tracing]
+   * [What is Path Tracing](#what-is-path-tracing)
    * [Features Overview]
       * [BSDF Scattering: Diffuse, Specular-Reflective, Specular Transmissive]
       * [Procedural Shapes]
