@@ -30,14 +30,14 @@ Depth of field is the distance between the nearest and the farthest objects that
 ### Diffusion, Reflection and Refraction
 My path tracer is able to render diffusion, specular reflection and refraction with Frensel effects using Schlick's approximation.
 
-| Diffusion | Reflection | Refraction |
+| Diffusion | Reflection | Transmission |
 | -- | -- | -- |
 | ![](img/diffuse.png) | ![](img/reflect.png) | ![](img/refract.png) |
 
 ### Motion Blur
 Motion blur is achieved by randomly jittering the camera position and therefore jittering the outgoing rays using a Gaussian distribution.
 
-| Normal  | MB in -x -z direction | MB in -y direction |
+| Normal  | MB in xz direction | MB in y direction |
 | -- | -- | -- |
 | ![](img/reflect.png) | ![](img/mbxz.png) | ![](img/mby.png) |
 
@@ -48,11 +48,15 @@ Using path tracer to render images are computationally expensive. Each ray may b
 ### Stream Compaction
 Stream compaction becomes very useful to remove early terminated ray paths (hit a light source or hit nothing). We keep track of only the rays which are still traveling and we can launch fewer threads after each bounces. This can reduce warp divergence. Below is a plot of active threads vs number of bounces in one iteration for the cornell box scene.
 
-![](img/)
+![](img/sc.png)
 
 However, using stream compaction in closed scenes is not very helpful. In open scenes rays can be removed if they hit nothing, while in closed scenes ray will keep bouncing until they reach the maximum number of allowed bounces. Below is a plot of active threads vs number of bounces in one iteration for a closed scenes.
 
-![](img/)
+![](img/sc2.png)
+
+Below is a bar graph showing the rendering time for using stream compaction and not using stream compaction. On the left group, we use the simple cornell box and stream compaction takes more time probably because launching kernels is more time-consuming compared to rendering. When more objects are added to the scene, stream compaction shows the benefit quickly.
+
+![](img/1.png)
 
 ### Caching First Bounces
 Rays shot out from the camera always hit the same object along the same paths in this project and they may go towards different directions in different iterations. Therefore we can cache the first bounces, recording what object is hit from what angle, and reuse this data in subsequent iterations.

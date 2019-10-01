@@ -16,11 +16,11 @@
 #include "interactions.h"
 
 #define ERRORCHECK 1
-#define CACHE_FIRST 0
+#define CACHE_FIRST 1
 #define STREAM_COMPACTION 1
 #define SORT_BY_MATERIALS 1
 #define DEPTH_OF_FIELD 0
-#define MOTION_BLUR 1
+#define MOTION_BLUR 0
 
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -481,6 +481,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 	  else {
 		  num_paths = thrust::remove_if(thrust::device, dev_sortedId, dev_sortedId + num_paths, rayTermination()) - dev_sortedId;
 		  iterationComplete = num_paths <= 0;
+		  std::cout << " " << num_paths;
 	  }
 	  #endif
 	}
