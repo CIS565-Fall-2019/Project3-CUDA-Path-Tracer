@@ -1,6 +1,8 @@
 CUDA Path Tracer
 ================
 
+<img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img/scene_from_front.png" width="400"/><img src="https://github.com/somanshu25/Project3-CUDA-Path-Tracer/blob/master/img/scene_side.png" width="400"/>
+
 **University of Pennsylvania, CIS 565: GPU Programming and Architecture, Project 3**
 
 * SOMANSHU AGARWAL
