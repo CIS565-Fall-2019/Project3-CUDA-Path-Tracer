@@ -11,7 +11,7 @@ CUDA Path Tracer
 
 ### What is Path Tracer and how it is different from Ray Tracing?
 
-Path tracing is a realistic lighting algorithm that simulates light bouncing around a scene. it is based on Monte-Carlo based sampling technique and simulate realistic images through rendering. The path tracer is continually rendering, so the scene will start off grainy and become smoother over time. The side by side comparision below shows the importance of rendering the scene in iterations which removed the blurring of the image and noise.
+Path tracing is a realistic lighting algorithm that simulates light bouncing around a scene. it is based on Monte-Carlo based sampling technique and simulate realistic images through rendering. The path tracer is continually rendering, so the scene will start off grainy and become smoother over time. Path tracing is a similar rendering technique as ray tracing except the fact that path tracing uses random sampling to incrementally compute a final image. The side by side comparision below shows the importance of rendering the scene in iterations which removed the blurring of the image and noise.
 
 <p align="center">
     After 200 iterations            |           After 1500 iterations
