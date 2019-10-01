@@ -1,5 +1,5 @@
 
-CUDA Path Tracer
+CUDA PATH TRACER
 ==================================================================
 
 **University of Pennsylvania, CIS 565: GPU Programming and Architecture**
@@ -13,8 +13,20 @@ ________________________________________________________________________________
 <p align="center">
   <img  src="img/frontpage.png">
 </p>
-____________________________________________________________________________________
 
 Table of contents
 =================
+   * [What is Path Tracing](#installation)
+   * [Features Overview](#usage)
+      * [BSDF Scattering: Diffuse, Specular-Reflective, Specular Transmissive](#stdin)
+      * [Procedural Shapes](#local-files)
+      * [Motion Blur](#remote-files)
+      * [Stochastic Sampled Anti Aliasing](#multiple-files)
+    * [Optimizations ](#combo)
+      * [Stream compaction to remove terminated rays](#auto-insert-and-update-toc)
+      * [First bounce caching](#github-token)
+      * [Sort by Material](#github-token)
+   * [Questions](#tests)
+   * [Performance Analysis](#dependency)
+   * [Credits & Acknowledgments](#dependency)
 
