@@ -16,17 +16,17 @@ ________________________________________________________________________________
 
 Table of contents
 =================
-   * [What is Path Tracing](#installation)
-   * [Features Overview](#usage)
-      * [BSDF Scattering: Diffuse, Specular-Reflective, Specular Transmissive](#stdin)
-      * [Procedural Shapes](#local-files)
+   * [What is Path Tracing]
+   * [Features Overview]
+      * [BSDF Scattering: Diffuse, Specular-Reflective, Specular Transmissive]
+      * [Procedural Shapes]
       * [Motion Blur](#remote-files)
-      * [Stochastic Sampled Anti Aliasing](#multiple-files)  
-  * [Optimizations ](#combo)
-    * [Stream compaction to remove terminated rays](#auto-insert-and-update-toc)
-    * [First bounce caching](#github-token)
-    * [Sort by Material](#github-token)
+      * [Stochastic Sampled Anti Aliasing]
+  * [Optimizations ]
+    * [Stream compaction to remove terminated rays]
+    * [First bounce caching]
+    * [Sort by Material]
    * [Questions](#tests)
-   * [Performance Analysis](#dependency)
-   * [Credits & Acknowledgments](#dependency)
+   * [Performance Analysis]
+   * [Credits & Acknowledgments]
 
