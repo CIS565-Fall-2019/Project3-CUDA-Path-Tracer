@@ -22,6 +22,7 @@ Table of contents
       * [Procedural Shapes](#local-files)
       * [Motion Blur](#remote-files)
       * [Stochastic Sampled Anti Aliasing](#multiple-files)
+      
     * [Optimizations ](#combo)
       * [Stream compaction to remove terminated rays](#auto-insert-and-update-toc)
       * [First bounce caching](#github-token)
