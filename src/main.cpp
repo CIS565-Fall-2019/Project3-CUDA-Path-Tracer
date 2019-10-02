@@ -57,8 +57,13 @@ int main(int argc, char** argv) {
 #if GLTF
 	cam.resolution.x = 1280;
 	cam.resolution.y = 720;
-	cam.lookAt = glm::vec3(0, 0, 6);// glm::vec3(scene->meshes.at(0).pivot_xform[3][0], scene->meshes.at(0).pivot_xform[3][1], scene->meshes.at(0).pivot_xform[3][2]);
-	cam.position = glm::vec3(4, -60, 20);
+	//Zelda
+	//cam.lookAt = glm::vec3(0, 0, 6);// glm::vec3(scene->meshes.at(0).pivot_xform[3][0], scene->meshes.at(0).pivot_xform[3][1], scene->meshes.at(0).pivot_xform[3][2]);
+	//cam.position = glm::vec3(4, -60, 20);
+	//person
+	cam.lookAt = glm::vec3(0, 0, 1);
+	cam.position = glm::vec3(0.4, -2, 1.6);
+
 	cam.view = cam.lookAt - cam.position;
 	cam.view = glm::normalize(cam.view);
 	cam.up = glm::vec3(0, 0, 1);
@@ -138,7 +143,11 @@ void runCuda() {
 
         cam.view = -glm::normalize(cameraPosition);
         glm::vec3 v = cam.view;
-		glm::vec3 u = glm::vec3(0, 1, 0);// glm::normalize(cam.up);
+#if GLTF
+		glm::vec3 u = glm::vec3(0, 0, 1);// glm::normalize(cam.up);
+#else
+		glm::vec3 u = glm::vec3(0, 1, 0);
+#endif
         glm::vec3 r = glm::cross(v, u);
         cam.up = glm::cross(r, v);
         cam.right = r;

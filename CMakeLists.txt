@@ -75,6 +75,7 @@ set(headers
     src/utilities.h
 	src/mesh.h
 	src/material.h
+	src/testing_helpers.hpp
     tinygltf/json.hpp
     tinygltf/tiny_gltf.h
 	tinygltf/gltf-loader.h

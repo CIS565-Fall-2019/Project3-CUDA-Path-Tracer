@@ -11,6 +11,7 @@
 #define GLTF 0
 #define BBOX 1
 #define MOTIONBLUR 0
+#define PROCEDURALTEX 0
 
 #define LENSR 0.6f
 #define FOCALDIS 11.5f

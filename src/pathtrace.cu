@@ -15,6 +15,7 @@
 #include "pathtrace.h"
 #include "intersections.h"
 #include "interactions.h"
+#include "testing_helpers.hpp"
 
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -88,6 +89,11 @@ static ShadeableIntersection * dev_intersections = NULL;
 static ShadeableIntersection * dev_cache_intersections = NULL;
 #endif
 
+PerformanceTimer& timer()
+{
+	static PerformanceTimer timer;
+	return timer;
+}
 
 void pathtraceInit(Scene *scene) {
     hst_scene = scene;
@@ -399,6 +405,15 @@ __global__ void computeIntersections(
 			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
 			intersections[path_index].surfaceNormal = normal;
 #if GLTF
+	#if PROCEDURALTEX
+			Ray r = pathSegment.ray;
+			glm::vec3 tmp = normal * (r.origin + r.direction * t_min) * 5.0f;
+			tmp -= glm::floor(tmp);
+			for (int i = 0; i < 3; i++) {
+				tmp[i] = tmp[i] > 0.5 ? 0.7 * 255 : 0.3 * 255;
+			}
+			intersections[path_index].texColor = tmp;
+	#else
 			Triangle &tri = geoms[hit_geom_index];
 			glm::vec2 uv = tri.uv1 * intersect_data.x + tri.uv2 * intersect_data.y + tri.uv3 * (1 - intersect_data.y - intersect_data.x);
 			int xi = glm::floor(uv.x * txWidth);
@@ -419,6 +434,7 @@ __global__ void computeIntersections(
 			glm::vec3 ur = glm::vec3(texture[idx], texture[idx + 1], texture[idx + 2]);
 
 			intersections[path_index].texColor = xf * yf * ur + xf * (1 - yf) * br + (1 - xf) * yf * ul + (1 - xf) * (1 - yf) * bl;
+	#endif
 #endif
 		}
 	}
@@ -473,7 +489,7 @@ __global__ void shadeMaterial (
 	else {
 		glm::vec3 nn;
 		skyboxTest(pathSegments->ray, nn);
-		pathSegments[idx].color *= glm::clamp((1.5f * (1.0f - nn.z) * glm::vec3(0.6f, 0.95f, 1.1f) + 13.0f * glm::pow(glm::dot(nn, glm::vec3(0.44f, -0.4f, 0.8f)), 30)), 0.0f, 8.0f);
+		pathSegments[idx].color *= glm::vec3(0.6) * glm::clamp((1.5f * (1.0f - nn.z) * glm::vec3(0.6f, 0.95f, 1.1f) + 13.0f * glm::pow(glm::dot(nn, glm::vec3(0.44f, -0.4f, 0.8f)), 30)), 0.0f, 8.0f);
 		pathSegments[idx].remainingBounces = -1;
 	}
   }
@@ -531,6 +547,8 @@ struct matCompare {
 };
 
 void pathtrace(uchar4 *pbo, int frame, int iter) {
+	timer().startCpuTimer();
+
 	const int traceDepth = hst_scene->state.traceDepth;
 	const Camera &cam = hst_scene->state.camera;
 	const int pixelcount = cam.resolution.x * cam.resolution.y;
@@ -655,12 +673,20 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 			dev_paths,
 			dev_materials
 		);
+
 		PathSegment* pivot_index = thrust::partition(thrust::device, dev_paths, dev_paths + num_paths, is_ended());
 		num_paths = pivot_index - dev_paths;
+		if (iter % 10 == 0)
+			cout << num_paths << " " << iter << endl;
+
 		if (num_paths < 1 || depth > traceDepth) {
 			iterationComplete = true;
 		}
 	}
+
+	timer().endCpuTimer();
+	cout << timer().getCpuElapsedTimeForPreviousOperation() << " ms" << endl;
+
 
   // Assemble this iteration and apply it to the image
   dim3 numBlocksPixels = (pixelcount + blockSize1d - 1) / blockSize1d;
