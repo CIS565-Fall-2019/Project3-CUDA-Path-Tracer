@@ -23,10 +23,10 @@ CUDA Path Tracer
 ## Demos and Analysis
 #### Refraction with Fresnel
 <p align="center">
-    <img src = img/cornell.refract.2880samp.png>
-    <em>index of refraction is 1.5</em>
+    <img src = img/cornell.refract.2880samp.png><br> 
+    <em>index of refraction is 1.5</em><br> 
     <p align="center">
-    <img src = img/cornell.reflect.2068samp.png>
+    <img src = img/cornell.reflect.2068samp.png><br> 
     <em>pure reflection</em>
     </p>
 </p>
@@ -47,12 +47,12 @@ glTF format is developed by the Khronos Group for the purpose of efficient trans
 I use the bilinear interpolation to get the uv of an arbitrary point. I use the glm::intersectRayTriangle() to calculate the intersection points between rays and triangles. (For bump maping, it is basically the same as texture mapping)
 
 <p align="center">
-    <img src = img/person1.685samp.png>
+    <img src = img/person1.685samp.png><br> 
     2.1k Triangles, credit to
     <a href="https://sketchfab.com/3d-models/low-poly-person-bfe451f06bba4a6baa4bae9f4b0b112e"> 
 Dimitriy Nikonov</a>
     <p align="center">
-        <img src = img/person2.531samp.png>
+        <img src = img/person2.531samp.png><br> 
         Procedural Texture
     </p>
 </p>
