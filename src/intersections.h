@@ -19,11 +19,6 @@ __host__ __device__ inline unsigned int utilhash(unsigned int a) {
     return a;
 }
 
-// CHECKITOUT
-/**
- * Compute a point at parameter value `t` on ray `r`.
- * Falls slightly short so that it doesn't intersect the object it's hitting.
- */
 __host__ __device__ glm::vec3 getPointOnRay(Ray r, float t) {
     return r.origin + (t - .0001f) * glm::normalize(r.direction);
 }
@@ -35,16 +30,6 @@ __host__ __device__ glm::vec3 multiplyMV(glm::mat4 m, glm::vec4 v) {
     return glm::vec3(m * v);
 }
 
-// CHECKITOUT
-/**
- * Test intersection between a ray and a transformed cube. Untransformed,
- * the cube ranges from -0.5 to 0.5 in each axis and is centered at the origin.
- *
- * @param intersectionPoint  Output parameter for point of intersection.
- * @param normal             Output parameter for surface normal.
- * @param outside            Output param for whether the ray came from outside.
- * @return                   Ray parameter `t` value. -1 if no intersection.
- */
 __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
         glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
     Ray q;
@@ -57,7 +42,7 @@ __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
     glm::vec3 tmax_n;
     for (int xyz = 0; xyz < 3; ++xyz) {
         float qdxyz = q.direction[xyz];
-        /*if (glm::abs(qdxyz) > 0.00001f)*/ {
+       /* if (glm::abs(qdxyz) > 0.00001f) */ {
             float t1 = (-0.5f - q.origin[xyz]) / qdxyz;
             float t2 = (+0.5f - q.origin[xyz]) / qdxyz;
             float ta = glm::min(t1, t2);
@@ -83,22 +68,12 @@ __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
             outside = false;
         }
         intersectionPoint = multiplyMV(box.transform, glm::vec4(getPointOnRay(q, tmin), 1.0f));
-        normal = glm::normalize(multiplyMV(box.transform, glm::vec4(tmin_n, 0.0f)));
+        normal = glm::normalize(multiplyMV(box.invTranspose, glm::vec4(tmin_n, 0.0f)));
         return glm::length(r.origin - intersectionPoint);
     }
     return -1;
 }
 
-// CHECKITOUT
-/**
- * Test intersection between a ray and a transformed sphere. Untransformed,
- * the sphere always has radius 0.5 and is centered at the origin.
- *
- * @param intersectionPoint  Output parameter for point of intersection.
- * @param normal             Output parameter for surface normal.
- * @param outside            Output param for whether the ray came from outside.
- * @return                   Ray parameter `t` value. -1 if no intersection.
- */
 __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
         glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
     float radius = .5;
@@ -141,4 +116,60 @@ __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
     }
 
     return glm::length(r.origin - intersectionPoint);
+}
+
+__host__ __device__ bool checkBBox(glm::vec3 &minPoint, glm::vec3 &maxPoint, glm::vec3 &origin, glm::vec3 &dir) {
+	float tmin = -1e38f;
+	float tmax = 1e38f;
+	for (int xyz = 0; xyz < 3; ++xyz) {
+		float qdxyz = dir[xyz];
+		if (glm::abs(qdxyz) > 0.00001f) {
+			float t1 = (minPoint[xyz] - origin[xyz]) / qdxyz;
+			float t2 = (maxPoint[xyz] - origin[xyz]) / qdxyz;
+			float ta = glm::min(t1, t2);
+			float tb = glm::max(t1, t2);
+			if (ta > 0 && ta > tmin) {
+				tmin = ta;
+			}
+			if (tb < tmax) {
+				tmax = tb;
+			}
+		}
+	}
+
+	if (tmax >= tmin && tmax > 0) {
+		return true;
+	}
+	return false;
+}
+
+__host__ __device__ void skyboxTest(Ray rt, glm::vec3 &normal) {
+	float radius = 150.0f;
+
+	float vDotDirection = glm::dot(rt.origin, rt.direction);
+	float radicand = vDotDirection * vDotDirection - (glm::dot(rt.origin, rt.origin) - powf(radius, 2));
+	if (radicand < 0) {
+		normal = glm::vec3(0.0f);
+		return;
+	}
+
+	float squareRoot = sqrt(radicand);
+	float firstTerm = -vDotDirection;
+	float t1 = firstTerm + squareRoot;
+	float t2 = firstTerm - squareRoot;
+
+	float t = 0;
+	if (t1 < 0 && t2 < 0) {
+		normal = glm::vec3(0.0f);
+		return;
+	}
+	else if (t1 > 0 && t2 > 0) {
+		t = min(t1, t2);
+	}
+	else {
+		t = max(t1, t2);
+	}
+
+	glm::vec3 objspaceIntersection = getPointOnRay(rt, t);
+	normal = glm::normalize(objspaceIntersection);
 }

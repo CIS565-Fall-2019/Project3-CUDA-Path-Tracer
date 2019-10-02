@@ -1,8 +1,9 @@
 #pragma once
 
 #include "intersections.h"
+#include "pathtrace.h"
 
-// CHECKITOUT
+
 /**
  * Computes a cosine-weighted random direction in a hemisphere.
  * Used for diffuse lighting.
@@ -15,11 +16,6 @@ glm::vec3 calculateRandomDirectionInHemisphere(
     float up = sqrt(u01(rng)); // cos(theta)
     float over = sqrt(1 - up * up); // sin(theta)
     float around = u01(rng) * TWO_PI;
-
-    // Find a direction that is not the normal based off of whether or not the
-    // normal's components are all equal to sqrt(1/3) or whether or not at
-    // least one component is less than sqrt(1/3). Learned this trick from
-    // Peter Kutz.
 
     glm::vec3 directionNotNormal;
     if (abs(normal.x) < SQRT_OF_ONE_THIRD) {
@@ -41,39 +37,101 @@ glm::vec3 calculateRandomDirectionInHemisphere(
         + sin(around) * over * perpendicularDirection2;
 }
 
-/**
- * Scatter a ray with some probabilities according to the material properties.
- * For example, a diffuse surface scatters in a cosine-weighted hemisphere.
- * A perfect specular surface scatters in the reflected ray direction.
- * In order to apply multiple effects to one surface, probabilistically choose
- * between them.
- * 
- * The visual effect you want is to straight-up add the diffuse and specular
- * components. You can do this in a few ways. This logic also applies to
- * combining other types of materias (such as refractive).
- * 
- * - Always take an even (50/50) split between a each effect (a diffuse bounce
- *   and a specular bounce), but divide the resulting color of either branch
- *   by its probability (0.5), to counteract the chance (0.5) of the branch
- *   being taken.
- *   - This way is inefficient, but serves as a good starting point - it
- *     converges slowly, especially for pure-diffuse or pure-specular.
- * - Pick the split based on the intensity of each material color, and divide
- *   branch result by that branch's probability (whatever probability you use).
- *
- * This method applies its changes to the Ray parameter `ray` in place.
- * It also modifies the color `color` of the ray in place.
- *
- * You may need to change the parameter list for your purposes!
- */
+__host__ __device__ float Fresnel(float cosThetaI, float etaI, float etaT)
+{
+	cosThetaI = glm::clamp(cosThetaI, -1.0f, 1.0f);
+
+	bool entering = cosThetaI > 0.0f;
+	float etaIb = etaI;
+	float etaTb = etaT;
+	if (!entering) {
+		etaIb = etaT;
+		etaTb = etaI;
+		cosThetaI = glm::abs(cosThetaI);
+	}
+
+	float sinThetaI = glm::sqrt(glm::max(0.0f, 1 - cosThetaI * cosThetaI));
+	float sinThetaT = etaIb / etaTb * sinThetaI;
+
+	if (sinThetaT >= 1) {
+		return 1.0f;
+	}
+
+	float cosThetaT = glm::sqrt(glm::max(0.0f, 1 - sinThetaT * sinThetaT));
+
+	float Rparl = ((etaTb * cosThetaI) - (etaIb * cosThetaT)) /
+		((etaTb * cosThetaI) + (etaIb * cosThetaT));
+	float Rperp = ((etaIb * cosThetaI) - (etaTb * cosThetaT)) /
+		((etaIb * cosThetaI) + (etaTb * cosThetaT));
+	return (Rparl * Rparl + Rperp * Rperp) / 2;
+}
+
 __host__ __device__
 void scatterRay(
 		PathSegment & pathSegment,
         glm::vec3 intersect,
         glm::vec3 normal,
-        const Material &m,
+#if GLTF
+        const MyMaterial &m,
+#else
+		const Material &m,
+#endif
         thrust::default_random_engine &rng) {
-    // TODO: implement this.
-    // A basic implementation of pure-diffuse shading will just call the
-    // calculateRandomDirectionInHemisphere defined above.
+#if GLTF
+	glm::vec3 newDir = calculateRandomDirectionInHemisphere(normal, rng);
+	pathSegment.ray.direction = newDir;
+	pathSegment.ray.origin = intersect + newDir * 0.0001f;
+#else
+	if (m.hasReflective > 0) {
+		if (m.hasRefractive > 0) {
+			thrust::uniform_real_distribution<float> u01(0, 1);
+			float cosWo = glm::dot(-pathSegment.ray.direction, normal);
+			float fresnel;
+			if (cosWo < 0.0f) {
+				fresnel = Fresnel(cosWo, m.indexOfRefraction, 1.0f) / (-cosWo);
+			}
+			else {
+				fresnel = Fresnel(cosWo, 1.0f, m.indexOfRefraction) / (cosWo + 0.0001f);
+			}
+
+			if (u01(rng) < fresnel) {
+				pathSegment.color *= m.specular.color;
+				glm::vec3 newDir = glm::reflect(pathSegment.ray.direction, normal);
+				pathSegment.ray.direction = newDir;
+				pathSegment.ray.origin = intersect + newDir * 0.001f;
+			}
+			else {
+				glm::vec3 wo = pathSegment.ray.direction;
+				float eta;
+				if (glm::dot(wo, normal) > 0.0f) {
+					normal = -normal;
+					eta = m.indexOfRefraction;
+				}
+				else {
+					eta = 1.0f / m.indexOfRefraction;
+				}
+				glm::vec3 newDir = glm::refract(wo, normal, eta);
+				if (glm::length(newDir) < .01f) {
+					//pathSegment.color *= 0.0f;
+					newDir = glm::reflect(wo, normal);
+				}
+				pathSegment.color *= m.specular.color;
+				pathSegment.ray.direction = newDir;
+				pathSegment.ray.origin = intersect + newDir * 0.001f;
+			}
+		}
+		else {
+			pathSegment.color *= m.specular.color;
+			glm::vec3 newDir = glm::reflect(pathSegment.ray.direction, normal);
+			pathSegment.ray.direction = newDir;
+			pathSegment.ray.origin = intersect + newDir * 0.001f;
+		}
+	}
+	else {
+		pathSegment.color *= m.color;
+		glm::vec3 newDir = calculateRandomDirectionInHemisphere(normal, rng);
+		pathSegment.ray.direction = newDir;
+		pathSegment.ray.origin = intersect + newDir * 0.001f;
+	}
+#endif
 }

@@ -73,6 +73,12 @@ set(headers
     src/sceneStructs.h
     src/preview.h
     src/utilities.h
+	src/mesh.h
+	src/material.h
+	src/testing_helpers.hpp
+    tinygltf/json.hpp
+    tinygltf/tiny_gltf.h
+	tinygltf/gltf-loader.h
     )
 
 set(sources
@@ -93,6 +99,7 @@ source_group(Headers FILES ${headers})
 source_group(Sources FILES ${sources})
 
 #add_subdirectory(stream_compaction)  # TODO: uncomment if using your stream compaction
+include_directories(tinygltf)
 
 cuda_add_executable(${CMAKE_PROJECT_NAME} ${sources} ${headers})
 target_link_libraries(${CMAKE_PROJECT_NAME}
