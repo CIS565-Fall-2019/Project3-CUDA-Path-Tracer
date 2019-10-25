@@ -4,7 +4,7 @@ RGB         1 1 1
 SPECEX      0
 SPECRGB     0 0 0
 REFL        0
-REFR        0
+REFR        1
 REFRIOR     0
 EMITTANCE   5
 

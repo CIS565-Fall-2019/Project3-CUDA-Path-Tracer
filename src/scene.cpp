@@ -75,6 +75,9 @@ int Scene::loadGeom(string objectid) {
             } else if (strcmp(tokens[0].c_str(), "SCALE") == 0) {
                 newGeom.scale = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
             }
+			else if (strcmp(tokens[0].c_str(), "SPEED") == 0) {
+				newGeom.speed = glm::vec3(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+			}
 
             utilityCore::safeGetline(fp_in, line);
         }
@@ -83,6 +86,16 @@ int Scene::loadGeom(string objectid) {
                 newGeom.translation, newGeom.rotation, newGeom.scale);
         newGeom.inverseTransform = glm::inverse(newGeom.transform);
         newGeom.invTranspose = glm::inverseTranspose(newGeom.transform);
+		
+		float x = newGeom.translation.x + newGeom.scale.x;
+		float x2 = newGeom.translation.x - newGeom.scale.x;
+		float y = newGeom.translation.y + newGeom.scale.y;
+		float y2 = newGeom.translation.y - newGeom.scale.y;
+		float z = newGeom.translation.z + newGeom.scale.z;
+		float z2  = newGeom.translation.z - newGeom.scale.z;
+
+		// whats the space that is this object occuppies
+		newGeom.space = { x,x2,y,y2,z,z2 };
 
         geoms.push_back(newGeom);
         return 1;

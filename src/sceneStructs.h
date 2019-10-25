@@ -15,6 +15,8 @@ enum GeomType {
 struct Ray {
     glm::vec3 origin;
     glm::vec3 direction;
+	int scatter_depth;
+	bool scattering;
 };
 
 struct Geom {
@@ -26,6 +28,8 @@ struct Geom {
     glm::mat4 transform;
     glm::mat4 inverseTransform;
     glm::mat4 invTranspose;
+	glm::vec3 speed;
+	glm::dmat3x2 space;
 };
 
 struct Material {
@@ -73,4 +77,5 @@ struct ShadeableIntersection {
   float t;
   glm::vec3 surfaceNormal;
   int materialId;
+  glm::dmat3x2 space;
 };

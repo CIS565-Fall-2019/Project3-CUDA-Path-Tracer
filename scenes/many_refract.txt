@@ -45,14 +45,24 @@ SPECEX      0
 SPECRGB     .98 .98 .98
 REFL        1
 REFR        0
-REFRIOR     0
+REFRIOR     1.4
 EMITTANCE   0
 
 // Specular white
 MATERIAL 5
 RGB         .35 .35 .85
 SPECEX      0
-SPECRGB     .6 .55 .7
+SPECRGB     .35 .35 .85
+REFL        .7
+REFR        .3
+REFRIOR     1.4
+EMITTANCE   0
+
+// Specular white
+MATERIAL 6
+RGB         .98 .98 .98
+SPECEX      0
+SPECRGB     .98 .98 .98
 REFL        0
 REFR        1
 REFRIOR     1.4
@@ -72,9 +82,9 @@ UP          0 1 0
 
 // Ceiling light
 OBJECT 0
-cube
+sphere
 material 0
-TRANS       0 10 0
+TRANS       -3 10 0
 ROTAT       0 0 0
 SCALE       3 .3 3
 
@@ -105,7 +115,7 @@ SCALE       .01 10 10
 // Left wall
 OBJECT 4
 cube
-material 2
+material 1
 TRANS       -5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
@@ -122,30 +132,6 @@ SCALE       .01 10 10
 OBJECT 6
 sphere
 material 4
-TRANS       -4 4 -1
-ROTAT       0 0 0
-SCALE       3 3 3
-
-// Sphere
-OBJECT 7
-sphere
-material 4
-TRANS       0 0 0
-ROTAT       0 0 0
-SCALE       3 3 3
-
-// Cube
-OBJECT 8
-cube
-material 5
-TRANS       2 4 -1
-ROTAT       1 1 0
-SCALE       3 3 3
-
-// Sphere
-OBJECT 9
-sphere
-material 5
-TRANS       -3 1 3
+TRANS       -4 7 -2
 ROTAT       0 0 0
 SCALE       2 2 2

@@ -2,6 +2,32 @@
 
 #include "intersections.h"
 
+#define REFRACTION
+//#define IMPORTANCE_SAMPLING
+#define SSS
+
+
+// for calculating probability distribution over a uniform sampled hemisphere
+__host__ __device__ float get_pdf(glm::vec3 ray, glm::vec3 normal)
+{
+	return dot(ray, normal) * (1 / PI);
+}
+
+// check if we refract through or get stuck in the medium
+__host__ __device__ bool check_if_in_material(glm::vec3 new_ray_dir, glm::vec3 intersect, glm::dmat3x2 space, float seed, float* distance)
+{
+	*distance = -logf(seed) * .2f;
+	//printf("distance %f \n", *distance);
+	glm::vec3 origin = (intersect + (.01f * new_ray_dir)) * (*distance);
+	
+	// x in dmat is the positive direction y is negativee
+	if ((origin.x <= space[0].x && origin.x >= space[0].y) && (origin.y <= space[1].x && origin.y >= space[1].y) && (origin.z <= space[2].x && origin.z >= space[2].y))
+	{
+		//printf("im in the material!\n");
+		return true;
+	}
+	return false;
+}
 // CHECKITOUT
 /**
  * Computes a cosine-weighted random direction in a hemisphere.
@@ -41,6 +67,302 @@ glm::vec3 calculateRandomDirectionInHemisphere(
         + sin(around) * over * perpendicularDirection2;
 }
 
+__host__ __device__ glm::vec3 compute_reflection(PathSegment& path, glm::vec3 normal, float t,const Material& m, thrust::default_random_engine &rng, float* pdf)
+{
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	glm::vec3 old_ray_direction = path.ray.direction;
+	glm::vec3 new_ray_direction;
+	glm::vec3 color;
+	float exponent = m.specular.exponent;
+
+	float rand = u01(rng);
+
+	if (rand < m.hasReflective) {
+		// based off of our surface normal and ray direction we want to reflect the path
+		// https://glm.g-truc.net/0.9.4/api/a00131.html#gabe1fa0bef5f854242eb70ce56e5a7d03
+		// glm reflect handles where the new ray shoots out
+		new_ray_direction = glm::reflect(old_ray_direction, normal);
+		color = m.specular.color;
+	}
+	else
+	{
+		float cos_theta;
+		new_ray_direction = calculateRandomDirectionInHemisphere(normal, rng);
+		color = m.color;
+	}
+	// need to add some epsilon according to slides od I add to ray or color?
+	// think colo
+	// http://web.cse.ohio-state.edu/~shen.94/681/Site/Slides_files/reflection_refraction.pdf
+
+
+#ifdef IMPORTANCE_SAMPLING
+	*pdf = get_pdf(new_ray_direction, normal);
+#endif
+	path.ray.direction = glm::normalize(new_ray_direction); 
+	return color;
+}
+
+__host__ __device__ glm::vec3 compute_refraction(PathSegment& path, glm::vec3 normal, glm::vec3 intersect, glm::dmat3x2 space,const Material& m, thrust::default_random_engine &rng,float* pdf,float* distance)
+{
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	glm::vec3 old_ray_direction = path.ray.direction;
+	glm::vec3 color = m.color; // unless we have total internal reflection we will return the material color;
+	glm::vec3 new_ray_direction;
+	glm::vec3 new_normal;
+	float eta; // essentially n1/n2 or n2/n1 depending on persepctive of ray
+	
+	//// notes from https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
+	//// for refraction we have some corner cases we need to handle.
+	// such as TIR. we can also add sub surface scattering here
+	float n1 = 1; // keep track of what medium the ray is in. if we scatter in the material we will be in the medium else we will be air //1; // Air
+	float n2 = m.indexOfRefraction;
+
+#ifdef SSS
+	//// if we are scattering we don't need to refract we just bounce around inside the object
+	if (path.ray.scattering)
+	{
+		//printf("scattering \n");
+		// get the new direction may have to change normal?
+		new_ray_direction = calculateRandomDirectionInHemisphere(normal, rng);
+		// are we still scattering?
+		path.ray.scattering = check_if_in_material(glm::normalize(new_ray_direction), intersect, space, u01(rng), distance);
+
+		// mainly for debugging
+		if (path.ray.scattering)
+		{
+			path.ray.scatter_depth++;
+			if (path.ray.scatter_depth > 5) {
+				printf("s dpeth %d \n", path.ray.scatter_depth);
+			}
+		}
+		else
+		{
+			path.ray.scatter_depth=0;
+		}
+
+		color = m.specular.color;
+		path.ray.direction = glm::normalize(new_ray_direction);
+		return color;
+	}
+#endif
+
+	 // determine if we are leaving the medium or entering the medium
+	bool entering = glm::dot(old_ray_direction, -normal) < 0;
+	if (entering) {
+		// we are entering the medium we are bouncing in and scattering or going completely through
+		new_normal = -normal;
+		eta = n2 / n1;
+	}
+	else {
+		// leaving the medium just a regular bounce back
+		new_normal = normal;
+		eta = n1 / n2;
+	}
+
+	// I think there was some rounding errors... dot product was producing values of 1.00000012
+	// so camp our values....
+	//cos_theta1 = (cos_theta1 > 1) ? 1 : cos_theta1;
+
+	// list of trig identities for making sense of fresnels and snells
+	// https://en.wikipedia.org/wiki/Snell%27s_law
+	// cos theta1 = -surface vector dot light vector; //
+	// sin theta2 = ( (n1/n2) * sin theta1 ) = (n1/n2) * (sqrt ( 1 - cos_theta1^2))  
+	// cos theta2 = (sqrt ( 1 - sin theta2^2))  
+	// vrefract = (n1/n2) * ray + ( ( n1/n2 * cos theta1 ) - cos theta2  ) * nomal
+	// normal must be positive 
+	//float sin_theta2 = (eta) * (sqrtf(1 - (cos_theta1 * cos_theta1)));
+	//assert((1 - (cos_theta1 * cos_theta1) >= 0)); // make sure no NaN's
+	// total internal reflection so should just be zero
+	//if (sin_theta2 >= 1)
+
+	// just using api's ... theory is commented out above
+	new_ray_direction = glm::refract(old_ray_direction, new_normal, eta);
+
+	// total internal reflection
+	if(glm::length(new_ray_direction) < EPSILON)
+	{
+		new_ray_direction = glm::reflect(old_ray_direction, new_normal);
+		color = m.specular.color;
+	}
+	// based off of how much refractivity we have we can do a refractive bounce or just a random one
+	else 
+	{
+		// not sure why this does not work ...
+		//float cos_theta2 = sqrtf(1 - (sin_theta2 * sin_theta2)); // may need to check if negative
+		//assert((1 - (sin_theta2 * sin_theta2) >= 0)); // make sure no NaN's
+		//new_ray_direction = glm::refract(old_ray_direction, normal, eta);
+		// finally refract
+		//new_ray_direction = (eta * old_ray_direction) + (((eta * cos_theta1) - cos_theta2) * normal); // cos theta1 and normal must be positive ... this is guaranteed by statemetns above
+		
+		// if we are scattering through bounce randomly and modify our distance
+		//if (scattering)
+		//{
+		//	// mark our ior as the material
+		//	path.ray.ior = m.indexOfRefraction;
+		//}
+		//else{
+			// mark our ior as outside or air
+			//path.ray.ior = 1;
+
+			// if we have high refractivity refract, else randomly bounce
+			float rand = u01(rng);
+			if (rand < m.hasRefractive) 
+			{
+				// maybe we can scatter in?
+					//assert(0);
+					// did we enter?
+#ifdef SSS
+				//if(rand > .5)
+					path.ray.scattering = check_if_in_material(new_ray_direction, intersect, space, u01(rng), distance);
+
+#endif
+				// accumulate specular color
+				color = m.specular.color;
+			}
+			else
+			{
+				// accumulate diffuse color and bounce radnomly
+		 		new_ray_direction = calculateRandomDirectionInHemisphere(normal, rng);
+				color = m.color;
+			}
+	}
+
+#ifdef IMPORTANCE_SAMPLING
+	*pdf = get_pdf(new_ray_direction, normal);
+#endif
+	// compute our new ray origin
+	path.ray.direction = glm::normalize(new_ray_direction);
+	return color;
+}
+
+__host__ __device__ glm::vec3 compute_diffuse(PathSegment& path, glm::vec3 normal, float t, const Material& m, thrust::default_random_engine &rng, float* pdf)
+{
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	glm::vec3 old_ray_origin = path.ray.origin;
+	glm::vec3 old_ray_direction = path.ray.direction;
+	glm::vec3 color;
+	glm::vec3 new_ray_direction;
+
+	float rand = u01(rng);
+
+	float probdiffuse = glm::length(m.color);
+	float probspec = glm::length(m.specular.color);
+	float total = probdiffuse + probspec;
+
+	probdiffuse /= total;
+	probspec /= total;
+	// diffuse bounce is random specular is a reflect
+	if (rand < probdiffuse )
+	{
+		new_ray_direction = calculateRandomDirectionInHemisphere(normal, rng);
+		color = m.color;
+	}
+	else
+	{
+		// based off of our surface normal and ray direction we want to reflect the path
+		new_ray_direction = glm::reflect(old_ray_direction, normal);
+		//printf("%f :  %f : %f\n", probspec, rand, probdiffuse);
+		assert(probspec <= 1.f && probspec >= 0);
+		color = m.specular.color;
+	}
+
+#ifdef IMPORTANCE_SAMPLING
+	*pdf = get_pdf(new_ray_direction, normal);
+#endif
+
+	//new_ray_direction += speed;
+	path.ray.direction = glm::normalize(new_ray_direction);
+	return color;
+}
+
+__host__ __device__ float fresnels(glm::vec3 normal, glm::vec3 old_ray_direction,const Material& material)
+{
+	float eta_air = 1; // n1
+	float eta_mat = material.indexOfRefraction; //n2 
+	float Fresnels_number;
+	float eta; // n1/n2 or n2/n1
+	float n1;
+	float n2;
+	// list of trig identities for making sense of fresnels and snells
+	// https://en.wikipedia.org/wiki/Snell%27s_law
+	// cos theta1 = -surface vector dot light vector; //
+	// sin theta2 = ( (n1/n2) * sin theta1 ) = (n1/n2) * (sqrt ( 1 - cos_theta1^2))  
+	// cos theta2 = (sqrt ( 1 - sin theta2^2))  
+
+	float cos_theta1 = glm::dot(-normal, old_ray_direction);
+	if (cos_theta1 < 0.f) {
+		cos_theta1 = -cos_theta1;
+		eta = material.indexOfRefraction; // we are doing pretty much air over our index of refraction.. airs index ~= 1.s
+		n1 = eta_mat;
+		n2 = eta_air;
+	}
+	else {
+		 //normal = -normal;
+		eta = 1/material.indexOfRefraction; // material index over air index
+		n1 = eta_air;
+		n2 = eta_mat;
+	}
+
+	// I think there was some rounding errors... dot product was producing values of 1.00000012
+	// so camp our values....
+	cos_theta1 = (cos_theta1 > 1) ? 1 : cos_theta1;
+
+	// do more trig identity ... gross
+	float sin_theta2 = (eta) * (sqrtf( 1 - (cos_theta1 * cos_theta1) ) );
+	assert((1 - (cos_theta1 * cos_theta1) >= 0)); // make sure no NaN's
+	
+	// total internal reflection
+	if (sin_theta2 >= 1)
+	{
+		Fresnels_number = 1;
+		return Fresnels_number;
+	}
+	else
+	{
+		//
+		float cos_theta2 = sqrtf( 1 - (sin_theta2 * sin_theta2) );
+		assert((1 - (sin_theta2 * sin_theta2) >= 0)); // make sure no NaN's
+
+		// this is fresnels equation finally ... can also do the approximation but I did the regular equation since I did not know the approximation existed....
+		float Fresnel_R_Parallel = ((n2 * cos_theta1) - (n1 * cos_theta2)) / ((n2 * cos_theta1) + (n1 * cos_theta2));
+		float Fresnel_R_Perp = ((n1 * cos_theta2) - (n2 * cos_theta1)) / ((n1 * cos_theta2) + (n2 * cos_theta1));
+		
+		// 
+		Fresnels_number = ( (Fresnel_R_Parallel * Fresnel_R_Parallel) + (Fresnel_R_Perp * Fresnel_R_Perp) ) / 2;
+		return Fresnels_number;
+	}
+
+}
+
+// we come here when we have a material that is both reflective AND refractive
+// based off of fresenels equation we follow the route of reflection or refraction
+// resources: https://computergraphics.stackexchange.com/questions/2482/choosing-reflection-or-refraction-in-path-tracing
+// https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
+__host__ __device__ glm::vec3 compute_fresnels(PathSegment& path, glm::vec3 normal, glm::vec3 intersect, glm::dmat3x2 space, float t, const Material& m, thrust::default_random_engine &rng,float* pdf,float* distance)
+{
+	glm::vec3 color;
+	thrust::uniform_real_distribution<float> u01(0, 1);
+	float rand = u01(rng);
+	// fresnelse number needs to be added to the color like an intensity
+	// fresnels number gives us how much light is reflected. the higher the number the higher the reflectivity
+	float Fresnels_Number = fresnels(normal,path.ray.direction,m);
+	assert(Fresnels_Number >= 0 && Fresnels_Number <= 1); // make sure its reasonable
+
+	// the lower the fresnels number the less reflective
+	if (Fresnels_Number < rand )
+	{
+		color = compute_refraction(path, normal, intersect,space, m,rng,pdf,distance);
+		Fresnels_Number = 1 - Fresnels_Number;
+	}
+	else
+	{
+		color = compute_reflection(path, normal, t, m,rng,pdf);
+	}
+
+	//assert(Fresnels_Number >= 0 && Fresnels_Number <= 1); // make sure its reasonable
+	return Fresnels_Number * color;
+}
+
 /**
  * Scatter a ray with some probabilities according to the material properties.
  * For example, a diffuse surface scatters in a cosine-weighted hemisphere.
@@ -69,11 +391,49 @@ glm::vec3 calculateRandomDirectionInHemisphere(
 __host__ __device__
 void scatterRay(
 		PathSegment & pathSegment,
-        glm::vec3 intersect,
+		glm::vec3 intersect,
         glm::vec3 normal,
         const Material &m,
-        thrust::default_random_engine &rng) {
+		float t,
+        thrust::default_random_engine &rng,
+		glm::dmat3x2 space ) {
     // TODO: implement this.
     // A basic implementation of pure-diffuse shading will just call the
     // calculateRandomDirectionInHemisphere defined above.
+	// calculateRandomDirection or depending on what we want to call
+	// is diffuse is reflective is refractive. is opaque? etc etc
+	glm::vec3 color;
+	float pdf = 0;
+	float distance = 1;
+
+#ifdef REFRACTION
+	//  
+	if (m.hasReflective > 0.0f && m.hasRefractive > 0.0f)
+	{
+		color = compute_fresnels(pathSegment, normal,intersect,space, t, m,rng,&pdf,&distance);
+	}
+	//if refractive
+	else if (m.hasRefractive > 0.0f)
+	{
+		color = compute_refraction(pathSegment, normal, intersect,space, m, rng, &pdf, &distance);
+	}
+#endif
+
+	// if reflective
+	else if (m.hasReflective > 0.0f)
+	{
+		color = compute_reflection(pathSegment, normal, t, m,rng,&pdf);
+	}
+	// else diffuse
+	else{
+		color = compute_diffuse(pathSegment, normal, t, m, rng,&pdf);
+	}
+
+	pathSegment.ray.origin = (intersect + (.01f * pathSegment.ray.direction) ) * distance;
+
+#ifdef IMPORTANCE_SAMPLING
+	color = color * (1 / PI) * glm::dot(pathSegment.ray.direction, normal) / pdf;
+#endif
+
+	pathSegment.color *= color; 
 }

@@ -50,12 +50,32 @@ EMITTANCE   0
 
 // Specular white
 MATERIAL 5
-RGB         .35 .35 .85
+RGB         .98 .1 .98
 SPECEX      0
-SPECRGB     .6 .55 .7
+RGB         .98 .1 .98
 REFL        0
-REFR        1
-REFRIOR     1.4
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Specular white
+MATERIAL 6
+RGB         .98 .98 .1
+SPECEX      0
+SPECRGB     .98 .98 .1
+REFL        .2
+REFR        0
+REFRIOR     0
+EMITTANCE   0
+
+// Specular white
+MATERIAL 7
+RGB         .01 .76 .98
+SPECEX      0
+SPECRGB     .01 .76 .98
+REFL        .1
+REFR        0
+REFRIOR     0
 EMITTANCE   0
 
 // Camera
@@ -85,6 +105,7 @@ material 1
 TRANS       0 0 0
 ROTAT       0 0 0
 SCALE       10 .01 10
+SPEED       0 0 0
 
 // Ceiling
 OBJECT 2
@@ -93,6 +114,7 @@ material 1
 TRANS       0 10 0
 ROTAT       0 0 90
 SCALE       .01 10 10
+SPEED       0 0 0    
 
 // Back wall
 OBJECT 3
@@ -101,6 +123,7 @@ material 1
 TRANS       0 5 -5
 ROTAT       0 90 0
 SCALE       .01 10 10
+SPEED       0 0 0
 
 // Left wall
 OBJECT 4
@@ -109,6 +132,7 @@ material 2
 TRANS       -5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
+SPEED       0 0 0
 
 // Right wall
 OBJECT 5
@@ -117,35 +141,64 @@ material 3
 TRANS       5 5 0
 ROTAT       0 0 0
 SCALE       .01 10 10
+SPEED       0 0 0
 
 // Sphere
 OBJECT 6
 sphere
-material 4
-TRANS       -4 4 -1
+material 6
+TRANS       2 2 -2
 ROTAT       0 0 0
-SCALE       3 3 3
+SCALE       2 2 2
+SPEED       0 0 0
 
-// Sphere
+// sphere
 OBJECT 7
 sphere
-material 4
-TRANS       0 0 0
+material 7
+TRANS       0 2 0
 ROTAT       0 0 0
-SCALE       3 3 3
+SCALE       2 2 2
+SPEED       0 0 0
 
-// Cube
+// sphere
 OBJECT 8
-cube
-material 5
-TRANS       2 4 -1
-ROTAT       1 1 0
-SCALE       3 3 3
+sphere
+material 6
+TRANS       -2 2 2
+ROTAT       0 0 0
+SCALE       2 2 2
+SPEED       0 0 0
 
 // Sphere
 OBJECT 9
 sphere
-material 5
-TRANS       -3 1 3
+material 7
+TRANS       -4 2 4
 ROTAT       0 0 0
 SCALE       2 2 2
+SPEED       0 0 0
+
+// Sphere
+OBJECT 10
+sphere
+material 4
+TRANS       1 0 3
+ROTAT       0 0 0
+SCALE       2 2 2
+
+// Sphere
+OBJECT 11
+cube
+material 5
+TRANS       4 1 3
+ROTAT       0 0 0
+SCALE       2 2 2
+
+// Sphere
+//OBJECT 12
+//sphere
+//material 5
+//TRANS       4 2 4
+//ROTAT       0 0 0
+//SCALE       2 2 2
